@@ -39,7 +39,7 @@ const AdminKnowledge = () => {
 
   const handleLogout = () => {
     localStorage.removeItem("admin");
-    navigate("/admin/login");
+    navigate("/");
   };
 
   const handleDelete = (id: string) => {
