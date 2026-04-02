@@ -5,6 +5,9 @@ export default {
   content: ["./pages/**/*.{ts,tsx}", "./components/**/*.{ts,tsx}", "./app/**/*.{ts,tsx}", "./src/**/*.{ts,tsx}"],
   prefix: "",
   theme: {
+    fontFamily: {
+      sans: ['Cairo', 'sans-serif'],
+    },
     container: {
       center: true,
       padding: "2rem",
@@ -22,6 +25,13 @@ export default {
         primary: {
           DEFAULT: "hsl(var(--primary))",
           foreground: "hsl(var(--primary-foreground))",
+          hover: "hsl(var(--primary-hover))",
+        },
+        chat: {
+          user: "hsl(var(--chat-user-bg))",
+          "user-foreground": "hsl(var(--chat-user-fg))",
+          assistant: "hsl(var(--chat-assistant-bg))",
+          "assistant-foreground": "hsl(var(--chat-assistant-fg))",
         },
         secondary: {
           DEFAULT: "hsl(var(--secondary))",
