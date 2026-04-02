@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate, useLocation, Outlet } from "react-router-dom";
-import { LayoutDashboard, BookOpen, HelpCircle, LogOut, Menu, X, Moon, Sun } from "lucide-react";
+import { LayoutDashboard, BookOpen, HelpCircle, LogOut, Menu, Moon, Sun } from "lucide-react";
 import { useTheme } from "@/hooks/use-theme";
 import { Button } from "@/components/ui/button";
 import universityLogo from "@/assets/university-logo.png";
@@ -23,23 +23,24 @@ const AdminLayout = () => {
   };
 
   return (
-    <div className="flex h-screen bg-secondary/30 overflow-hidden" dir="rtl">
+    <div className="flex h-screen overflow-hidden" dir="rtl">
       {/* Mobile overlay */}
       {sidebarOpen && (
         <div
-          className="fixed inset-0 bg-foreground/20 z-30 lg:hidden"
+          className="fixed inset-0 bg-foreground/20 backdrop-blur-sm z-30 lg:hidden"
           onClick={() => setSidebarOpen(false)}
         />
       )}
 
-      {/* Sidebar - always on the right in RTL */}
+      {/* Sidebar */}
       <aside
-        className={`shrink-0 w-64 bg-card border-l border-border flex flex-col h-full
-          fixed lg:static z-40 top-0 right-0 transition-transform duration-300
-          ${sidebarOpen ? "translate-x-0" : "translate-x-full lg:translate-x-0"}`}
+        className={`shrink-0 w-64 border-l flex flex-col h-full
+          fixed lg:static z-40 top-0 right-0 transition-all duration-300
+          ${sidebarOpen ? "translate-x-0" : "translate-x-full lg:translate-x-0"}
+          ${isDark ? "glass-sidebar" : "bg-card border-border"}`}
       >
-        <div className="p-5 border-b border-border flex items-center gap-3">
-          <img src={universityLogo} alt="شعار الجامعة" className="w-10 h-10 object-contain" />
+        <div className={`p-5 border-b flex items-center gap-3 ${isDark ? "border-white/6" : "border-border"}`}>
+          <img src={universityLogo} alt="شعار الجامعة" className={`w-10 h-10 object-contain ${isDark ? "glow-icon" : ""}`} />
           <div>
             <h2 className="font-bold text-sm text-foreground">لوحة تحكم المشرف</h2>
             <p className="text-xs text-muted-foreground">إدارة المساعد الذكي</p>
@@ -56,20 +57,24 @@ const AdminLayout = () => {
                   navigate(item.path);
                   setSidebarOpen(false);
                 }}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 ${
                   isActive
-                    ? "bg-primary/10 text-primary"
-                    : "text-muted-foreground hover:bg-secondary hover:text-foreground"
+                    ? isDark
+                      ? "bg-primary/15 text-primary border border-primary/20 glow-primary"
+                      : "bg-primary/10 text-primary"
+                    : isDark
+                      ? "text-muted-foreground hover:bg-white/5 hover:text-foreground"
+                      : "text-muted-foreground hover:bg-secondary hover:text-foreground"
                 }`}
               >
-                <item.icon className="w-5 h-5" />
+                <item.icon className={`w-5 h-5 ${isActive && isDark ? "glow-icon" : ""}`} />
                 {item.label}
               </button>
             );
           })}
         </nav>
 
-        <div className="p-3 border-t border-border">
+        <div className={`p-3 border-t ${isDark ? "border-white/6" : "border-border"}`}>
           <button
             onClick={handleLogout}
             className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium text-destructive hover:bg-destructive/10 transition-colors"
@@ -83,7 +88,9 @@ const AdminLayout = () => {
       {/* Main content */}
       <div className="flex-1 flex flex-col min-w-0">
         {/* Top bar */}
-        <header className="h-14 bg-card border-b border-border flex items-center justify-between px-4 lg:px-6">
+        <header className={`h-14 flex items-center justify-between px-4 lg:px-6 transition-all duration-300 ${
+          isDark ? "glass-header" : "bg-card border-b border-border"
+        }`}>
           <Button
             variant="ghost"
             size="icon"
@@ -102,7 +109,7 @@ const AdminLayout = () => {
             title={isDark ? "الوضع الفاتح" : "الوضع الداكن"}
             className="text-muted-foreground hover:text-foreground"
           >
-            {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+            {isDark ? <Sun className="w-4 h-4 text-[hsl(var(--highlight))]" /> : <Moon className="w-4 h-4" />}
           </Button>
         </header>
 
