@@ -1,4 +1,5 @@
 import { BookOpen, Bot, User } from "lucide-react";
+import ReactMarkdown from "react-markdown";
 import type { Message } from "@/pages/Chat";
 
 interface ChatMessageProps {
@@ -27,7 +28,13 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
           isUser ? "chat-bubble-user" : "chat-bubble-assistant"
         }`}
       >
-        <p className="whitespace-pre-wrap text-sm leading-7">{message.content}</p>
+        {isUser ? (
+          <p className="whitespace-pre-wrap text-sm leading-7">{message.content}</p>
+        ) : (
+          <div className="prose prose-sm prose-chat max-w-none text-sm leading-7" dir="rtl">
+            <ReactMarkdown>{message.content}</ReactMarkdown>
+          </div>
+        )}
         {message.source && (
           <div className="mt-2.5 pt-2 border-t border-foreground/10 flex items-center gap-1.5 text-xs opacity-60">
             <BookOpen className="w-3 h-3" />
