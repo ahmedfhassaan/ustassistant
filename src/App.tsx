@@ -5,6 +5,8 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import Login from "./pages/Login";
 import Chat from "./pages/Chat";
+import AdminDashboard from "./pages/AdminDashboard";
+import AdminKnowledge from "./pages/AdminKnowledge";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -18,6 +20,8 @@ const App = () => (
         <Routes>
           <Route path="/" element={<Login />} />
           <Route path="/chat" element={<Chat />} />
+          <Route path="/admin" element={<AdminDashboard />} />
+          <Route path="/admin/knowledge" element={<AdminKnowledge />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
