@@ -7,6 +7,7 @@ export default {
   theme: {
     fontFamily: {
       sans: ['Cairo', 'sans-serif'],
+      mono: ['ui-monospace', 'SFMono-Regular', 'Menlo', 'Monaco', 'Consolas', 'monospace'],
     },
     container: {
       center: true,
