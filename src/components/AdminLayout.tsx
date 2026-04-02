@@ -30,11 +30,11 @@ const AdminLayout = () => {
         />
       )}
 
-      {/* Sidebar */}
+      {/* Sidebar - always on the right in RTL */}
       <aside
-        className={`fixed lg:static z-40 h-full w-64 bg-card border-l border-border flex flex-col transition-transform duration-300 ${
-          sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
-        } right-0 lg:right-auto`}
+        className={`shrink-0 w-64 bg-card border-l border-border flex flex-col h-full
+          fixed lg:static z-40 top-0 right-0 transition-transform duration-300
+          ${sidebarOpen ? "translate-x-0" : "translate-x-full lg:translate-x-0"}`}
       >
         <div className="p-5 border-b border-border flex items-center gap-3">
           <img src={universityLogo} alt="شعار الجامعة" className="w-10 h-10 object-contain" />
