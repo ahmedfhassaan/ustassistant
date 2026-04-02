@@ -13,10 +13,10 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
     <div className={`flex gap-3 animate-fade-in ${isUser ? "flex-row-reverse" : "flex-row"}`}>
       {/* Avatar */}
       <div
-        className={`shrink-0 w-8 h-8 rounded-full flex items-center justify-center mt-1 ${
+        className={`shrink-0 w-8 h-8 rounded-full flex items-center justify-center mt-1 transition-all duration-200 ${
           isUser
             ? "bg-primary text-primary-foreground"
-            : "bg-accent/20 text-accent-foreground"
+            : "bg-accent/20 text-accent-foreground dark:glow-icon"
         }`}
       >
         {isUser ? <User className="w-4 h-4" /> : <Bot className="w-4 h-4" />}
@@ -24,7 +24,7 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
 
       {/* Bubble */}
       <div
-        className={`max-w-[80%] sm:max-w-[70%] group relative ${
+        className={`max-w-[80%] sm:max-w-[70%] group relative transition-all duration-200 ${
           isUser ? "chat-bubble-user" : "chat-bubble-assistant"
         }`}
       >

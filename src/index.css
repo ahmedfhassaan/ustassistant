@@ -39,6 +39,8 @@
 
     --radius: 0.75rem;
 
+    --highlight: 45 100% 64%;
+
     /* Chat specific */
     --chat-user-bg: 199 100% 72%;
     --chat-user-fg: 0 0% 100%;
@@ -57,51 +59,53 @@
   }
 
   .dark {
-    --background: 220 20% 10%;
+    --background: 210 55% 11%;
     --foreground: 210 20% 90%;
 
-    --card: 220 18% 13%;
+    --card: 210 45% 13%;
     --card-foreground: 210 20% 90%;
 
-    --popover: 220 18% 13%;
+    --popover: 210 45% 13%;
     --popover-foreground: 210 20% 90%;
 
     --primary: 199 100% 72%;
-    --primary-foreground: 220 20% 10%;
+    --primary-foreground: 210 55% 11%;
 
     --primary-hover: 199 80% 61%;
-    --primary-hover-foreground: 220 20% 10%;
+    --primary-hover-foreground: 210 55% 11%;
 
-    --secondary: 220 15% 18%;
+    --secondary: 210 35% 16%;
     --secondary-foreground: 210 20% 85%;
 
-    --muted: 220 15% 18%;
-    --muted-foreground: 215 10% 55%;
+    --muted: 210 35% 16%;
+    --muted-foreground: 214 15% 63%;
 
     --accent: 199 100% 72%;
-    --accent-foreground: 220 20% 10%;
+    --accent-foreground: 210 55% 11%;
 
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 220 15% 22%;
-    --input: 220 15% 22%;
+    --border: 210 30% 18%;
+    --input: 210 30% 18%;
     --ring: 199 100% 72%;
+
+    --highlight: 45 100% 64%;
 
     /* Chat specific */
     --chat-user-bg: 199 100% 72%;
-    --chat-user-fg: 220 20% 10%;
-    --chat-assistant-bg: 220 15% 18%;
+    --chat-user-fg: 210 55% 11%;
+    --chat-assistant-bg: 210 30% 16%;
     --chat-assistant-fg: 210 20% 90%;
 
     /* Sidebar */
-    --sidebar-background: 220 18% 12%;
-    --sidebar-foreground: 210 20% 80%;
+    --sidebar-background: 210 55% 10%;
+    --sidebar-foreground: 210 20% 75%;
     --sidebar-primary: 199 100% 72%;
-    --sidebar-primary-foreground: 220 20% 10%;
-    --sidebar-accent: 199 50% 20%;
+    --sidebar-primary-foreground: 210 55% 11%;
+    --sidebar-accent: 199 60% 18%;
     --sidebar-accent-foreground: 199 80% 80%;
-    --sidebar-border: 220 15% 20%;
+    --sidebar-border: 210 30% 16%;
     --sidebar-ring: 199 100% 72%;
   }
 }
@@ -119,9 +123,71 @@
     @apply bg-background text-foreground;
     direction: rtl;
   }
+
+  /* Dark mode gradient background */
+  .dark body {
+    background: linear-gradient(160deg, #0B1A2B 0%, #0F2A44 45%, #1C4E63 100%);
+    background-attachment: fixed;
+    min-height: 100vh;
+  }
 }
 
 @layer utilities {
+  /* Glass effect */
+  .glass {
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+  }
+
+  .glass-card {
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+  }
+
+  .glass-sidebar {
+    background: rgba(11, 26, 43, 0.85);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-color: rgba(255, 255, 255, 0.06);
+  }
+
+  .glass-header {
+    background: linear-gradient(135deg, rgba(15, 42, 68, 0.9) 0%, rgba(28, 78, 99, 0.8) 100%);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  }
+
+  .glass-input {
+    background: rgba(255, 255, 255, 0.06);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  /* Glow effects */
+  .glow-primary {
+    box-shadow: 0 0 20px rgba(112, 200, 255, 0.15), 0 0 60px rgba(112, 200, 255, 0.05);
+  }
+
+  .glow-highlight {
+    box-shadow: 0 0 30px rgba(255, 213, 79, 0.1), 0 0 60px rgba(100, 200, 100, 0.05);
+  }
+
+  .glow-icon {
+    filter: drop-shadow(0 0 6px rgba(112, 200, 255, 0.4));
+  }
+
+  /* Gradient banner */
+  .gradient-banner {
+    background: linear-gradient(135deg, #0F2A44 0%, #1C4E63 60%, #247a6e 100%);
+  }
+
   .chat-bubble-user {
     @apply bg-primary text-primary-foreground rounded-2xl rounded-tl-md px-4 py-3 shadow-sm;
   }
@@ -130,6 +196,13 @@
     @apply rounded-2xl rounded-tr-md px-4 py-3 shadow-sm;
     background-color: hsl(var(--chat-assistant-bg));
     color: hsl(var(--chat-assistant-fg));
+  }
+
+  .dark .chat-bubble-assistant {
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
   }
 
   /* Markdown styles inside chat bubbles */
@@ -157,16 +230,19 @@
     @apply text-primary underline underline-offset-2 hover:opacity-80 transition-opacity;
   }
   .prose-chat code {
-    @apply bg-foreground/10 rounded px-1.5 py-0.5 text-xs font-mono;
+    @apply rounded px-1.5 py-0.5 text-xs font-mono;
+    background: hsl(var(--foreground) / 0.1);
   }
   .prose-chat pre {
-    @apply bg-foreground/10 rounded-lg p-3 my-2 overflow-x-auto;
+    @apply rounded-lg p-3 my-2 overflow-x-auto;
+    background: hsl(var(--foreground) / 0.1);
   }
   .prose-chat pre code {
     @apply bg-transparent p-0;
   }
   .prose-chat blockquote {
-    @apply border-r-2 border-primary/50 pr-3 my-2 opacity-80 italic;
+    @apply border-r-2 pr-3 my-2 opacity-80 italic;
+    border-color: hsl(var(--primary) / 0.5);
   }
   .prose-chat strong {
     @apply font-bold;
@@ -175,9 +251,11 @@
     @apply w-full my-2 text-xs;
   }
   .prose-chat th, .prose-chat td {
-    @apply border border-foreground/10 px-2 py-1;
+    @apply px-2 py-1;
+    border: 1px solid hsl(var(--foreground) / 0.1);
   }
   .prose-chat th {
-    @apply bg-foreground/5 font-bold;
+    @apply font-bold;
+    background: hsl(var(--foreground) / 0.05);
   }
 }

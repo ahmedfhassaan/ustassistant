@@ -1,6 +1,7 @@
 import { useState, useRef } from "react";
 import { Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useTheme } from "@/hooks/use-theme";
 
 interface ChatInputProps {
   onSend: (text: string) => void;
@@ -10,6 +11,7 @@ interface ChatInputProps {
 const ChatInput = ({ onSend, isLoading }: ChatInputProps) => {
   const [text, setText] = useState("");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const { isDark } = useTheme();
 
   const handleSubmit = () => {
     if (!text.trim() || isLoading) return;
@@ -36,9 +38,15 @@ const ChatInput = ({ onSend, isLoading }: ChatInputProps) => {
   };
 
   return (
-    <div className="border-t border-border/50 bg-background/80 backdrop-blur-sm p-3 sm:p-4 shrink-0">
+    <div className={`p-3 sm:p-4 shrink-0 transition-all duration-300 ${
+      isDark ? "glass-header border-t border-white/5" : "border-t border-border/50 bg-background/80 backdrop-blur-sm"
+    }`}>
       <div className="max-w-3xl mx-auto">
-        <div className="flex items-end gap-2 bg-secondary/60 border border-border/50 rounded-2xl px-4 py-2.5 transition-all duration-200 focus-within:border-primary/50 focus-within:bg-secondary/80 focus-within:shadow-[0_0_0_3px_hsl(var(--primary)/0.1)]">
+        <div className={`flex items-end gap-2 rounded-2xl px-4 py-2.5 transition-all duration-200 ${
+          isDark
+            ? "glass-input focus-within:border-primary/40 focus-within:shadow-[0_0_15px_rgba(112,200,255,0.1)]"
+            : "bg-secondary/60 border border-border/50 focus-within:border-primary/50 focus-within:bg-secondary/80 focus-within:shadow-[0_0_0_3px_hsl(var(--primary)/0.1)]"
+        }`}>
           <textarea
             ref={textareaRef}
             value={text}
@@ -54,7 +62,11 @@ const ChatInput = ({ onSend, isLoading }: ChatInputProps) => {
             size="icon"
             onClick={handleSubmit}
             disabled={!text.trim() || isLoading}
-            className="shrink-0 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground h-9 w-9 transition-all duration-200 disabled:opacity-30"
+            className={`shrink-0 rounded-xl h-9 w-9 transition-all duration-200 disabled:opacity-30 ${
+              isDark
+                ? "bg-primary hover:bg-primary/80 text-primary-foreground glow-primary"
+                : "bg-primary hover:bg-primary/90 text-primary-foreground"
+            }`}
           >
             <Send className="w-4 h-4 rotate-180" />
           </Button>

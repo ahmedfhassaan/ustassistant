@@ -3,6 +3,7 @@ import { Upload, FileText, Trash2, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useTheme } from "@/hooks/use-theme";
 
 interface Document {
   id: string;
@@ -22,6 +23,7 @@ const initialDocs: Document[] = [
 const AdminKnowledge = () => {
   const [documents, setDocuments] = useState<Document[]>(initialDocs);
   const [searchQuery, setSearchQuery] = useState("");
+  const { isDark } = useTheme();
 
   const filteredDocs = documents.filter((d) =>
     d.name.includes(searchQuery)
@@ -32,7 +34,6 @@ const AdminKnowledge = () => {
   };
 
   const handleUpload = () => {
-    // Placeholder for file upload
     const newDoc: Document = {
       id: Date.now().toString(),
       name: `مستند جديد ${documents.length + 1}.pdf`,
@@ -45,10 +46,14 @@ const AdminKnowledge = () => {
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto">
-      <Card>
+      <Card className={`transition-all duration-300 ${isDark ? "glass-card border-0" : ""}`}>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
           <CardTitle className="text-lg">إدارة المستندات</CardTitle>
-          <Button onClick={handleUpload} className="bg-primary hover:bg-primary-hover text-primary-foreground gap-2">
+          <Button onClick={handleUpload} className={`gap-2 transition-all duration-200 ${
+            isDark
+              ? "bg-primary/20 hover:bg-primary/30 text-primary border border-primary/30 glow-primary"
+              : "bg-primary hover:bg-primary-hover text-primary-foreground"
+          }`}>
             <Upload className="w-4 h-4" />
             رفع مستند
           </Button>
@@ -61,7 +66,7 @@ const AdminKnowledge = () => {
               placeholder="ابحث في المستندات..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pr-10 text-right"
+              className={`pr-10 text-right ${isDark ? "glass-input" : ""}`}
               dir="rtl"
             />
           </div>
@@ -74,11 +79,17 @@ const AdminKnowledge = () => {
               filteredDocs.map((doc) => (
                 <div
                   key={doc.id}
-                  className="flex items-center justify-between p-4 rounded-lg border border-border hover:bg-secondary/50 transition-colors"
+                  className={`flex items-center justify-between p-4 rounded-lg transition-all duration-200 ${
+                    isDark
+                      ? "bg-white/5 border border-white/5 hover:bg-white/8"
+                      : "border border-border hover:bg-secondary/50"
+                  }`}
                 >
                   <div className="flex items-center gap-3 min-w-0">
-                    <div className="p-2 rounded-lg bg-primary/10">
-                      <FileText className="w-5 h-5 text-primary" />
+                    <div className={`p-2 rounded-lg transition-all ${
+                      isDark ? "bg-primary/10 glow-highlight" : "bg-primary/10"
+                    }`}>
+                      <FileText className={`w-5 h-5 text-primary ${isDark ? "glow-icon" : ""}`} />
                     </div>
                     <div className="min-w-0">
                       <p className="text-sm font-medium text-foreground truncate">{doc.name}</p>

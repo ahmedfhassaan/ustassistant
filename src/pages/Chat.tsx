@@ -4,7 +4,6 @@ import ChatSidebar from "@/components/ChatSidebar";
 import ChatHeader from "@/components/ChatHeader";
 import ChatMessage from "@/components/ChatMessage";
 import ChatInput from "@/components/ChatInput";
-import { Menu } from "lucide-react";
 
 export interface Message {
   id: string;
@@ -58,7 +57,6 @@ const Chat = () => {
     setMessages(newMessages);
     setIsLoading(true);
 
-    // Simulate AI response
     setTimeout(() => {
       const assistantMsg: Message = {
         id: (Date.now() + 1).toString(),
@@ -69,7 +67,6 @@ const Chat = () => {
       setMessages((prev) => [...prev, assistantMsg]);
       setIsLoading(false);
 
-      // Save conversation
       if (!activeConversationId) {
         const newConv: Conversation = {
           id: Date.now().toString(),
@@ -111,11 +108,11 @@ const Chat = () => {
   if (!student) return null;
 
   return (
-    <div className="flex h-screen bg-background overflow-hidden">
+    <div className="flex h-screen overflow-hidden">
       {/* Mobile overlay */}
       {sidebarOpen && (
         <div
-          className="fixed inset-0 bg-foreground/20 z-30 lg:hidden"
+          className="fixed inset-0 bg-foreground/20 backdrop-blur-sm z-30 lg:hidden transition-opacity"
           onClick={() => setSidebarOpen(false)}
         />
       )}
