@@ -33,8 +33,8 @@ const AdminLayout = () => {
       {/* Sidebar */}
       <aside
         className={`fixed lg:static z-40 h-full w-64 bg-card border-l border-border flex flex-col transition-transform duration-300 ${
-          sidebarOpen ? "translate-x-0" : "translate-x-full lg:translate-x-0"
-        } left-0 lg:left-auto`}
+          sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
+        } right-0 lg:right-auto`}
       >
         <div className="p-5 border-b border-border flex items-center gap-3">
           <img src={universityLogo} alt="شعار الجامعة" className="w-10 h-10 object-contain" />
