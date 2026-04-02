@@ -143,19 +143,20 @@ const Chat = () => {
         />
 
         {/* Messages */}
-        <div className="flex-1 overflow-y-auto px-4 py-6 space-y-4">
-          <div className="max-w-3xl mx-auto space-y-4">
+        <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-6">
+          <div className="max-w-3xl mx-auto space-y-5">
             {messages.map((msg) => (
               <ChatMessage key={msg.id} message={msg} />
             ))}
             {isLoading && (
-              <div className="flex justify-start">
-                <div className="chat-bubble-assistant flex items-center gap-2">
-                  <span className="inline-flex gap-1">
-                    <span className="w-2 h-2 rounded-full bg-muted-foreground/40 animate-bounce" style={{ animationDelay: "0ms" }} />
-                    <span className="w-2 h-2 rounded-full bg-muted-foreground/40 animate-bounce" style={{ animationDelay: "150ms" }} />
-                    <span className="w-2 h-2 rounded-full bg-muted-foreground/40 animate-bounce" style={{ animationDelay: "300ms" }} />
-                  </span>
+              <div className="flex gap-3 animate-fade-in">
+                <div className="shrink-0 w-8 h-8 rounded-full flex items-center justify-center bg-accent/20 text-accent-foreground mt-1">
+                  <span className="w-4 h-4 text-xs">🤖</span>
+                </div>
+                <div className="chat-bubble-assistant flex items-center gap-1.5 py-4">
+                  <span className="w-2 h-2 rounded-full bg-muted-foreground/40 animate-bounce" style={{ animationDelay: "0ms" }} />
+                  <span className="w-2 h-2 rounded-full bg-muted-foreground/40 animate-bounce" style={{ animationDelay: "150ms" }} />
+                  <span className="w-2 h-2 rounded-full bg-muted-foreground/40 animate-bounce" style={{ animationDelay: "300ms" }} />
                 </div>
               </div>
             )}
