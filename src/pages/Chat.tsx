@@ -1,0 +1,173 @@
+import { useState, useRef, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import ChatSidebar from "@/components/ChatSidebar";
+import ChatHeader from "@/components/ChatHeader";
+import ChatMessage from "@/components/ChatMessage";
+import ChatInput from "@/components/ChatInput";
+import { Menu } from "lucide-react";
+
+export interface Message {
+  id: string;
+  role: "user" | "assistant";
+  content: string;
+  source?: string;
+}
+
+export interface Conversation {
+  id: string;
+  title: string;
+  messages: Message[];
+  createdAt: Date;
+}
+
+const WELCOME_MESSAGE: Message = {
+  id: "welcome",
+  role: "assistant",
+  content: "مرحبًا بك في المساعد الجامعي الذكي! 👋\n\nيمكنني مساعدتك في الإجابة على أسئلتك حول:\n- التقويم الأكاديمي والمواعيد المهمة\n- اللوائح والأنظمة الجامعية\n- جداول المحاضرات والامتحانات\n- الإجراءات الإدارية\n\nاكتب سؤالك وسأبذل قصارى جهدي لمساعدتك!",
+};
+
+const Chat = () => {
+  const navigate = useNavigate();
+  const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
+  const [messages, setMessages] = useState<Message[]>([WELCOME_MESSAGE]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const student = JSON.parse(localStorage.getItem("student") || "null");
+
+  useEffect(() => {
+    if (!student) {
+      navigate("/");
+    }
+  }, [student, navigate]);
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
+
+  const handleSend = async (text: string) => {
+    const userMsg: Message = {
+      id: Date.now().toString(),
+      role: "user",
+      content: text,
+    };
+
+    const newMessages = [...messages, userMsg];
+    setMessages(newMessages);
+    setIsLoading(true);
+
+    // Simulate AI response
+    setTimeout(() => {
+      const assistantMsg: Message = {
+        id: (Date.now() + 1).toString(),
+        role: "assistant",
+        content: "شكرًا على سؤالك! هذه نسخة تجريبية من المساعد الجامعي الذكي. سيتم ربط النظام بقاعدة المعرفة الجامعية قريبًا لتقديم إجابات دقيقة ومفصلة.",
+        source: "النظام التجريبي",
+      };
+      setMessages((prev) => [...prev, assistantMsg]);
+      setIsLoading(false);
+
+      // Save conversation
+      if (!activeConversationId) {
+        const newConv: Conversation = {
+          id: Date.now().toString(),
+          title: text.slice(0, 40) + (text.length > 40 ? "..." : ""),
+          messages: [...newMessages, assistantMsg],
+          createdAt: new Date(),
+        };
+        setConversations((prev) => [newConv, ...prev]);
+        setActiveConversationId(newConv.id);
+      } else {
+        setConversations((prev) =>
+          prev.map((c) =>
+            c.id === activeConversationId
+              ? { ...c, messages: [...newMessages, assistantMsg] }
+              : c
+          )
+        );
+      }
+    }, 1200);
+  };
+
+  const handleNewChat = () => {
+    setActiveConversationId(null);
+    setMessages([WELCOME_MESSAGE]);
+    setSidebarOpen(false);
+  };
+
+  const handleSelectConversation = (conv: Conversation) => {
+    setActiveConversationId(conv.id);
+    setMessages(conv.messages);
+    setSidebarOpen(false);
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem("student");
+    navigate("/");
+  };
+
+  if (!student) return null;
+
+  return (
+    <div className="flex h-screen bg-background overflow-hidden">
+      {/* Mobile overlay */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 bg-foreground/20 z-30 lg:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
+      {/* Sidebar */}
+      <div
+        className={`fixed lg:static z-40 h-full transition-transform duration-300 ${
+          sidebarOpen ? "translate-x-0" : "translate-x-full lg:translate-x-0"
+        } right-0 lg:right-auto`}
+      >
+        <ChatSidebar
+          conversations={conversations}
+          activeId={activeConversationId}
+          onSelect={handleSelectConversation}
+          onNewChat={handleNewChat}
+        />
+      </div>
+
+      {/* Main area */}
+      <div className="flex-1 flex flex-col min-w-0">
+        <ChatHeader
+          studentName={student.name}
+          onLogout={handleLogout}
+          onMenuClick={() => setSidebarOpen(true)}
+        />
+
+        {/* Messages */}
+        <div className="flex-1 overflow-y-auto px-4 py-6 space-y-4">
+          <div className="max-w-3xl mx-auto space-y-4">
+            {messages.map((msg) => (
+              <ChatMessage key={msg.id} message={msg} />
+            ))}
+            {isLoading && (
+              <div className="flex justify-start">
+                <div className="chat-bubble-assistant flex items-center gap-2">
+                  <span className="inline-flex gap-1">
+                    <span className="w-2 h-2 rounded-full bg-muted-foreground/40 animate-bounce" style={{ animationDelay: "0ms" }} />
+                    <span className="w-2 h-2 rounded-full bg-muted-foreground/40 animate-bounce" style={{ animationDelay: "150ms" }} />
+                    <span className="w-2 h-2 rounded-full bg-muted-foreground/40 animate-bounce" style={{ animationDelay: "300ms" }} />
+                  </span>
+                </div>
+              </div>
+            )}
+            <div ref={messagesEndRef} />
+          </div>
+        </div>
+
+        {/* Input */}
+        <ChatInput onSend={handleSend} isLoading={isLoading} />
+      </div>
+    </div>
+  );
+};
+
+export default Chat;
