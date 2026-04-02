@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate, useLocation, Outlet } from "react-router-dom";
-import { LayoutDashboard, BookOpen, HelpCircle, LogOut, Menu, X } from "lucide-react";
+import { LayoutDashboard, BookOpen, HelpCircle, LogOut, Menu, X, Moon, Sun } from "lucide-react";
+import { useTheme } from "@/hooks/use-theme";
 import { Button } from "@/components/ui/button";
 import universityLogo from "@/assets/university-logo.png";
 
@@ -14,6 +15,7 @@ const AdminLayout = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const { isDark, toggle } = useTheme();
 
   const handleLogout = () => {
     localStorage.removeItem("admin");
@@ -93,7 +95,15 @@ const AdminLayout = () => {
           <h1 className="text-base font-semibold text-foreground">
             {navItems.find((i) => i.path === location.pathname)?.label || "لوحة التحكم"}
           </h1>
-          <div />
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={toggle}
+            title={isDark ? "الوضع الفاتح" : "الوضع الداكن"}
+            className="text-muted-foreground hover:text-foreground"
+          >
+            {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+          </Button>
         </header>
 
         {/* Page content */}
