@@ -6,8 +6,18 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import Login from "./pages/Login";
 import Chat from "./pages/Chat";
 import NotFound from "./pages/NotFound";
+import AdminLayout from "./components/AdminLayout";
+import AdminDashboard from "./pages/AdminDashboard";
+import AdminKnowledge from "./pages/AdminKnowledge";
+import AdminFAQ from "./pages/AdminFAQ";
 
 const queryClient = new QueryClient();
+
+const AdminGuard = ({ children }: { children: React.ReactNode }) => {
+  const admin = localStorage.getItem("admin");
+  if (!admin) return <Navigate to="/" replace />;
+  return <>{children}</>;
+};
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -18,6 +28,18 @@ const App = () => (
         <Routes>
           <Route path="/" element={<Login />} />
           <Route path="/chat" element={<Chat />} />
+          <Route
+            path="/admin"
+            element={
+              <AdminGuard>
+                <AdminLayout />
+              </AdminGuard>
+            }
+          >
+            <Route index element={<AdminDashboard />} />
+            <Route path="knowledge" element={<AdminKnowledge />} />
+            <Route path="faq" element={<AdminFAQ />} />
+          </Route>
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>

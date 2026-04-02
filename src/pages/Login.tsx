@@ -5,6 +5,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import universityLogo from "@/assets/university-logo.png";
 
+const ADMIN_CREDENTIALS = { id: "admin", password: "admin123" };
+
 const Login = () => {
   const navigate = useNavigate();
   const [studentId, setStudentId] = useState("");
@@ -26,8 +28,17 @@ const Login = () => {
     }
 
     setIsLoading(true);
-    // Simulate login - will be replaced with real auth
+
     setTimeout(() => {
+      // Check if admin
+      if (studentId === ADMIN_CREDENTIALS.id && password === ADMIN_CREDENTIALS.password) {
+        localStorage.setItem("admin", JSON.stringify({ id: studentId, name: "المشرف" }));
+        setIsLoading(false);
+        navigate("/admin");
+        return;
+      }
+
+      // Regular student login
       localStorage.setItem("student", JSON.stringify({ id: studentId, name: "طالب جامعي" }));
       setIsLoading(false);
       navigate("/chat");
