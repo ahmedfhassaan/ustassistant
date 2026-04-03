@@ -42,8 +42,8 @@ const AdminLayout = () => {
         <div className={`p-5 border-b flex items-center gap-3 ${isDark ? "border-white/6" : "border-border"}`}>
           <img src={universityLogo} alt="شعار الجامعة" className={`w-10 h-10 object-contain ${isDark ? "glow-icon" : ""}`} />
           <div>
-            <h2 className="font-bold text-sm text-foreground">لوحة تحكم المشرف</h2>
-            <p className="text-xs text-muted-foreground">إدارة المساعد الذكي</p>
+            <h2 className={`font-bold text-base text-foreground ${isDark ? "glow-text" : ""}`}>لوحة تحكم المشرف</h2>
+            <p className="text-xs text-muted-foreground mt-0.5">إدارة المساعد الذكي</p>
           </div>
         </div>
 
@@ -99,7 +99,7 @@ const AdminLayout = () => {
           >
             <Menu className="w-5 h-5" />
           </Button>
-          <h1 className="text-base font-semibold text-foreground">
+          <h1 className={`text-lg font-bold text-foreground ${isDark ? "glow-text" : ""}`}>
             {navItems.find((i) => i.path === location.pathname)?.label || "لوحة التحكم"}
           </h1>
           <Button

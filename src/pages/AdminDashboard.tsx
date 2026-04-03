@@ -35,8 +35,8 @@ const AdminDashboard = () => {
                 <stat.icon className={`w-6 h-6 ${isDark ? "glow-icon" : ""}`} />
               </div>
               <div>
-                <p className="text-2xl font-bold text-foreground">{stat.value}</p>
-                <p className="text-sm text-muted-foreground">{stat.label}</p>
+                <p className={`text-3xl font-bold text-foreground ${isDark ? "glow-text" : ""}`}>{stat.value}</p>
+                <p className="text-sm text-muted-foreground mt-0.5">{stat.label}</p>
               </div>
             </CardContent>
           </Card>
@@ -48,7 +48,7 @@ const AdminDashboard = () => {
         isDark ? "glass-card border-0" : ""
       }`}>
         <CardHeader>
-          <CardTitle className="text-lg">أكثر الأسئلة شيوعًا</CardTitle>
+          <CardTitle className={`text-xl font-bold ${isDark ? "text-primary glow-text" : "text-foreground"}`}>أكثر الأسئلة شيوعًا</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
@@ -61,9 +61,9 @@ const AdminDashboard = () => {
                     : "bg-secondary/50 hover:bg-secondary"
                 }`}
               >
-                <span className="text-sm text-foreground">{q.question}</span>
-                <span className={`text-xs font-semibold px-3 py-1 rounded-full whitespace-nowrap mr-3 ${
-                  isDark ? "bg-primary/15 text-primary" : "bg-primary/10 text-primary"
+                <span className="text-sm font-medium text-foreground">{q.question}</span>
+                <span className={`text-xs font-bold px-3 py-1 rounded-full whitespace-nowrap mr-3 ${
+                  isDark ? "bg-primary/15 text-primary glow-text" : "bg-primary/10 text-primary"
                 }`}>
                   {q.count} مرة
                 </span>
