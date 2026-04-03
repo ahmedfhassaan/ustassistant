@@ -4,6 +4,7 @@ import { LayoutDashboard, BookOpen, HelpCircle, LogOut, Menu, Moon, Sun } from "
 import { useTheme } from "@/hooks/use-theme";
 import { Button } from "@/components/ui/button";
 import universityLogo from "@/assets/university-logo.png";
+import universityLogoDark from "@/assets/university-logo-dark.png";
 
 const navItems = [
   { path: "/admin", label: "لوحة التحكم", icon: LayoutDashboard },
@@ -40,7 +41,7 @@ const AdminLayout = () => {
           ${isDark ? "glass-sidebar" : "bg-card border-border"}`}
       >
         <div className={`p-5 border-b flex items-center gap-3 ${isDark ? "border-white/6" : "border-border"}`}>
-          <img src={universityLogo} alt="شعار الجامعة" className={`w-10 h-10 object-contain ${isDark ? "glow-icon" : ""}`} />
+          <img src={isDark ? universityLogoDark : universityLogo} alt="شعار الجامعة" className={`w-10 h-10 object-contain ${isDark ? "glow-icon" : ""}`} />
           <div>
             <h2 className={`font-bold text-base text-foreground ${isDark ? "glow-text" : ""}`}>لوحة تحكم المشرف</h2>
             <p className="text-xs text-muted-foreground mt-0.5">إدارة المساعد الذكي</p>

@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Moon, Sun } from "lucide-react";
 import { useTheme } from "@/hooks/use-theme";
 import universityLogo from "@/assets/university-logo.png";
+import universityLogoDark from "@/assets/university-logo-dark.png";
 
 const ADMIN_CREDENTIALS = { id: "admin", password: "admin123" };
 
@@ -75,7 +76,7 @@ const Login = () => {
         {/* Logo */}
         <div className="flex flex-col items-center gap-4">
           <img
-            src={universityLogo}
+            src={isDark ? universityLogoDark : universityLogo}
             alt="شعار جامعة العلوم والتكنولوجيا"
             className={`w-36 h-auto ${isDark ? "glow-icon" : ""}`}
           />
