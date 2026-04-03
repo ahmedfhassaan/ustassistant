@@ -57,7 +57,7 @@ const AdminFAQ = () => {
       </div>
 
       {/* Questions list */}
-      <Card className={`transition-all duration-300 ${isDark ? "glass-card border-0" : ""}`}>
+      <Card className={`transition-all duration-300 animate-fade-in-up ${isDark ? "glass-card border-0" : ""}`} style={{ animationDelay: "0.35s", opacity: 0 }}>
         <CardHeader>
           <CardTitle className="text-lg">الأسئلة الأكثر تكرارًا</CardTitle>
         </CardHeader>

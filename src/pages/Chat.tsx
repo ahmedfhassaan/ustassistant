@@ -132,7 +132,7 @@ const Chat = () => {
       </div>
 
       {/* Main area */}
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className="flex-1 flex flex-col min-w-0 animate-fade-in">
         <ChatHeader
           studentName={student.name}
           onLogout={handleLogout}

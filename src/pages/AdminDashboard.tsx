@@ -44,9 +44,9 @@ const AdminDashboard = () => {
       </div>
 
       {/* Recent popular questions */}
-      <Card className={`transition-all duration-300 ${
+      <Card className={`transition-all duration-300 animate-fade-in-up ${
         isDark ? "glass-card border-0" : ""
-      }`}>
+      }`} style={{ animationDelay: "0.4s", opacity: 0 }}>
         <CardHeader>
           <CardTitle className={`text-xl font-bold ${isDark ? "text-primary glow-text" : "text-foreground"}`}>أكثر الأسئلة شيوعًا</CardTitle>
         </CardHeader>

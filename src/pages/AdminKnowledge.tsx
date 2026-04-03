@@ -45,8 +45,8 @@ const AdminKnowledge = () => {
   };
 
   return (
-    <div className="space-y-6 max-w-4xl mx-auto">
-      <Card className={`transition-all duration-300 ${isDark ? "glass-card border-0" : ""}`}>
+    <div className="space-y-6 max-w-4xl mx-auto animate-fade-in">
+      <Card className={`transition-all duration-300 animate-scale-in ${isDark ? "glass-card border-0" : ""}`}>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
           <CardTitle className="text-lg">إدارة المستندات</CardTitle>
           <Button onClick={handleUpload} className={`gap-2 transition-all duration-200 ${

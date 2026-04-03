@@ -84,7 +84,7 @@ const Login = () => {
         </div>
 
         {/* Form */}
-        <form onSubmit={handleLogin} className="space-y-5">
+        <form onSubmit={handleLogin} className="space-y-5 animate-fade-in-up" style={{ animationDelay: "0.25s", opacity: 0 }}>
           <div className="space-y-2">
             <Label htmlFor="studentId" className="text-sm font-medium">الرقم الجامعي</Label>
             <Input
