@@ -35,8 +35,8 @@ const AdminDashboard = () => {
                 <stat.icon className={`w-6 h-6 ${isDark ? "glow-icon" : ""}`} />
               </div>
               <div>
-                <p className="text-2xl font-bold text-foreground">{stat.value}</p>
-                <p className="text-sm text-muted-foreground">{stat.label}</p>
+                <p className={`text-3xl font-bold text-foreground ${isDark ? "glow-text" : ""}`}>{stat.value}</p>
+                <p className="text-sm text-muted-foreground mt-0.5">{stat.label}</p>
               </div>
             </CardContent>
           </Card>
