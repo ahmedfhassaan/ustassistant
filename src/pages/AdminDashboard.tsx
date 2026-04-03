@@ -61,9 +61,9 @@ const AdminDashboard = () => {
                     : "bg-secondary/50 hover:bg-secondary"
                 }`}
               >
-                <span className="text-sm text-foreground">{q.question}</span>
-                <span className={`text-xs font-semibold px-3 py-1 rounded-full whitespace-nowrap mr-3 ${
-                  isDark ? "bg-primary/15 text-primary" : "bg-primary/10 text-primary"
+                <span className="text-sm font-medium text-foreground">{q.question}</span>
+                <span className={`text-xs font-bold px-3 py-1 rounded-full whitespace-nowrap mr-3 ${
+                  isDark ? "bg-primary/15 text-primary glow-text" : "bg-primary/10 text-primary"
                 }`}>
                   {q.count} مرة
                 </span>

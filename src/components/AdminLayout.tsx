@@ -99,7 +99,7 @@ const AdminLayout = () => {
           >
             <Menu className="w-5 h-5" />
           </Button>
-          <h1 className="text-base font-semibold text-foreground">
+          <h1 className={`text-lg font-bold text-foreground ${isDark ? "glow-text" : ""}`}>
             {navItems.find((i) => i.path === location.pathname)?.label || "لوحة التحكم"}
           </h1>
           <Button
