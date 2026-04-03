@@ -39,7 +39,7 @@ const AdminFAQ = () => {
   const getCategoryColor = (cat: string) => isDark ? categoryColors[cat] : categoryColorsLight[cat] || "bg-secondary text-foreground";
 
   return (
-    <div className="space-y-6 max-w-4xl mx-auto">
+    <div className="space-y-6 max-w-4xl mx-auto animate-fade-in">
       {/* Summary */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {[
@@ -47,7 +47,7 @@ const AdminFAQ = () => {
           { value: totalQuestions, label: "إجمالي التكرارات" },
           { value: `${answeredCount}/${faqData.length}`, label: "أسئلة مُجابة", highlight: true },
         ].map((s, i) => (
-          <Card key={i} className={`transition-all duration-300 ${isDark ? "glass-card border-0" : ""}`}>
+          <Card key={i} className={`transition-all duration-300 animate-fade-in-up hover:translate-y-[-2px] ${isDark ? "glass-card border-0" : ""}`} style={{ animationDelay: `${0.1 + i * 0.08}s`, opacity: 0 }}>
             <CardContent className="p-5 text-center">
               <p className={`text-2xl font-bold ${s.highlight ? "text-primary" : "text-foreground"}`}>{s.value}</p>
               <p className="text-sm text-muted-foreground">{s.label}</p>
@@ -57,7 +57,7 @@ const AdminFAQ = () => {
       </div>
 
       {/* Questions list */}
-      <Card className={`transition-all duration-300 ${isDark ? "glass-card border-0" : ""}`}>
+      <Card className={`transition-all duration-300 animate-fade-in-up ${isDark ? "glass-card border-0" : ""}`} style={{ animationDelay: "0.35s", opacity: 0 }}>
         <CardHeader>
           <CardTitle className="text-lg">الأسئلة الأكثر تكرارًا</CardTitle>
         </CardHeader>

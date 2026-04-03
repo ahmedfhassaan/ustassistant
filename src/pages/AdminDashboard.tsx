@@ -21,13 +21,13 @@ const AdminDashboard = () => {
   const { isDark } = useTheme();
 
   return (
-    <div className="space-y-6 max-w-6xl mx-auto">
+    <div className="space-y-6 max-w-6xl mx-auto animate-fade-in">
       {/* Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {stats.map((stat) => (
-          <Card key={stat.label} className={`transition-all duration-300 ${
+          <Card key={stat.label} className={`transition-all duration-300 animate-fade-in-up hover:translate-y-[-2px] ${
             isDark ? "glass-card border-0 hover:shadow-[0_8px_40px_rgba(112,200,255,0.08)]" : ""
-          }`}>
+          }`} style={{ animationDelay: `${0.1 + stats.indexOf(stat) * 0.08}s`, opacity: 0 }}>
             <CardContent className="p-5 flex items-center gap-4">
               <div className={`p-3 rounded-xl ${stat.color} transition-all duration-200 ${
                 isDark ? "bg-white/5 glow-highlight" : "bg-secondary"
@@ -44,9 +44,9 @@ const AdminDashboard = () => {
       </div>
 
       {/* Recent popular questions */}
-      <Card className={`transition-all duration-300 ${
+      <Card className={`transition-all duration-300 animate-fade-in-up ${
         isDark ? "glass-card border-0" : ""
-      }`}>
+      }`} style={{ animationDelay: "0.4s", opacity: 0 }}>
         <CardHeader>
           <CardTitle className={`text-xl font-bold ${isDark ? "text-primary glow-text" : "text-foreground"}`}>أكثر الأسئلة شيوعًا</CardTitle>
         </CardHeader>

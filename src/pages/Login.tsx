@@ -47,7 +47,7 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 relative overflow-hidden">
+    <div className="min-h-screen flex items-center justify-center px-4 relative overflow-hidden animate-fade-in">
       {/* Dark mode toggle */}
       <Button
         variant="ghost"
@@ -69,11 +69,11 @@ const Login = () => {
         </>
       )}
 
-      <div className={`w-full max-w-sm space-y-8 relative z-10 p-8 rounded-3xl transition-all duration-300 ${
+      <div className={`w-full max-w-sm space-y-8 relative z-10 p-8 rounded-3xl transition-all duration-300 animate-scale-in ${
         isDark ? "glass-card" : ""
       }`}>
         {/* Logo */}
-        <div className="flex flex-col items-center gap-4">
+        <div className="flex flex-col items-center gap-4 animate-fade-in-up" style={{ animationDelay: "0.1s", opacity: 0 }}>
           <img
             src={universityLogo}
             alt="شعار جامعة العلوم والتكنولوجيا"
@@ -84,7 +84,7 @@ const Login = () => {
         </div>
 
         {/* Form */}
-        <form onSubmit={handleLogin} className="space-y-5">
+        <form onSubmit={handleLogin} className="space-y-5 animate-fade-in-up" style={{ animationDelay: "0.25s", opacity: 0 }}>
           <div className="space-y-2">
             <Label htmlFor="studentId" className="text-sm font-medium">الرقم الجامعي</Label>
             <Input
