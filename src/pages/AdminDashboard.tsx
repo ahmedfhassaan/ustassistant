@@ -48,7 +48,7 @@ const AdminDashboard = () => {
         isDark ? "glass-card border-0" : ""
       }`}>
         <CardHeader>
-          <CardTitle className="text-lg">أكثر الأسئلة شيوعًا</CardTitle>
+          <CardTitle className={`text-xl font-bold ${isDark ? "text-primary glow-text" : "text-foreground"}`}>أكثر الأسئلة شيوعًا</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
