@@ -2,6 +2,7 @@ import { LogOut, Menu, Moon, Sun } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useTheme } from "@/hooks/use-theme";
 import universityLogo from "@/assets/university-logo.png";
+import universityLogoDark from "@/assets/university-logo-dark.png";
 
 interface ChatHeaderProps {
   studentName: string;
