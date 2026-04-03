@@ -6,7 +6,7 @@ export default {
   prefix: "",
   theme: {
     fontFamily: {
-      sans: ['Cairo', 'sans-serif'],
+      sans: ['Tajawal', 'sans-serif'],
       mono: ['ui-monospace', 'SFMono-Regular', 'Menlo', 'Monaco', 'Consolas', 'monospace'],
     },
     container: {
