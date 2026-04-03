@@ -60,13 +60,13 @@
 
   .dark {
     --background: 210 55% 11%;
-    --foreground: 210 20% 90%;
+    --foreground: 210 20% 95%;
 
     --card: 210 45% 13%;
-    --card-foreground: 210 20% 90%;
+    --card-foreground: 210 20% 95%;
 
     --popover: 210 45% 13%;
-    --popover-foreground: 210 20% 90%;
+    --popover-foreground: 210 20% 95%;
 
     --primary: 199 100% 72%;
     --primary-foreground: 210 55% 11%;
@@ -75,10 +75,10 @@
     --primary-hover-foreground: 210 55% 11%;
 
     --secondary: 210 35% 16%;
-    --secondary-foreground: 210 20% 85%;
+    --secondary-foreground: 210 20% 92%;
 
     --muted: 210 35% 16%;
-    --muted-foreground: 214 15% 63%;
+    --muted-foreground: 214 15% 75%;
 
     --accent: 199 100% 72%;
     --accent-foreground: 210 55% 11%;
@@ -96,11 +96,11 @@
     --chat-user-bg: 199 100% 72%;
     --chat-user-fg: 210 55% 11%;
     --chat-assistant-bg: 210 30% 16%;
-    --chat-assistant-fg: 210 20% 90%;
+    --chat-assistant-fg: 210 20% 95%;
 
     /* Sidebar */
     --sidebar-background: 210 55% 10%;
-    --sidebar-foreground: 210 20% 75%;
+    --sidebar-foreground: 210 20% 85%;
     --sidebar-primary: 199 100% 72%;
     --sidebar-primary-foreground: 210 55% 11%;
     --sidebar-accent: 199 60% 18%;
