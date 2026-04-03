@@ -4,7 +4,6 @@ import { LayoutDashboard, BookOpen, HelpCircle, LogOut, Menu, Moon, Sun } from "
 import { useTheme } from "@/hooks/use-theme";
 import { Button } from "@/components/ui/button";
 import universityLogo from "@/assets/university-logo.png";
-import universityLogoDark from "@/assets/university-logo-dark.png";
 
 const navItems = [
   { path: "/admin", label: "لوحة التحكم", icon: LayoutDashboard },

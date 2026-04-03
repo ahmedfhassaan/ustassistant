@@ -75,9 +75,9 @@ const Login = () => {
         {/* Logo */}
         <div className="flex flex-col items-center gap-4">
           <img
-            src={isDark ? universityLogoDark : universityLogo}
+            src={universityLogo}
             alt="شعار جامعة العلوم والتكنولوجيا"
-            className={`w-36 h-auto ${isDark ? "glow-icon" : ""}`}
+            className={`w-36 h-auto ${isDark ? "brightness-125 drop-shadow-[0_0_4px_rgba(112,200,255,0.2)]" : ""}`}
           />
           <h1 className="text-xl font-bold text-foreground">المساعد الجامعي الذكي</h1>
           <p className="text-sm text-muted-foreground">سجّل دخولك للبدء في استخدام المساعد</p>
