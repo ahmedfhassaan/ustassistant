@@ -3,11 +3,18 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Moon, Sun } from "lucide-react";
+import { Moon, Sun, GraduationCap, BookOpen, Users, Shield } from "lucide-react";
 import { useTheme } from "@/hooks/use-theme";
 import universityLogo from "@/assets/university-logo.png";
 
 const ADMIN_CREDENTIALS = { id: "admin", password: "admin123" };
+
+const features = [
+  { icon: GraduationCap, text: "التقويم الأكاديمي والمواعيد" },
+  { icon: BookOpen, text: "اللوائح والأنظمة الجامعية" },
+  { icon: Users, text: "الإجراءات الإدارية" },
+  { icon: Shield, text: "دعم فوري على مدار الساعة" },
+];
 
 const Login = () => {
   const navigate = useNavigate();
@@ -47,7 +54,7 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 relative overflow-hidden animate-fade-in">
+    <div className="min-h-screen flex relative overflow-hidden animate-fade-in">
       {/* Dark mode toggle */}
       <Button
         variant="ghost"
@@ -59,74 +66,156 @@ const Login = () => {
         {isDark ? <Sun className="w-5 h-5 text-[hsl(var(--highlight))]" /> : <Moon className="w-5 h-5" />}
       </Button>
 
-      {/* Glow decorations for dark mode */}
+      {/* Ambient glow decorations */}
+      <div className="fixed top-[-20%] right-[-10%] w-[600px] h-[600px] rounded-full pointer-events-none opacity-20"
+        style={{ background: "radial-gradient(circle, rgba(112,200,255,0.18) 0%, transparent 65%)" }} />
+      <div className="fixed bottom-[-15%] left-[-10%] w-[500px] h-[500px] rounded-full pointer-events-none opacity-15"
+        style={{ background: "radial-gradient(circle, rgba(255,213,79,0.12) 0%, transparent 65%)" }} />
       {isDark && (
-        <>
-          <div className="fixed top-[-20%] right-[-10%] w-[500px] h-[500px] rounded-full opacity-20 pointer-events-none"
-            style={{ background: "radial-gradient(circle, rgba(112,200,255,0.15) 0%, transparent 70%)" }} />
-          <div className="fixed bottom-[-15%] left-[-10%] w-[400px] h-[400px] rounded-full opacity-15 pointer-events-none"
-            style={{ background: "radial-gradient(circle, rgba(255,213,79,0.12) 0%, transparent 70%)" }} />
-        </>
+        <div className="fixed top-[40%] left-[30%] w-[300px] h-[300px] rounded-full pointer-events-none opacity-10"
+          style={{ background: "radial-gradient(circle, rgba(112,200,255,0.15) 0%, transparent 70%)" }} />
       )}
 
-      <div className={`w-full max-w-sm space-y-8 relative z-10 p-8 rounded-3xl transition-all duration-300 animate-scale-in ${
-        isDark ? "glass-card" : ""
-      }`}>
-        {/* Logo */}
-        <div className="flex flex-col items-center gap-4 animate-fade-in-up" style={{ animationDelay: "0.1s", opacity: 0 }}>
+      {/* Left panel - Branding (hidden on mobile) */}
+      <div className="hidden lg:flex lg:w-[45%] flex-col items-center justify-center p-12 relative">
+        <div className="max-w-md text-center space-y-8 animate-fade-in-up" style={{ animationDelay: "0.1s", opacity: 0 }}>
           <img
             src={universityLogo}
             alt="شعار جامعة العلوم والتكنولوجيا"
-            className={`w-36 h-auto ${isDark ? "brightness-125 drop-shadow-[0_0_4px_rgba(112,200,255,0.2)]" : ""}`}
+            className={`w-44 h-auto mx-auto ${isDark ? "brightness-125 drop-shadow-[0_0_6px_rgba(112,200,255,0.15)]" : ""}`}
           />
-          <h1 className="text-xl font-bold text-foreground">المساعد الجامعي الذكي</h1>
-          <p className="text-sm text-muted-foreground">سجّل دخولك للبدء في استخدام المساعد</p>
+          <div className="space-y-3">
+            <h1 className={`text-3xl font-bold ${isDark ? "text-foreground glow-text" : "text-foreground"}`}>
+              المساعد الجامعي الذكي
+            </h1>
+            <p className="text-muted-foreground text-base leading-relaxed">
+              منصة ذكية تعتمد على الذكاء الاصطناعي لمساعدة الطلاب في الحصول على المعلومات الجامعية بسهولة وسرعة
+            </p>
+          </div>
+
+          {/* Features grid */}
+          <div className="grid grid-cols-2 gap-3 mt-6">
+            {features.map((feature, i) => (
+              <div
+                key={i}
+                className={`flex items-center gap-3 p-3.5 rounded-xl transition-all duration-300 animate-fade-in-up ${
+                  isDark
+                    ? "bg-white/5 border border-white/8 hover:bg-white/8"
+                    : "bg-primary/5 border border-primary/10 hover:bg-primary/10"
+                }`}
+                style={{ animationDelay: `${0.3 + i * 0.1}s`, opacity: 0 }}
+              >
+                <div className={`p-2 rounded-lg shrink-0 ${
+                  isDark ? "bg-primary/15 text-primary" : "bg-primary/10 text-primary"
+                }`}>
+                  <feature.icon className={`w-4 h-4 ${isDark ? "glow-icon" : ""}`} />
+                </div>
+                <span className="text-sm font-medium text-foreground">{feature.text}</span>
+              </div>
+            ))}
+          </div>
         </div>
+      </div>
 
-        {/* Form */}
-        <form onSubmit={handleLogin} className="space-y-5 animate-fade-in-up" style={{ animationDelay: "0.25s", opacity: 0 }}>
-          <div className="space-y-2">
-            <Label htmlFor="studentId" className="text-sm font-medium">الرقم الجامعي</Label>
-            <Input
-              id="studentId"
-              type="text"
-              placeholder="أدخل رقمك الجامعي"
-              value={studentId}
-              onChange={(e) => setStudentId(e.target.value)}
-              className={`text-right h-11 ${isDark ? "glass-input" : ""}`}
-              dir="rtl"
+      {/* Right panel - Login form */}
+      <div className={`flex-1 flex items-center justify-center p-6 sm:p-8 relative ${
+        isDark ? "" : "lg:bg-secondary/30"
+      }`}>
+        {/* Subtle divider line for light mode */}
+        {!isDark && (
+          <div className="hidden lg:block absolute right-0 top-[10%] bottom-[10%] w-px bg-border" />
+        )}
+
+        <div className={`w-full max-w-sm space-y-7 relative z-10 p-8 rounded-3xl transition-all duration-300 animate-scale-in ${
+          isDark ? "glass-card" : "bg-background shadow-xl shadow-primary/5 border border-border/50"
+        }`}>
+          {/* Mobile logo */}
+          <div className="flex flex-col items-center gap-3 lg:hidden animate-fade-in-up" style={{ animationDelay: "0.1s", opacity: 0 }}>
+            <img
+              src={universityLogo}
+              alt="شعار جامعة العلوم والتكنولوجيا"
+              className={`w-28 h-auto ${isDark ? "brightness-125 drop-shadow-[0_0_4px_rgba(112,200,255,0.2)]" : ""}`}
             />
+            <h1 className={`text-xl font-bold ${isDark ? "text-foreground glow-text" : "text-foreground"}`}>
+              المساعد الجامعي الذكي
+            </h1>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="password" className="text-sm font-medium">كلمة المرور</Label>
-            <Input
-              id="password"
-              type="password"
-              placeholder="أدخل كلمة المرور"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className={`text-right h-11 ${isDark ? "glass-input" : ""}`}
-              dir="rtl"
-            />
+          {/* Form header */}
+          <div className="text-center animate-fade-in-up" style={{ animationDelay: "0.15s", opacity: 0 }}>
+            <h2 className={`text-lg font-bold ${isDark ? "text-foreground" : "text-foreground"}`}>
+              تسجيل الدخول
+            </h2>
+            <p className="text-sm text-muted-foreground mt-1">
+              أدخل بياناتك للوصول إلى المساعد
+            </p>
           </div>
 
-          {error && (
-            <p className="text-sm text-destructive text-center font-medium">{error}</p>
-          )}
+          {/* Form */}
+          <form onSubmit={handleLogin} className="space-y-4 animate-fade-in-up" style={{ animationDelay: "0.25s", opacity: 0 }}>
+            <div className="space-y-2">
+              <Label htmlFor="studentId" className="text-sm font-medium">الرقم الجامعي</Label>
+              <Input
+                id="studentId"
+                type="text"
+                placeholder="أدخل رقمك الجامعي"
+                value={studentId}
+                onChange={(e) => setStudentId(e.target.value)}
+                className={`text-right h-12 rounded-xl transition-all duration-200 ${
+                  isDark
+                    ? "glass-input focus:border-primary/40 focus:shadow-[0_0_12px_rgba(112,200,255,0.08)]"
+                    : "border-border/60 focus:border-primary focus:shadow-[0_0_0_3px_hsl(var(--primary)/0.1)]"
+                }`}
+                dir="rtl"
+              />
+            </div>
 
-          <Button
-            type="submit"
-            className={`w-full h-11 text-base font-semibold transition-all duration-200 ${
-              isDark
-                ? "bg-primary/20 hover:bg-primary/30 text-primary border border-primary/30 glow-primary"
-                : "bg-primary hover:bg-primary-hover text-primary-foreground"
-            }`}
-            disabled={isLoading}
-          >
-            {isLoading ? "جاري تسجيل الدخول..." : "تسجيل الدخول"}
-          </Button>
-        </form>
+            <div className="space-y-2">
+              <Label htmlFor="password" className="text-sm font-medium">كلمة المرور</Label>
+              <Input
+                id="password"
+                type="password"
+                placeholder="أدخل كلمة المرور"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className={`text-right h-12 rounded-xl transition-all duration-200 ${
+                  isDark
+                    ? "glass-input focus:border-primary/40 focus:shadow-[0_0_12px_rgba(112,200,255,0.08)]"
+                    : "border-border/60 focus:border-primary focus:shadow-[0_0_0_3px_hsl(var(--primary)/0.1)]"
+                }`}
+                dir="rtl"
+              />
+            </div>
+
+            {error && (
+              <p className="text-sm text-destructive text-center font-medium animate-fade-in">{error}</p>
+            )}
+
+            <Button
+              type="submit"
+              className={`w-full h-12 text-base font-semibold rounded-xl transition-all duration-300 mt-2 ${
+                isDark
+                  ? "bg-primary/20 hover:bg-primary/30 text-primary border border-primary/30 glow-primary hover:shadow-[0_0_20px_rgba(112,200,255,0.12)]"
+                  : "bg-primary hover:bg-primary-hover text-primary-foreground shadow-lg shadow-primary/20 hover:shadow-primary/30 hover:translate-y-[-1px]"
+              }`}
+              disabled={isLoading}
+            >
+              {isLoading ? (
+                <span className="flex items-center gap-2">
+                  <span className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                  جاري تسجيل الدخول...
+                </span>
+              ) : (
+                "تسجيل الدخول"
+              )}
+            </Button>
+          </form>
+
+          {/* Footer */}
+          <p className="text-[11px] text-muted-foreground/60 text-center animate-fade-in-up" style={{ animationDelay: "0.4s", opacity: 0 }}>
+            جامعة العلوم والتكنولوجيا © {new Date().getFullYear()}
+          </p>
+        </div>
       </div>
     </div>
   );
