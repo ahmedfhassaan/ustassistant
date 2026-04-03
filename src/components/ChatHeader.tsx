@@ -26,7 +26,7 @@ const ChatHeader = ({ studentName, onLogout, onMenuClick }: ChatHeaderProps) => 
         >
           <Menu className="w-5 h-5" />
         </Button>
-        <img src={universityLogo} alt="شعار الجامعة" className={`h-9 w-auto ${isDark ? "glow-icon" : ""}`} />
+        <img src={isDark ? universityLogoDark : universityLogo} alt="شعار الجامعة" className={`h-9 w-auto ${isDark ? "glow-icon" : ""}`} />
         <span className={`font-bold text-base hidden sm:inline ${isDark ? "text-foreground glow-text" : "text-foreground"}`}>
           المساعد الجامعي الذكي
         </span>
