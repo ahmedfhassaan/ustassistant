@@ -73,7 +73,7 @@ const Login = () => {
         isDark ? "glass-card" : ""
       }`}>
         {/* Logo */}
-        <div className="flex flex-col items-center gap-4">
+        <div className="flex flex-col items-center gap-4 animate-fade-in-up" style={{ animationDelay: "0.1s", opacity: 0 }}>
           <img
             src={universityLogo}
             alt="شعار جامعة العلوم والتكنولوجيا"
