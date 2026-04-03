@@ -4,6 +4,7 @@ import ChatSidebar from "@/components/ChatSidebar";
 import ChatHeader from "@/components/ChatHeader";
 import ChatMessage from "@/components/ChatMessage";
 import ChatInput from "@/components/ChatInput";
+import ChatWelcome from "@/components/ChatWelcome";
 
 export interface Message {
   id: string;
@@ -19,17 +20,11 @@ export interface Conversation {
   createdAt: Date;
 }
 
-const WELCOME_MESSAGE: Message = {
-  id: "welcome",
-  role: "assistant",
-  content: "مرحبًا بك في المساعد الجامعي الذكي! 👋\n\nيمكنني مساعدتك في الإجابة على أسئلتك حول:\n- التقويم الأكاديمي والمواعيد المهمة\n- اللوائح والأنظمة الجامعية\n- جداول المحاضرات والامتحانات\n- الإجراءات الإدارية\n\nاكتب سؤالك وسأبذل قصارى جهدي لمساعدتك!",
-};
-
 const Chat = () => {
   const navigate = useNavigate();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
-  const [messages, setMessages] = useState<Message[]>([WELCOME_MESSAGE]);
+  const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -45,6 +40,8 @@ const Chat = () => {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  const isWelcomeScreen = messages.length === 0;
 
   const handleSend = async (text: string) => {
     const userMsg: Message = {
@@ -90,7 +87,7 @@ const Chat = () => {
 
   const handleNewChat = () => {
     setActiveConversationId(null);
-    setMessages([WELCOME_MESSAGE]);
+    setMessages([]);
     setSidebarOpen(false);
   };
 
@@ -139,27 +136,34 @@ const Chat = () => {
           onMenuClick={() => setSidebarOpen(true)}
         />
 
-        {/* Messages */}
-        <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-6">
-          <div className="max-w-3xl mx-auto space-y-5">
-            {messages.map((msg) => (
-              <ChatMessage key={msg.id} message={msg} />
-            ))}
-            {isLoading && (
-              <div className="flex gap-3 animate-fade-in">
-                <div className="shrink-0 w-8 h-8 rounded-full flex items-center justify-center bg-accent/20 text-accent-foreground mt-1">
-                  <span className="w-4 h-4 text-xs">🤖</span>
+        {isWelcomeScreen ? (
+          <ChatWelcome
+            studentName={student.name}
+            onSuggestionClick={handleSend}
+          />
+        ) : (
+          /* Messages */
+          <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-6">
+            <div className="max-w-3xl mx-auto space-y-5">
+              {messages.map((msg) => (
+                <ChatMessage key={msg.id} message={msg} />
+              ))}
+              {isLoading && (
+                <div className="flex gap-3 animate-fade-in">
+                  <div className="shrink-0 w-8 h-8 rounded-full flex items-center justify-center bg-accent/20 text-accent-foreground mt-1">
+                    <span className="w-4 h-4 text-xs">🤖</span>
+                  </div>
+                  <div className="chat-bubble-assistant flex items-center gap-1.5 py-4">
+                    <span className="w-2 h-2 rounded-full bg-muted-foreground/40 animate-bounce" style={{ animationDelay: "0ms" }} />
+                    <span className="w-2 h-2 rounded-full bg-muted-foreground/40 animate-bounce" style={{ animationDelay: "150ms" }} />
+                    <span className="w-2 h-2 rounded-full bg-muted-foreground/40 animate-bounce" style={{ animationDelay: "300ms" }} />
+                  </div>
                 </div>
-                <div className="chat-bubble-assistant flex items-center gap-1.5 py-4">
-                  <span className="w-2 h-2 rounded-full bg-muted-foreground/40 animate-bounce" style={{ animationDelay: "0ms" }} />
-                  <span className="w-2 h-2 rounded-full bg-muted-foreground/40 animate-bounce" style={{ animationDelay: "150ms" }} />
-                  <span className="w-2 h-2 rounded-full bg-muted-foreground/40 animate-bounce" style={{ animationDelay: "300ms" }} />
-                </div>
-              </div>
-            )}
-            <div ref={messagesEndRef} />
+              )}
+              <div ref={messagesEndRef} />
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Input */}
         <ChatInput onSend={handleSend} isLoading={isLoading} />
