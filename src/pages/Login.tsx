@@ -69,7 +69,7 @@ const Login = () => {
         </>
       )}
 
-      <div className={`w-full max-w-sm space-y-8 relative z-10 p-8 rounded-3xl transition-all duration-300 ${
+      <div className={`w-full max-w-sm space-y-8 relative z-10 p-8 rounded-3xl transition-all duration-300 animate-scale-in ${
         isDark ? "glass-card" : ""
       }`}>
         {/* Logo */}
