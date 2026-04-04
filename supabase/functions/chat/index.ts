@@ -1,90 +1,92 @@
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+
 const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
-import { z } from "https://deno.land/x/zod@v3.22.4/mod.ts";
 
-const BodySchema = z.object({
-  message: z.string().min(1).max(5000),
-  user_id: z.string().min(1).max(100),
-  conversation_id: z.string().optional(),
-});
-
-Deno.serve(async (req) => {
+serve(async (req) => {
   if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders });
+    return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const parsed = BodySchema.safeParse(await req.json());
-    if (!parsed.success) {
+    const { messages } = await req.json();
+
+    if (!messages || !Array.isArray(messages) || messages.length === 0) {
       return new Response(
-        JSON.stringify({ error: "بيانات غير صالحة", details: parsed.error.flatten().fieldErrors }),
+        JSON.stringify({ error: "الرسائل مطلوبة" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    const { message, user_id } = parsed.data;
-    const INVENT_API_KEY = Deno.env.get("INVENT_API_KEY");
-    if (!INVENT_API_KEY) {
+    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+    if (!LOVABLE_API_KEY) {
       return new Response(
         JSON.stringify({ error: "مفتاح API غير مهيأ" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    const inventResponse = await fetch("https://api.invent.ai/v1/execute", {
+    const systemPrompt = `أنت المساعد الجامعي الذكي، مساعد ذكاء اصطناعي متخصص في مساعدة طلاب الجامعة.
+
+مهامك:
+- الإجابة على أسئلة الطلاب المتعلقة بالجامعة والدراسة
+- تقديم معلومات عن التسجيل، الجداول، المواد، والأنظمة الأكاديمية
+- مساعدة الطلاب في فهم اللوائح والإجراءات الجامعية
+- تقديم نصائح أكاديمية ودراسية
+
+قواعد:
+- أجب دائماً باللغة العربية
+- كن مهذباً ومحترفاً
+- إذا لم تكن متأكداً من إجابة، اذكر ذلك بوضوح وانصح الطالب بالتواصل مع الجهة المختصة
+- استخدم تنسيق Markdown عند الحاجة لتنظيم الإجابات
+- كن مختصراً ومفيداً`;
+
+    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
+        Authorization: `Bearer ${LOVABLE_API_KEY}`,
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${INVENT_API_KEY}`,
       },
       body: JSON.stringify({
-        action: "create_resource",
-        version: "1.0",
-        payload: {
-          key_id: INVENT_API_KEY,
-          parameters: {
-            name: user_id,
-            description: message,
-            config: {
-              priority: "high",
-              sync_enabled: true,
-            },
-          },
-        },
-        metadata: {
-          source: "lovable_app",
-        },
+        model: "google/gemini-3-flash-preview",
+        messages: [
+          { role: "system", content: systemPrompt },
+          ...messages,
+        ],
+        stream: true,
       }),
     });
 
-    if (!inventResponse.ok) {
-      const errorText = await inventResponse.text();
-      console.error("Invent API error:", inventResponse.status, errorText);
+    if (!response.ok) {
+      if (response.status === 429) {
+        return new Response(
+          JSON.stringify({ error: "تم تجاوز حد الطلبات. حاول مرة أخرى بعد قليل." }),
+          { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      if (response.status === 402) {
+        return new Response(
+          JSON.stringify({ error: "يرجى إضافة رصيد لاستخدام المساعد الذكي." }),
+          { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      const t = await response.text();
+      console.error("AI gateway error:", response.status, t);
       return new Response(
-        JSON.stringify({ error: "حدث خطأ في الاتصال بالمساعد الذكي" }),
-        { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({ error: "حدث خطأ في المساعد الذكي" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    const inventData = await inventResponse.json();
-
-    // Extract answer from Invent response - adjust based on actual API response structure
-    const answer = inventData?.data?.status === "active"
-      ? `تم معالجة طلبك بنجاح. معرف الطلب: ${inventData?.data?.id || "غير متوفر"}`
-      : inventData?.data?.answer || inventData?.data?.response || inventData?.data?.message || "تم استلام ردك بنجاح.";
-
-    const source = inventData?.data?.source || null;
-
+    return new Response(response.body, {
+      headers: { ...corsHeaders, "Content-Type": "text/event-stream" },
+    });
+  } catch (e) {
+    console.error("chat error:", e);
     return new Response(
-      JSON.stringify({ answer, source }),
-      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
-  } catch (error) {
-    console.error("Edge function error:", error);
-    return new Response(
-      JSON.stringify({ error: "حدث خطأ غير متوقع" }),
+      JSON.stringify({ error: e instanceof Error ? e.message : "حدث خطأ غير متوقع" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }

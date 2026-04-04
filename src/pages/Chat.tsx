@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "@/hooks/use-toast";
 import ChatSidebar from "@/components/ChatSidebar";
@@ -6,7 +6,7 @@ import ChatHeader from "@/components/ChatHeader";
 import ChatMessage from "@/components/ChatMessage";
 import ChatInput from "@/components/ChatInput";
 import ChatWelcome from "@/components/ChatWelcome";
-import { sendMessage } from "@/lib/inventApi";
+import { streamChat } from "@/lib/chatApi";
 import { loadConversations, saveConversations } from "@/lib/chatStorage";
 
 export interface Message {
@@ -31,6 +31,7 @@ const Chat = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const abortRef = useRef<AbortController | null>(null);
 
   const student = JSON.parse(localStorage.getItem("student") || "null");
 
@@ -61,6 +62,27 @@ const Chat = () => {
 
   const isWelcomeScreen = messages.length === 0;
 
+  const updateConversations = useCallback((updatedMessages: Message[], text: string) => {
+    if (!activeConversationId) {
+      const newConv: Conversation = {
+        id: Date.now().toString(),
+        title: text.slice(0, 40) + (text.length > 40 ? "..." : ""),
+        messages: updatedMessages,
+        createdAt: new Date(),
+      };
+      setConversations((prev) => [newConv, ...prev]);
+      setActiveConversationId(newConv.id);
+    } else {
+      setConversations((prev) =>
+        prev.map((c) =>
+          c.id === activeConversationId
+            ? { ...c, messages: updatedMessages }
+            : c
+        )
+      );
+    }
+  }, [activeConversationId]);
+
   const handleSend = async (text: string) => {
     if (isLoading) return;
 
@@ -74,38 +96,51 @@ const Chat = () => {
     setMessages(newMessages);
     setIsLoading(true);
 
+    // Prepare messages for API (only role and content)
+    const apiMessages = newMessages.map((m) => ({
+      role: m.role,
+      content: m.content,
+    }));
+
+    let assistantContent = "";
+    const assistantId = (Date.now() + 1).toString();
+    const controller = new AbortController();
+    abortRef.current = controller;
+
     try {
-      const response = await sendMessage(text, student.id, activeConversationId || undefined);
-
-      const assistantMsg: Message = {
-        id: (Date.now() + 1).toString(),
-        role: "assistant",
-        content: response.answer,
-        source: response.source || undefined,
-      };
-
-      const updatedMessages = [...newMessages, assistantMsg];
-      setMessages(updatedMessages);
-
-      if (!activeConversationId) {
-        const newConv: Conversation = {
-          id: Date.now().toString(),
-          title: text.slice(0, 40) + (text.length > 40 ? "..." : ""),
-          messages: updatedMessages,
-          createdAt: new Date(),
-        };
-        setConversations((prev) => [newConv, ...prev]);
-        setActiveConversationId(newConv.id);
-      } else {
-        setConversations((prev) =>
-          prev.map((c) =>
-            c.id === activeConversationId
-              ? { ...c, messages: updatedMessages }
-              : c
-          )
-        );
-      }
+      await streamChat({
+        messages: apiMessages,
+        signal: controller.signal,
+        onDelta: (chunk) => {
+          assistantContent += chunk;
+          setMessages((prev) => {
+            const last = prev[prev.length - 1];
+            if (last?.role === "assistant" && last.id === assistantId) {
+              return prev.map((m) =>
+                m.id === assistantId ? { ...m, content: assistantContent } : m
+              );
+            }
+            return [
+              ...prev,
+              { id: assistantId, role: "assistant", content: assistantContent },
+            ];
+          });
+        },
+        onDone: () => {
+          setIsLoading(false);
+          abortRef.current = null;
+          // Save to conversations after streaming is done
+          const finalMessages: Message[] = [
+            ...newMessages,
+            { id: assistantId, role: "assistant", content: assistantContent },
+          ];
+          updateConversations(finalMessages, text);
+        },
+      });
     } catch (error: any) {
+      if (error.name === "AbortError") return;
+      setIsLoading(false);
+      abortRef.current = null;
       toast({
         title: "خطأ",
         description: error.message || "حدث خطأ غير متوقع",
@@ -113,18 +148,18 @@ const Chat = () => {
       });
       // Remove the user message on error
       setMessages(messages);
-    } finally {
-      setIsLoading(false);
     }
   };
 
   const handleNewChat = () => {
+    if (abortRef.current) abortRef.current.abort();
     setActiveConversationId(null);
     setMessages([]);
     setSidebarOpen(false);
   };
 
   const handleSelectConversation = (conv: Conversation) => {
+    if (abortRef.current) abortRef.current.abort();
     setActiveConversationId(conv.id);
     setMessages(conv.messages);
     setSidebarOpen(false);
@@ -177,7 +212,7 @@ const Chat = () => {
               {messages.map((msg) => (
                 <ChatMessage key={msg.id} message={msg} />
               ))}
-              {isLoading && (
+              {isLoading && messages[messages.length - 1]?.role !== "assistant" && (
                 <div className="flex gap-3 animate-fade-in">
                   <div className="shrink-0 w-8 h-8 rounded-full flex items-center justify-center bg-accent/20 text-accent-foreground mt-1">
                     <span className="w-4 h-4 text-xs">🤖</span>
