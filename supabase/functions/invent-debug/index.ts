@@ -17,20 +17,26 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Try to get orgs
-    const orgsRes = await fetch("https://api.useinvent.com/orgs", {
-      headers: { "Authorization": `Bearer ${INVENT_API_KEY}` },
-    });
-    const orgsData = await orgsRes.text();
+    const results: Record<string, string> = {};
 
-    // Try /me
-    const meRes = await fetch("https://api.useinvent.com/user", {
-      headers: { "Authorization": `Bearer ${INVENT_API_KEY}` },
-    });
-    const meData = await meRes.text();
+    const endpoints = [
+      "/assistants",
+      "/chats",
+    ];
+
+    for (const ep of endpoints) {
+      try {
+        const res = await fetch(`https://api.useinvent.com${ep}`, {
+          headers: { "Authorization": `Bearer ${INVENT_API_KEY}` },
+        });
+        results[ep] = await res.text();
+      } catch (e) {
+        results[ep] = String(e);
+      }
+    }
 
     return new Response(
-      JSON.stringify({ orgs: orgsData, me: meData }),
+      JSON.stringify(results),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {
