@@ -1,10 +1,13 @@
 import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { toast } from "@/hooks/use-toast";
 import ChatSidebar from "@/components/ChatSidebar";
 import ChatHeader from "@/components/ChatHeader";
 import ChatMessage from "@/components/ChatMessage";
 import ChatInput from "@/components/ChatInput";
 import ChatWelcome from "@/components/ChatWelcome";
+import { sendMessage } from "@/lib/inventApi";
+import { loadConversations, saveConversations } from "@/lib/chatStorage";
 
 export interface Message {
   id: string;
@@ -37,6 +40,21 @@ const Chat = () => {
     }
   }, [student, navigate]);
 
+  // Load saved conversations on mount
+  useEffect(() => {
+    if (student?.id) {
+      const saved = loadConversations(student.id);
+      setConversations(saved);
+    }
+  }, []);
+
+  // Save conversations whenever they change
+  useEffect(() => {
+    if (student?.id && conversations.length > 0) {
+      saveConversations(student.id, conversations);
+    }
+  }, [conversations]);
+
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
@@ -44,6 +62,8 @@ const Chat = () => {
   const isWelcomeScreen = messages.length === 0;
 
   const handleSend = async (text: string) => {
+    if (isLoading) return;
+
     const userMsg: Message = {
       id: Date.now().toString(),
       role: "user",
@@ -54,21 +74,24 @@ const Chat = () => {
     setMessages(newMessages);
     setIsLoading(true);
 
-    setTimeout(() => {
+    try {
+      const response = await sendMessage(text, student.id, activeConversationId || undefined);
+
       const assistantMsg: Message = {
         id: (Date.now() + 1).toString(),
         role: "assistant",
-        content: "شكرًا على سؤالك! هذه نسخة تجريبية من المساعد الجامعي الذكي. سيتم ربط النظام بقاعدة المعرفة الجامعية قريبًا لتقديم إجابات دقيقة ومفصلة.",
-        source: "النظام التجريبي",
+        content: response.answer,
+        source: response.source || undefined,
       };
-      setMessages((prev) => [...prev, assistantMsg]);
-      setIsLoading(false);
+
+      const updatedMessages = [...newMessages, assistantMsg];
+      setMessages(updatedMessages);
 
       if (!activeConversationId) {
         const newConv: Conversation = {
           id: Date.now().toString(),
           title: text.slice(0, 40) + (text.length > 40 ? "..." : ""),
-          messages: [...newMessages, assistantMsg],
+          messages: updatedMessages,
           createdAt: new Date(),
         };
         setConversations((prev) => [newConv, ...prev]);
@@ -77,12 +100,22 @@ const Chat = () => {
         setConversations((prev) =>
           prev.map((c) =>
             c.id === activeConversationId
-              ? { ...c, messages: [...newMessages, assistantMsg] }
+              ? { ...c, messages: updatedMessages }
               : c
           )
         );
       }
-    }, 1200);
+    } catch (error: any) {
+      toast({
+        title: "خطأ",
+        description: error.message || "حدث خطأ غير متوقع",
+        variant: "destructive",
+      });
+      // Remove the user message on error
+      setMessages(messages);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleNewChat = () => {
@@ -106,7 +139,6 @@ const Chat = () => {
 
   return (
     <div className="flex h-screen overflow-hidden">
-      {/* Mobile overlay */}
       {sidebarOpen && (
         <div
           className="fixed inset-0 bg-foreground/20 backdrop-blur-sm z-30 lg:hidden transition-opacity"
@@ -114,7 +146,6 @@ const Chat = () => {
         />
       )}
 
-      {/* Sidebar */}
       <div
         className={`fixed lg:static z-40 h-full transition-transform duration-300 ${
           sidebarOpen ? "translate-x-0" : "translate-x-full lg:translate-x-0"
@@ -128,7 +159,6 @@ const Chat = () => {
         />
       </div>
 
-      {/* Main area */}
       <div className="flex-1 flex flex-col min-w-0 animate-fade-in">
         <ChatHeader
           studentName={student.name}
@@ -142,7 +172,6 @@ const Chat = () => {
             onSuggestionClick={handleSend}
           />
         ) : (
-          /* Messages */
           <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-6">
             <div className="max-w-3xl mx-auto space-y-5">
               {messages.map((msg) => (
@@ -165,7 +194,6 @@ const Chat = () => {
           </div>
         )}
 
-        {/* Input */}
         <ChatInput onSend={handleSend} isLoading={isLoading} />
       </div>
     </div>
