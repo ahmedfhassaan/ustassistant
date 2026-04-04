@@ -81,7 +81,15 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      search_knowledge: {
+        Args: { max_results?: number; query_text: string }
+        Returns: {
+          chunk_id: string
+          content: string
+          document_name: string
+          rank: number
+        }[]
+      }
     }
     Enums: {
       [_ in never]: never
