@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -28,6 +29,29 @@ serve(async (req) => {
       );
     }
 
+    // Search knowledge base for relevant context
+    const lastUserMessage = [...messages].reverse().find(m => m.role === "user")?.content || "";
+    let knowledgeContext = "";
+
+    try {
+      const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+      const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+      const supabase = createClient(supabaseUrl, supabaseKey);
+
+      const { data: chunks } = await supabase.rpc("search_knowledge", {
+        query_text: lastUserMessage,
+        max_results: 5,
+      });
+
+      if (chunks && chunks.length > 0) {
+        knowledgeContext = "\n\n--- معلومات من قاعدة المعرفة الجامعية ---\n" +
+          chunks.map((c: any) => `[${c.document_name}]: ${c.content}`).join("\n\n") +
+          "\n--- نهاية المعلومات ---";
+      }
+    } catch (e) {
+      console.error("Knowledge search error:", e);
+    }
+
     const systemPrompt = `أنت المساعد الجامعي الذكي، مساعد ذكاء اصطناعي متخصص في مساعدة طلاب الجامعة.
 
 مهامك:
@@ -39,9 +63,10 @@ serve(async (req) => {
 قواعد:
 - أجب دائماً باللغة العربية
 - كن مهذباً ومحترفاً
+- إذا وجدت معلومات من قاعدة المعرفة أدناه، استخدمها في إجابتك واذكر المصدر
 - إذا لم تكن متأكداً من إجابة، اذكر ذلك بوضوح وانصح الطالب بالتواصل مع الجهة المختصة
 - استخدم تنسيق Markdown عند الحاجة لتنظيم الإجابات
-- كن مختصراً ومفيداً`;
+- كن مختصراً ومفيداً${knowledgeContext}`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
