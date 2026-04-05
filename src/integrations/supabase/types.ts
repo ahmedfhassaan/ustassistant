@@ -184,6 +184,30 @@ export type Database = {
         }
         Relationships: []
       }
+      students: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          password_hash: string
+          student_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          password_hash: string
+          student_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          password_hash?: string
+          student_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -209,6 +233,10 @@ export type Database = {
           document_name: string
           rank: number
         }[]
+      }
+      verify_student_login: {
+        Args: { p_password: string; p_student_id: string }
+        Returns: Json
       }
     }
     Enums: {
