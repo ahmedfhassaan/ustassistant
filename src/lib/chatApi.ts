@@ -10,14 +10,14 @@ interface StreamChatOptions {
   signal?: AbortSignal;
 }
 
-export async function streamChat({ messages, onDelta, onDone, signal }: StreamChatOptions) {
+export async function streamChat({ messages, userId, onDelta, onDone, signal }: StreamChatOptions) {
   const resp = await fetch(CHAT_URL, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
     },
-    body: JSON.stringify({ messages }),
+    body: JSON.stringify({ messages, user_id: userId }),
     signal,
   });
 

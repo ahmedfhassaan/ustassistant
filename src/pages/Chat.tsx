@@ -110,6 +110,7 @@ const Chat = () => {
     try {
       await streamChat({
         messages: apiMessages,
+        userId: student?.id,
         signal: controller.signal,
         onDelta: (chunk) => {
           assistantContent += chunk;
