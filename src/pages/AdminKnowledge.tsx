@@ -137,8 +137,8 @@ const AdminKnowledge = () => {
       } catch (err: any) {
         console.error("Upload error:", err);
         // Clean up the failed document record
-        if (docData?.id) {
-          await supabase.from("knowledge_documents").delete().eq("id", docData.id);
+        if (docId) {
+          await supabase.from("knowledge_documents").delete().eq("id", docId);
         }
         toast({
           title: "خطأ في الرفع",
