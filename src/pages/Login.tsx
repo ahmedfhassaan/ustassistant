@@ -55,7 +55,7 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen flex relative overflow-hidden animate-fade-in">
+    <div className="min-h-screen flex flex-row-reverse relative overflow-hidden animate-fade-in">
       {/* Dark mode toggle */}
       <Button
         variant="ghost"
