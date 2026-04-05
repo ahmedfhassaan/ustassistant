@@ -6,6 +6,21 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+/**
+ * Simple hash for cache key generation.
+ * Normalizes the question by trimming, lowercasing, and removing extra spaces.
+ */
+function hashQuestion(text: string): string {
+  const normalized = text.trim().toLowerCase().replace(/\s+/g, " ");
+  let hash = 0;
+  for (let i = 0; i < normalized.length; i++) {
+    const chr = normalized.charCodeAt(i);
+    hash = ((hash << 5) - hash) + chr;
+    hash |= 0;
+  }
+  return "q_" + Math.abs(hash).toString(36);
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -29,23 +44,58 @@ serve(async (req) => {
       );
     }
 
-    // Search knowledge base for relevant context
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabase = createClient(supabaseUrl, supabaseKey);
+
     const lastUserMessage = [...messages].reverse().find(m => m.role === "user")?.content || "";
+    const questionHash = hashQuestion(lastUserMessage);
+
+    // --- CACHE CHECK ---
+    // Only use cache for single-turn questions (first message in conversation)
+    if (messages.length <= 1) {
+      try {
+        const { data: cached } = await supabase
+          .from("response_cache")
+          .select("answer, sources")
+          .eq("question_hash", questionHash)
+          .gt("expires_at", new Date().toISOString())
+          .maybeSingle();
+
+        if (cached) {
+          // Return cached response as a non-streaming JSON response
+          return new Response(
+            JSON.stringify({ 
+              cached: true, 
+              content: cached.answer, 
+              sources: cached.sources 
+            }),
+            { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+      } catch (e) {
+        console.error("Cache lookup error:", e);
+      }
+    }
+
+    // --- KNOWLEDGE SEARCH (RAG) ---
     let knowledgeContext = "";
+    let sourceNames: string[] = [];
 
     try {
-      const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-      const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-      const supabase = createClient(supabaseUrl, supabaseKey);
-
       const { data: chunks } = await supabase.rpc("search_knowledge", {
         query_text: lastUserMessage,
         max_results: 5,
       });
 
       if (chunks && chunks.length > 0) {
+        // Deduplicate source names
+        sourceNames = [...new Set(chunks.map((c: any) => c.document_name))];
+        
         knowledgeContext = "\n\n--- معلومات من قاعدة المعرفة الجامعية ---\n" +
-          chunks.map((c: any) => `[${c.document_name}]: ${c.content}`).join("\n\n") +
+          chunks.map((c: any, i: number) => 
+            `[مصدر: ${c.document_name} | درجة الصلة: ${(c.rank * 100).toFixed(0)}%]\n${c.content}`
+          ).join("\n\n") +
           "\n--- نهاية المعلومات ---";
       }
     } catch (e) {
@@ -63,7 +113,9 @@ serve(async (req) => {
 قواعد:
 - أجب دائماً باللغة العربية
 - كن مهذباً ومحترفاً
-- إذا وجدت معلومات من قاعدة المعرفة أدناه، استخدمها في إجابتك واذكر المصدر
+- إذا وجدت معلومات من قاعدة المعرفة أدناه، استخدمها في إجابتك
+- **مهم جداً**: في نهاية إجابتك، إذا استخدمت معلومات من قاعدة المعرفة، أضف سطراً بالتنسيق التالي:
+  [المصادر: اسم_الملف1، اسم_الملف2]
 - إذا لم تكن متأكداً من إجابة، اذكر ذلك بوضوح وانصح الطالب بالتواصل مع الجهة المختصة
 - استخدم تنسيق Markdown عند الحاجة لتنظيم الإجابات
 - كن مختصراً ومفيداً${knowledgeContext}`;
@@ -105,7 +157,70 @@ serve(async (req) => {
       );
     }
 
-    return new Response(response.body, {
+    // For streaming, we need to intercept the stream to cache the response
+    // We'll use a TransformStream to collect the full response while streaming
+    const { readable, writable } = new TransformStream();
+    const writer = writable.getWriter();
+    const reader = response.body!.getReader();
+
+    // Process stream in background - collect full response for caching
+    (async () => {
+      let fullContent = "";
+      const decoder = new TextDecoder();
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          
+          // Pass through to client
+          await writer.write(value);
+          
+          // Collect content for caching
+          const text = decoder.decode(value, { stream: true });
+          for (const line of text.split("\n")) {
+            if (!line.startsWith("data: ")) continue;
+            const jsonStr = line.slice(6).trim();
+            if (jsonStr === "[DONE]") continue;
+            try {
+              const parsed = JSON.parse(jsonStr);
+              const delta = parsed.choices?.[0]?.delta?.content;
+              if (delta) fullContent += delta;
+            } catch { /* partial JSON */ }
+          }
+        }
+      } catch (e) {
+        console.error("Stream processing error:", e);
+      } finally {
+        await writer.close();
+      }
+
+      // Cache the response (only for single-turn, non-empty responses)
+      if (fullContent && messages.length <= 1) {
+        try {
+          const sourcesStr = sourceNames.length > 0 ? sourceNames.join("، ") : null;
+          await supabase
+            .from("response_cache")
+            .upsert({
+              question_hash: questionHash,
+              question: lastUserMessage,
+              answer: fullContent,
+              sources: sourcesStr,
+            }, { onConflict: "question_hash" });
+        } catch (e) {
+          console.error("Cache save error:", e);
+        }
+      }
+
+      // Cleanup expired cache entries (best-effort, non-blocking)
+      try {
+        await supabase
+          .from("response_cache")
+          .delete()
+          .lt("expires_at", new Date().toISOString());
+      } catch { /* ignore */ }
+    })();
+
+    return new Response(readable, {
       headers: { ...corsHeaders, "Content-Type": "text/event-stream" },
     });
   } catch (e) {

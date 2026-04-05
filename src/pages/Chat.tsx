@@ -126,14 +126,28 @@ const Chat = () => {
             ];
           });
         },
-        onDone: () => {
+        onDone: (meta) => {
           setIsLoading(false);
           abortRef.current = null;
-          // Save to conversations after streaming is done
+          
+          // Extract sources from response content or meta
+          let source = meta?.sources || undefined;
+          let cleanContent = assistantContent;
+          
+          // Try to extract [المصادر: ...] from the end of the response
+          const sourceMatch = assistantContent.match(/\[المصادر:\s*([^\]]+)\]\s*$/);
+          if (sourceMatch) {
+            source = sourceMatch[1].trim();
+            cleanContent = assistantContent.replace(sourceMatch[0], "").trim();
+          }
+          
           const finalMessages: Message[] = [
             ...newMessages,
-            { id: assistantId, role: "assistant", content: assistantContent },
+            { id: assistantId, role: "assistant", content: cleanContent, source },
           ];
+          
+          // Update displayed message with clean content and source
+          setMessages(finalMessages);
           updateConversations(finalMessages, text);
         },
       });
