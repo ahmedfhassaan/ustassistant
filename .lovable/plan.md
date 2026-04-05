@@ -1,22 +1,32 @@
 
 
-# إضافة رقم إصدار التطبيق (v1.0.0)
+# إصلاح لون مربع الرقم الجامعي عند الترشيح (Autocomplete)
 
-## الخطة
+## المشكلة
+عند اختيار قيمة من قائمة الترشيح التلقائي للمتصفح (autocomplete/autofill)، يتحول مربع الإدخال إلى لون أبيض مائل للأزرق. هذا سلوك افتراضي من المتصفح (Chrome/Edge) الذي يطبق خلفية خاصة على الحقول المعبأة تلقائياً.
 
-### 1. تحديث `package.json`
-تغيير `version` من `"0.0.0"` إلى `"1.0.0"`.
+## الحل
+إضافة CSS في `src/index.css` لتجاوز تنسيق الـ autofill الافتراضي للمتصفح:
 
-### 2. عرض رقم الإصدار في واجهة المشرف
-إضافة رقم الإصدار في أسفل الشريط الجانبي (`AdminLayout.tsx`) فوق زر تسجيل الخروج، بتصميم خفيف (نص صغير باللون الرمادي مثل `v1.0.0`).
+### تعديل `src/index.css`
+إضافة قواعد CSS لتجاوز `-webkit-autofill` في كلا الوضعين (فاتح وداكن):
 
-### 3. عرض رقم الإصدار في صفحة تسجيل الدخول
-إضافة رقم الإصدار في أسفل صفحة `Login.tsx` بشكل خفيف.
+```css
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0 1000px hsl(var(--background)) inset !important;
+  -webkit-text-fill-color: hsl(var(--foreground)) !important;
+  transition: background-color 5000s ease-in-out 0s;
+}
 
-### التفاصيل التقنية
-- قراءة الإصدار من `package.json` عبر Vite باستخدام `define` في `vite.config.ts`:
-  ```ts
-  define: { __APP_VERSION__: JSON.stringify(pkg.version) }
-  ```
-- استخدام `__APP_VERSION__` في المكوّنات مباشرة.
+.dark input:-webkit-autofill,
+.dark input:-webkit-autofill:hover,
+.dark input:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0 1000px hsl(222 40% 14%) inset !important;
+  -webkit-text-fill-color: hsl(var(--foreground)) !important;
+}
+```
+
+كما يمكن إضافة `autoComplete="off"` على حقل الرقم الجامعي في `Login.tsx` لمنع الترشيح التلقائي إذا كان غير مرغوب.
 
