@@ -7,6 +7,26 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
+const categoryColors: Record<string, string> = {
+  "تسجيل": "bg-blue-500/20 text-blue-300",
+  "إداري": "bg-amber-500/20 text-amber-300",
+  "امتحانات": "bg-red-500/20 text-red-300",
+  "خدمات": "bg-green-500/20 text-green-300",
+  "مالي": "bg-purple-500/20 text-purple-300",
+  "أكاديمي": "bg-cyan-500/20 text-cyan-300",
+  "عام": "bg-gray-500/20 text-gray-300",
+};
+
+const categoryColorsLight: Record<string, string> = {
+  "تسجيل": "bg-blue-100 text-blue-700",
+  "إداري": "bg-amber-100 text-amber-700",
+  "امتحانات": "bg-red-100 text-red-700",
+  "خدمات": "bg-green-100 text-green-700",
+  "مالي": "bg-purple-100 text-purple-700",
+  "أكاديمي": "bg-cyan-100 text-cyan-700",
+  "عام": "bg-gray-100 text-gray-700",
+};
+
 const AdminFAQ = () => {
   const { isDark } = useTheme();
 
@@ -15,7 +35,7 @@ const AdminFAQ = () => {
     queryFn: async () => {
       const { data, error } = await supabase.rpc("get_question_stats", { limit_count: 50 });
       if (error) throw error;
-      return data as { question: string; question_hash: string; count: number; last_asked: string }[];
+      return data as { question: string; question_hash: string; count: number; last_asked: string; category: string | null; answered: boolean }[];
     },
     refetchInterval: 30000,
   });
@@ -25,22 +45,21 @@ const AdminFAQ = () => {
     queryFn: async () => {
       const { data, error } = await supabase.rpc("get_dashboard_stats");
       if (error) throw error;
-      return data as {
-        total_questions: number;
-        total_feedback: number;
-        positive_feedback: number;
-      };
+      return data as { total_questions: number; total_feedback: number; positive_feedback: number };
     },
     refetchInterval: 30000,
   });
 
   const totalRepetitions = questions?.reduce((sum, q) => sum + Number(q.count), 0) ?? 0;
   const uniqueCount = questions?.length ?? 0;
-  const answeredRatio = stats
-    ? `${stats.total_questions}/${uniqueCount}`
-    : "—";
+  const answeredCount = questions?.filter((q) => q.answered).length ?? 0;
 
   const isLoading = loadingQuestions || loadingStats;
+
+  const getCategoryColor = (cat: string) =>
+    isDark
+      ? categoryColors[cat] || categoryColors["عام"]
+      : categoryColorsLight[cat] || categoryColorsLight["عام"];
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto animate-fade-in">
@@ -49,7 +68,7 @@ const AdminFAQ = () => {
         {[
           { value: uniqueCount, label: "سؤال فريد" },
           { value: totalRepetitions, label: "إجمالي التكرارات" },
-          { value: answeredRatio, label: "إجمالي المحادثات / أسئلة فريدة", highlight: true },
+          { value: `${answeredCount}/${uniqueCount}`, label: "أسئلة مُجابة", highlight: true },
         ].map((s, i) => (
           <Card
             key={i}
@@ -108,8 +127,11 @@ const AdminFAQ = () => {
                     <div className="min-w-0">
                       <p className="text-sm font-medium text-foreground truncate">{q.question}</p>
                       <div className="flex items-center gap-2 mt-1">
-                        <Badge variant="secondary" className="text-xs">
-                          {new Date(q.last_asked).toLocaleDateString("ar-SA")}
+                        <span className={`text-xs px-2 py-0.5 rounded-full ${getCategoryColor(q.category || "عام")}`}>
+                          {q.category || "عام"}
+                        </span>
+                        <Badge variant={q.answered ? "default" : "secondary"} className="text-xs">
+                          {q.answered ? "مُجاب" : "بدون إجابة"}
                         </Badge>
                       </div>
                     </div>
