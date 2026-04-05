@@ -230,7 +230,7 @@ const AdminKnowledge = () => {
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto animate-fade-in">
-      <Card className={`transition-all duration-300 animate-scale-in ${isDark ? "glass-card border-0" : ""}`}>
+      <Card className={`transition-all duration-300 ease-out animate-scale-in rounded-2xl ${isDark ? "glass-card border-0" : "bg-white border border-black/5 shadow-[0_4px_20px_rgba(0,0,0,0.08)]"}`}>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
           <CardTitle className="text-lg">إدارة قاعدة المعرفة</CardTitle>
           <Button
@@ -287,10 +287,10 @@ const AdminKnowledge = () => {
               filteredDocs.map((doc) => (
                 <div
                   key={doc.id}
-                  className={`flex items-center justify-between p-4 rounded-lg transition-all duration-200 ${
+                  className={`flex items-center justify-between p-4 rounded-xl transition-all duration-300 ease-out hover:translate-y-[-2px] ${
                     isDark
                       ? "bg-white/5 border border-white/5 hover:bg-white/8"
-                      : "border border-border hover:bg-secondary/50"
+                      : "bg-secondary/30 border border-black/5 hover:bg-secondary/60 hover:border-primary/20"
                   }`}
                 >
                   <div className="flex items-center gap-3 min-w-0">
