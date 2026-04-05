@@ -41,7 +41,7 @@ const AdminLayout = () => {
           ${isDark ? "glass-sidebar" : "bg-card border-border"}`}
       >
         <div className={`p-5 border-b flex items-center gap-3 ${isDark ? "border-white/6" : "border-border"}`}>
-          <img src={universityLogo} alt="شعار الجامعة" className={`w-10 h-10 object-contain ${isDark ? "brightness-125 drop-shadow-[0_0_3px_rgba(112,200,255,0.2)]" : ""}`} />
+          <img src={isDark ? universityLogoDark : universityLogo} alt="شعار الجامعة" className={`w-10 h-10 object-contain ${isDark ? "brightness-125 drop-shadow-[0_0_3px_rgba(112,200,255,0.2)]" : ""}`} />
           <div>
             <h2 className={`font-bold text-base text-foreground ${isDark ? "glow-text" : ""}`}>لوحة تحكم المشرف</h2>
             <p className="text-xs text-muted-foreground mt-0.5">إدارة المساعد الذكي</p>
