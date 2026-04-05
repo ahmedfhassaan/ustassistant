@@ -134,6 +134,10 @@ const AdminKnowledge = () => {
         });
       } catch (err: any) {
         console.error("Upload error:", err);
+        // Clean up the failed document record
+        if (docData?.id) {
+          await supabase.from("knowledge_documents").delete().eq("id", docData.id);
+        }
         toast({
           title: "خطأ في الرفع",
           description: err.message || "حدث خطأ أثناء رفع الملف",
