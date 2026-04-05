@@ -227,7 +227,7 @@ const Chat = () => {
                 <ChatMessage key={msg.id} message={msg} />
               ))}
               {isLoading && messages[messages.length - 1]?.role !== "assistant" && (
-                <div className="flex gap-3 animate-fade-in">
+                <div className="flex gap-3 animate-fade-in justify-start" dir="ltr">
                   <div className="shrink-0 w-8 h-8 rounded-full flex items-center justify-center bg-accent/20 text-accent-foreground mt-1">
                     <span className="w-4 h-4 text-xs">🤖</span>
                   </div>
