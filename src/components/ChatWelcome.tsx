@@ -1,6 +1,7 @@
 import { CalendarDays, BookOpen, GraduationCap, ClipboardList, Sparkles, HelpCircle } from "lucide-react";
 import { useTheme } from "@/hooks/use-theme";
 import universityLogo from "@/assets/university-logo.png";
+import universityLogoDark from "@/assets/university-logo-dark.jpeg";
 
 interface ChatWelcomeProps {
   studentName: string;
@@ -57,11 +58,17 @@ const ChatWelcome = ({ studentName, onSuggestionClick }: ChatWelcomeProps) => {
       <div className="max-w-2xl w-full space-y-8 text-center">
         {/* Logo & Greeting */}
         <div className="space-y-4 animate-fade-in-up" style={{ animationDelay: "0.05s", opacity: 0 }}>
-          <div className={`w-16 h-16 mx-auto rounded-2xl flex items-center justify-center transition-all ${
-            isDark ? "bg-primary/10 glow-primary" : "bg-primary/10"
-          }`}>
-            <Sparkles className={`w-8 h-8 text-primary ${isDark ? "glow-icon" : ""}`} />
-          </div>
+          {isDark ? (
+            <img
+              src={universityLogoDark}
+              alt="شعار جامعة العلوم والتكنولوجيا"
+              className="h-20 w-auto object-contain mx-auto drop-shadow-[0_0_8px_rgba(112,200,255,0.12)]"
+            />
+          ) : (
+            <div className="w-16 h-16 mx-auto rounded-2xl flex items-center justify-center bg-primary/10">
+              <Sparkles className="w-8 h-8 text-primary" />
+            </div>
+          )}
           <div className="space-y-2">
             <h1 className={`text-2xl sm:text-3xl font-bold ${isDark ? "text-foreground glow-text" : "text-foreground"}`}>
               {getGreeting()}، {studentName} 👋
