@@ -81,9 +81,9 @@ const Login = () => {
       <div className="hidden lg:flex lg:w-[45%] flex-col items-center justify-center p-12 relative">
         <div className="max-w-md text-center space-y-8 animate-fade-in-up" style={{ animationDelay: "0.1s", opacity: 0 }}>
           <img
-            src={universityLogo}
+            src={isDark ? universityLogoDark : universityLogo}
             alt="شعار جامعة العلوم والتكنولوجيا"
-            className={`w-44 h-auto mx-auto ${isDark ? "brightness-125 drop-shadow-[0_0_6px_rgba(112,200,255,0.15)]" : ""}`}
+            className={`w-44 h-auto mx-auto object-contain ${isDark ? "drop-shadow-[0_0_8px_rgba(112,200,255,0.15)]" : ""}`}
           />
           <div className="space-y-3">
             <h1 className={`text-3xl font-bold ${isDark ? "text-foreground glow-text" : "text-foreground"}`}>
@@ -133,9 +133,9 @@ const Login = () => {
           {/* Mobile logo */}
           <div className="flex flex-col items-center gap-3 lg:hidden animate-fade-in-up" style={{ animationDelay: "0.1s", opacity: 0 }}>
             <img
-              src={universityLogo}
+              src={isDark ? universityLogoDark : universityLogo}
               alt="شعار جامعة العلوم والتكنولوجيا"
-              className={`w-28 h-auto ${isDark ? "brightness-125 drop-shadow-[0_0_4px_rgba(112,200,255,0.2)]" : ""}`}
+              className={`w-28 h-auto object-contain ${isDark ? "drop-shadow-[0_0_6px_rgba(112,200,255,0.15)]" : ""}`}
             />
             <h1 className={`text-xl font-bold ${isDark ? "text-foreground glow-text" : "text-foreground"}`}>
               المساعد الجامعي الذكي
