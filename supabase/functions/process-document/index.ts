@@ -50,7 +50,14 @@ serve(async (req) => {
 
         // Convert PDF to base64 for the AI to process
         const arrayBuffer = await data.arrayBuffer();
-        const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
+        const bytes = new Uint8Array(arrayBuffer);
+        // Encode base64 in chunks to avoid stack overflow
+        let binary = "";
+        const chunkLen = 8192;
+        for (let i = 0; i < bytes.length; i += chunkLen) {
+          binary += String.fromCharCode(...bytes.subarray(i, i + chunkLen));
+        }
+        const base64 = btoa(binary);
 
         const aiResp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
           method: "POST",
