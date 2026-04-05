@@ -28,11 +28,18 @@ const ChatHeader = ({ studentName, onLogout, onMenuClick }: ChatHeaderProps) => 
         >
           <Menu className="w-5 h-5" />
         </Button>
-        <img
-          src={isDark ? universityLogoDark : universityLogo}
-          alt="شعار جامعة العلوم والتكنولوجيا"
-          className={`h-10 w-auto object-contain ${isDark ? "drop-shadow-[0_0_6px_rgba(112,200,255,0.15)]" : ""}`}
-        />
+        <div className="relative h-10 w-[120px] shrink-0">
+          <img
+            src={universityLogo}
+            alt="شعار جامعة العلوم والتكنولوجيا"
+            className={`absolute inset-0 h-10 w-auto object-contain transition-opacity duration-200 ${isDark ? "opacity-0" : "opacity-100"}`}
+          />
+          <img
+            src={universityLogoDark}
+            alt="شعار جامعة العلوم والتكنولوجيا"
+            className={`absolute inset-0 h-10 w-auto object-contain transition-opacity duration-200 ${isDark ? "opacity-100 drop-shadow-[0_0_6px_rgba(112,200,255,0.15)]" : "opacity-0"}`}
+          />
+        </div>
         <span className={`font-bold text-base hidden sm:inline ${isDark ? "text-foreground glow-text" : "text-foreground"}`}>
           {settings.assistant_name}
         </span>
