@@ -4,6 +4,8 @@ import { useTheme } from "@/hooks/use-theme";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Skeleton } from "@/components/ui/skeleton";
+import EmptyState from "@/components/EmptyState";
+import ErrorState from "@/components/ErrorState";
 
 interface DashboardStats {
   total_questions: number;
@@ -17,7 +19,7 @@ interface DashboardStats {
 const AdminDashboard = () => {
   const { isDark } = useTheme();
 
-  const { data: dashStats, isLoading: statsLoading } = useQuery({
+  const { data: dashStats, isLoading: statsLoading, isError: statsError, refetch: refetchStats } = useQuery({
     queryKey: ["dashboard-stats"],
     queryFn: async () => {
       const { data, error } = await supabase.rpc("get_dashboard_stats");
@@ -26,7 +28,7 @@ const AdminDashboard = () => {
     },
   });
 
-  const { data: questionStats, isLoading: questionsLoading } = useQuery({
+  const { data: questionStats, isLoading: questionsLoading, isError: questionsError, refetch: refetchQuestions } = useQuery({
     queryKey: ["question-stats"],
     queryFn: async () => {
       const { data, error } = await supabase.rpc("get_question_stats", { limit_count: 10 });
@@ -103,6 +105,8 @@ const AdminDashboard = () => {
               Array.from({ length: 5 }).map((_, i) => (
                 <Skeleton key={i} className="h-14 w-full rounded-xl" />
               ))
+            ) : questionsError ? (
+              <ErrorState message="تعذّر تحميل الأسئلة الشائعة" onRetry={() => refetchQuestions()} />
             ) : questionStats && questionStats.length > 0 ? (
               questionStats.map((q, i) => (
                 <div
@@ -118,7 +122,11 @@ const AdminDashboard = () => {
                 </div>
               ))
             ) : (
-              <p className="text-sm text-muted-foreground text-center py-4">لا توجد أسئلة بعد</p>
+              <EmptyState
+                icon={MessageSquare}
+                title="لا توجد أسئلة بعد"
+                description="ستظهر هنا أكثر الأسئلة شيوعاً بعد أن يبدأ الطلاب بالتفاعل مع المساعد"
+              />
             )}
           </div>
         </CardContent>

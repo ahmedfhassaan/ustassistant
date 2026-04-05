@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { Upload, FileText, Trash2, Search, Loader2, CheckCircle, AlertCircle, AlertTriangle } from "lucide-react";
+import EmptyState from "@/components/EmptyState";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -280,9 +281,23 @@ const AdminKnowledge = () => {
                 <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
               </div>
             ) : filteredDocs.length === 0 ? (
-              <p className="text-center text-muted-foreground py-8 text-sm">
-                {documents.length === 0 ? "لم يتم رفع أي مستندات بعد" : "لا توجد مستندات مطابقة"}
-              </p>
+              documents.length === 0 ? (
+                <EmptyState
+                  icon={FileText}
+                  title="لم يتم رفع أي مستندات بعد"
+                  description="ارفع ملفات PDF أو نصوص ليتمكن المساعد من استخدامها في الإجابة"
+                  actionLabel="رفع مستند"
+                  onAction={handleFileSelect}
+                />
+              ) : (
+                <EmptyState
+                  icon={Search}
+                  title="لا توجد مستندات مطابقة"
+                  description="جرّب البحث بكلمات مختلفة"
+                  actionLabel="مسح البحث"
+                  onAction={() => setSearchQuery("")}
+                />
+              )
             ) : (
               filteredDocs.map((doc) => (
                 <div
