@@ -93,8 +93,24 @@ serve(async (req) => {
           throw new Error("فشل استخراج النص من PDF");
         }
 
-        const aiData = await aiResp.json();
-        text = aiData.choices?.[0]?.message?.content || "";
+        const respText = await aiResp.text();
+        let aiData: any;
+        try {
+          aiData = JSON.parse(respText);
+        } catch {
+          // Try to extract partial JSON
+          console.error("Failed to parse AI response, length:", respText.length, "preview:", respText.substring(0, 200));
+          // Attempt to find the content field directly
+          const contentMatch = respText.match(/"content"\s*:\s*"((?:[^"\\]|\\.)*)"/);
+          if (contentMatch) {
+            text = contentMatch[1].replace(/\\n/g, "\n").replace(/\\"/g, '"').replace(/\\\\/g, "\\");
+          } else {
+            throw new Error("فشل تحليل استجابة AI لاستخراج النص");
+          }
+        }
+        if (!text && aiData) {
+          text = aiData.choices?.[0]?.message?.content || "";
+        }
       } else {
         // Try reading as text
         text = await data.text();
