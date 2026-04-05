@@ -89,6 +89,7 @@ const AdminKnowledge = () => {
         if (docError || !docData) {
           throw new Error("فشل إنشاء سجل المستند");
         }
+        docId = docData.id;
 
         let filePath: string | null = null;
         let contentText: string | null = null;
