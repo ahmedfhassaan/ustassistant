@@ -59,6 +59,7 @@ const AdminKnowledge = () => {
     setUploading(true);
 
     for (const file of Array.from(files)) {
+      let docId: string | null = null;
       try {
         const fileExt = file.name.split(".").pop()?.toLowerCase() || "";
         const isText = ["txt", "md", "csv"].includes(fileExt);
@@ -88,6 +89,7 @@ const AdminKnowledge = () => {
         if (docError || !docData) {
           throw new Error("فشل إنشاء سجل المستند");
         }
+        docId = docData.id;
 
         let filePath: string | null = null;
         let contentText: string | null = null;
@@ -134,6 +136,10 @@ const AdminKnowledge = () => {
         });
       } catch (err: any) {
         console.error("Upload error:", err);
+        // Clean up the failed document record
+        if (docId) {
+          await supabase.from("knowledge_documents").delete().eq("id", docId);
+        }
         toast({
           title: "خطأ في الرفع",
           description: err.message || "حدث خطأ أثناء رفع الملف",
