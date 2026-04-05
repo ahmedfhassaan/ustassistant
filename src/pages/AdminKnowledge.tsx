@@ -1,11 +1,20 @@
 import { useState, useEffect, useRef } from "react";
-import { Upload, FileText, Trash2, Search, Loader2, CheckCircle, AlertCircle } from "lucide-react";
+import { Upload, FileText, Trash2, Search, Loader2, CheckCircle, AlertCircle, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useTheme } from "@/hooks/use-theme";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogCancel,
+} from "@/components/ui/alert-dialog";
 
 interface KnowledgeDoc {
   id: string;
@@ -22,8 +31,20 @@ const AdminKnowledge = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [uploading, setUploading] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [deleteTarget, setDeleteTarget] = useState<KnowledgeDoc | null>(null);
+  const [deleteConfirmEnabled, setDeleteConfirmEnabled] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const { isDark } = useTheme();
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // 1-second delay before enabling confirm button
+  useEffect(() => {
+    if (deleteTarget) {
+      setDeleteConfirmEnabled(false);
+      const timer = setTimeout(() => setDeleteConfirmEnabled(true), 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [deleteTarget]);
 
   useEffect(() => {
     fetchDocuments();
@@ -74,7 +95,6 @@ const AdminKnowledge = () => {
           continue;
         }
 
-        // 1. Create document record
         const { data: docData, error: docError } = await supabase
           .from("knowledge_documents")
           .insert({
@@ -95,10 +115,8 @@ const AdminKnowledge = () => {
         let contentText: string | null = null;
 
         if (isText) {
-          // Read text files directly
           contentText = await file.text();
         } else {
-          // Upload PDF to storage - use ASCII-safe path
           const safeFileName = `${Date.now()}.${fileExt}`;
           const storagePath = `${docData.id}/${safeFileName}`;
           const { error: uploadError } = await supabase.storage
@@ -110,14 +128,12 @@ const AdminKnowledge = () => {
           }
           filePath = storagePath;
 
-          // Update file_path
           await supabase
             .from("knowledge_documents")
             .update({ file_path: filePath })
             .eq("id", docData.id);
         }
 
-        // 2. Call process-document edge function
         const { error: fnError } = await supabase.functions.invoke("process-document", {
           body: {
             document_id: docData.id,
@@ -136,7 +152,6 @@ const AdminKnowledge = () => {
         });
       } catch (err: any) {
         console.error("Upload error:", err);
-        // Clean up the failed document record
         if (docId) {
           await supabase.from("knowledge_documents").delete().eq("id", docId);
         }
@@ -150,36 +165,38 @@ const AdminKnowledge = () => {
 
     setUploading(false);
     fetchDocuments();
-    // Reset file input
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
-  const handleDelete = async (doc: KnowledgeDoc) => {
+  const handleConfirmDelete = async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
     try {
-      // Delete from storage if file exists
-      if (doc.file_path) {
-        await supabase.storage.from("knowledge").remove([doc.file_path]);
+      if (deleteTarget.file_path) {
+        await supabase.storage.from("knowledge").remove([deleteTarget.file_path]);
       }
 
-      // Delete from database (chunks cascade)
       const { error } = await supabase
         .from("knowledge_documents")
         .delete()
-        .eq("id", doc.id);
+        .eq("id", deleteTarget.id);
 
       if (error) throw error;
 
-      setDocuments((prev) => prev.filter((d) => d.id !== doc.id));
+      setDocuments((prev) => prev.filter((d) => d.id !== deleteTarget.id));
       toast({
-        title: "تم الحذف",
-        description: `تم حذف "${doc.name}" من قاعدة المعرفة.`,
+        title: "تم حذف المستند بنجاح",
+        description: `تم حذف "${deleteTarget.name}" من قاعدة المعرفة.`,
       });
     } catch (err: any) {
       toast({
-        title: "خطأ",
-        description: err.message || "فشل حذف المستند",
+        title: "حدث خطأ أثناء الحذف",
+        description: err.message || "حدث خطأ أثناء الحذف، حاول مرة أخرى",
         variant: "destructive",
       });
+    } finally {
+      setDeleting(false);
+      setDeleteTarget(null);
     }
   };
 
@@ -246,7 +263,6 @@ const AdminKnowledge = () => {
             ارفع ملفات PDF أو نصوص (TXT, MD, CSV) ليتمكن المساعد الذكي من استخدامها في الإجابة على أسئلة الطلاب.
           </p>
 
-          {/* Search */}
           <div className="relative">
             <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
@@ -258,7 +274,6 @@ const AdminKnowledge = () => {
             />
           </div>
 
-          {/* Documents list */}
           <div className="space-y-2">
             {loading ? (
               <div className="flex justify-center py-8">
@@ -303,7 +318,7 @@ const AdminKnowledge = () => {
                   <Button
                     variant="ghost"
                     size="icon"
-                    onClick={() => handleDelete(doc)}
+                    onClick={() => setDeleteTarget(doc)}
                     className="text-destructive hover:text-destructive hover:bg-destructive/10 shrink-0"
                   >
                     <Trash2 className="w-4 h-4" />
@@ -314,6 +329,44 @@ const AdminKnowledge = () => {
           </div>
         </CardContent>
       </Card>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+        <AlertDialogContent dir="rtl" className="max-w-md">
+          <AlertDialogHeader>
+            <div className="mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-full bg-destructive/10">
+              <AlertTriangle className="h-6 w-6 text-destructive" />
+            </div>
+            <AlertDialogTitle className="text-center">
+              هل أنت متأكد من حذف هذا المستند؟
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-center space-y-2">
+              <span className="block">لا يمكن التراجع عن هذه العملية</span>
+              {deleteTarget && (
+                <span className="block font-medium text-foreground bg-muted rounded-md px-3 py-2 text-sm">
+                  📄 {deleteTarget.name}
+                </span>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex-row-reverse sm:flex-row-reverse gap-2 sm:gap-2">
+            <Button
+              variant="destructive"
+              onClick={handleConfirmDelete}
+              disabled={!deleteConfirmEnabled || deleting}
+              className="gap-2"
+            >
+              {deleting ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Trash2 className="w-4 h-4" />
+              )}
+              {deleting ? "جاري الحذف..." : deleteConfirmEnabled ? "تأكيد الحذف" : "انتظر..."}
+            </Button>
+            <AlertDialogCancel disabled={deleting}>إلغاء</AlertDialogCancel>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
