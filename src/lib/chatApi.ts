@@ -4,6 +4,7 @@ type Msg = { role: "user" | "assistant"; content: string };
 
 interface StreamChatOptions {
   messages: Msg[];
+  userId?: string;
   onDelta: (deltaText: string) => void;
   onDone: (meta?: { sources?: string; cached?: boolean }) => void;
   signal?: AbortSignal;
