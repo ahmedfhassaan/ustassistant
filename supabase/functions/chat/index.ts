@@ -323,7 +323,7 @@ ${strictInstruction}
       if (fullContent) {
         try {
           const sourcesStr = sourceNames.length > 0 ? sourceNames.join("، ") : null;
-          const userId = messages[0]?.user_id || null;
+          
           await supabase.from("chat_logs").insert({
             question: lastUserMessage,
             question_hash: questionHash,
