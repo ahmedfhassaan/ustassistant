@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Moon, Sun, GraduationCap, BookOpen, Users, Shield } from "lucide-react";
 import { useTheme } from "@/hooks/use-theme";
 import universityLogo from "@/assets/university-logo.png";
+import universityLogoDark from "@/assets/university-logo-dark.jpeg";
 
 const ADMIN_CREDENTIALS = { id: "admin", password: "admin123" };
 
