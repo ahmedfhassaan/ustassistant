@@ -116,7 +116,6 @@ serve(async (req) => {
       try {
         if (userId) {
           const { count } = await supabase
-          const { count } = await supabase
             .from("chat_logs")
             .select("id", { count: "exact", head: true })
             .eq("user_id", userId)
