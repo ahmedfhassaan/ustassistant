@@ -116,11 +116,18 @@ const Login = () => {
       {/* Left panel - Branding (hidden on mobile) */}
       <div className="hidden lg:flex lg:w-[45%] flex-col items-center justify-center p-12 relative">
         <div className="max-w-md text-center space-y-8 animate-fade-in-up" style={{ animationDelay: "0.1s", opacity: 0 }}>
-          <img
-            src={isDark ? universityLogoDark : universityLogo}
-            alt="شعار جامعة العلوم والتكنولوجيا"
-            className={`w-44 h-auto mx-auto object-contain ${isDark ? "drop-shadow-[0_0_8px_rgba(112,200,255,0.15)]" : ""}`}
-          />
+          <div className="relative w-44 h-44 mx-auto">
+            <img
+              src={universityLogo}
+              alt="شعار جامعة العلوم والتكنولوجيا"
+              className={`absolute inset-0 w-44 h-auto object-contain transition-opacity duration-200 ${isDark ? "opacity-0" : "opacity-100"}`}
+            />
+            <img
+              src={universityLogoDark}
+              alt="شعار جامعة العلوم والتكنولوجيا"
+              className={`absolute inset-0 w-44 h-auto object-contain transition-opacity duration-200 ${isDark ? "opacity-100 drop-shadow-[0_0_8px_rgba(112,200,255,0.15)]" : "opacity-0"}`}
+            />
+          </div>
           <div className="space-y-3">
             <h1 className={`text-3xl font-bold ${isDark ? "text-foreground glow-text" : "text-foreground"}`}>
               المساعد الجامعي الذكي
@@ -170,11 +177,18 @@ const Login = () => {
         }`}>
           {/* Mobile logo */}
           <div className="flex flex-col items-center gap-3 lg:hidden animate-fade-in-up" style={{ animationDelay: "0.1s", opacity: 0 }}>
-            <img
-              src={isDark ? universityLogoDark : universityLogo}
-              alt="شعار جامعة العلوم والتكنولوجيا"
-              className={`w-28 h-auto object-contain ${isDark ? "drop-shadow-[0_0_6px_rgba(112,200,255,0.15)]" : ""}`}
-            />
+            <div className="relative w-28 h-28 mx-auto">
+              <img
+                src={universityLogo}
+                alt="شعار جامعة العلوم والتكنولوجيا"
+                className={`absolute inset-0 w-28 h-auto object-contain transition-opacity duration-200 ${isDark ? "opacity-0" : "opacity-100"}`}
+              />
+              <img
+                src={universityLogoDark}
+                alt="شعار جامعة العلوم والتكنولوجيا"
+                className={`absolute inset-0 w-28 h-auto object-contain transition-opacity duration-200 ${isDark ? "opacity-100 drop-shadow-[0_0_6px_rgba(112,200,255,0.15)]" : "opacity-0"}`}
+              />
+            </div>
             <h1 className={`text-xl font-bold ${isDark ? "text-foreground glow-text" : "text-foreground"}`}>
               المساعد الجامعي الذكي
             </h1>
