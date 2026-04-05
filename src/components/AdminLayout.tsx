@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate, useLocation, Outlet } from "react-router-dom";
-import { LayoutDashboard, BookOpen, HelpCircle, LogOut, Menu, Moon, Sun } from "lucide-react";
+import { LayoutDashboard, BookOpen, HelpCircle, Settings, LogOut, Menu, Moon, Sun } from "lucide-react";
 import { useTheme } from "@/hooks/use-theme";
 import { Button } from "@/components/ui/button";
 import universityLogo from "@/assets/university-logo.png";
@@ -10,6 +10,7 @@ const navItems = [
   { path: "/admin", label: "لوحة التحكم", icon: LayoutDashboard },
   { path: "/admin/knowledge", label: "قاعدة المعرفة", icon: BookOpen },
   { path: "/admin/faq", label: "الأسئلة الشائعة", icon: HelpCircle },
+  { path: "/admin/settings", label: "الإعدادات", icon: Settings },
 ];
 
 const AdminLayout = () => {

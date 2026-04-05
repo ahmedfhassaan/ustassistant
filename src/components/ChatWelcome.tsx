@@ -1,5 +1,6 @@
 import { CalendarDays, BookOpen, GraduationCap, ClipboardList, Sparkles, HelpCircle } from "lucide-react";
 import { useTheme } from "@/hooks/use-theme";
+import { useSettings } from "@/hooks/use-settings";
 import universityLogo from "@/assets/university-logo.png";
 import universityLogoDark from "@/assets/university-logo-dark.jpeg";
 
@@ -45,6 +46,7 @@ const suggestions = [
 
 const ChatWelcome = ({ studentName, onSuggestionClick }: ChatWelcomeProps) => {
   const { isDark } = useTheme();
+  const { settings } = useSettings();
 
   const getGreeting = () => {
     const hour = new Date().getHours();
@@ -68,7 +70,7 @@ const ChatWelcome = ({ studentName, onSuggestionClick }: ChatWelcomeProps) => {
               {getGreeting()}، {studentName} 👋
             </h1>
             <p className="text-muted-foreground text-base sm:text-lg max-w-md mx-auto leading-relaxed">
-              كيف يمكنني مساعدتك اليوم؟
+              {settings.welcome_message}
             </p>
           </div>
         </div>

@@ -6,10 +6,6 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-/**
- * Simple hash for cache key generation.
- * Normalizes the question by trimming, lowercasing, and removing extra spaces.
- */
 function hashQuestion(text: string): string {
   const normalized = text.trim().toLowerCase().replace(/\s+/g, " ");
   let hash = 0;
@@ -21,9 +17,6 @@ function hashQuestion(text: string): string {
   return "q_" + Math.abs(hash).toString(36);
 }
 
-/**
- * Auto-classify question into a category based on keywords.
- */
 function classifyQuestion(text: string): string {
   const lower = text.trim().toLowerCase();
   const categories: [string, string[]][] = [
@@ -38,6 +31,49 @@ function classifyQuestion(text: string): string {
     if (keywords.some(k => lower.includes(k))) return cat;
   }
   return "عام";
+}
+
+/** Load all settings from assistant_settings table */
+async function loadSettings(supabase: any): Promise<Record<string, string>> {
+  const defaults: Record<string, string> = {
+    assistant_name: "المساعد الجامعي الذكي",
+    welcome_message: "كيف يمكنني مساعدتك اليوم؟",
+    tone: "professional",
+    max_response_length: "1000",
+    show_sources: "true",
+    fallback_message: "عذراً، لم أجد معلومات مؤكدة حول هذا السؤال. يرجى التواصل مع الجهة المختصة في الجامعة.",
+    strict_sources: "false",
+    cache_enabled: "true",
+    cache_ttl_minutes: "1440",
+    search_results_count: "5",
+    ai_model: "google/gemini-3-flash-preview",
+    confidence_threshold: "30",
+    low_confidence_message: "لا توجد معلومة مؤكدة حول هذا الموضوع. يرجى مراجعة الجهة المختصة.",
+    max_messages_per_day: "100",
+    abuse_protection: "true",
+  };
+
+  try {
+    const { data } = await supabase.from("assistant_settings").select("key, value");
+    if (data) {
+      for (const row of data) {
+        defaults[row.key] = row.value;
+      }
+    }
+  } catch (e) {
+    console.error("Failed to load settings:", e);
+  }
+
+  return defaults;
+}
+
+function buildToneInstruction(tone: string): string {
+  switch (tone) {
+    case "friendly": return "- كن ودياً ومرحاً في ردودك، واستخدم لغة قريبة من الطلاب";
+    case "concise": return "- كن مختصراً جداً وادخل في الموضوع مباشرة بدون مقدمات";
+    case "academic": return "- استخدم لغة أكاديمية رسمية ومصطلحات علمية دقيقة";
+    default: return "- كن مهذباً ومحترفاً في ردودك";
+  }
 }
 
 serve(async (req) => {
@@ -67,12 +103,38 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
+    // Load settings from DB
+    const settings = await loadSettings(supabase);
+
     const lastUserMessage = [...messages].reverse().find(m => m.role === "user")?.content || "";
     const questionHash = hashQuestion(lastUserMessage);
 
+    // --- RATE LIMITING (abuse protection) ---
+    if (settings.abuse_protection === "true") {
+      try {
+        const userId = messages[0]?.user_id || null;
+        if (userId) {
+          const { count } = await supabase
+            .from("chat_logs")
+            .select("id", { count: "exact", head: true })
+            .eq("user_id", userId)
+            .gte("created_at", new Date(Date.now() - 86400000).toISOString());
+
+          const maxPerDay = parseInt(settings.max_messages_per_day) || 100;
+          if (count && count >= maxPerDay) {
+            return new Response(
+              JSON.stringify({ error: "تم تجاوز الحد اليومي للرسائل. حاول مرة أخرى غداً." }),
+              { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+            );
+          }
+        }
+      } catch (e) {
+        console.error("Rate limit check error:", e);
+      }
+    }
+
     // --- CACHE CHECK ---
-    // Only use cache for single-turn questions (first message in conversation)
-    if (messages.length <= 1) {
+    if (settings.cache_enabled === "true" && messages.length <= 1) {
       try {
         const { data: cached } = await supabase
           .from("response_cache")
@@ -82,7 +144,6 @@ serve(async (req) => {
           .maybeSingle();
 
         if (cached) {
-          // Log cached response
           try {
             await supabase.from("chat_logs").insert({
               question: lastUserMessage,
@@ -96,12 +157,11 @@ serve(async (req) => {
             console.error("Cache log error:", e);
           }
 
-          // Return cached response as a non-streaming JSON response
           return new Response(
-            JSON.stringify({ 
-              cached: true, 
-              content: cached.answer, 
-              sources: cached.sources 
+            JSON.stringify({
+              cached: true,
+              content: cached.answer,
+              sources: settings.show_sources === "true" ? cached.sources : null,
             }),
             { headers: { ...corsHeaders, "Content-Type": "application/json" } }
           );
@@ -114,19 +174,21 @@ serve(async (req) => {
     // --- KNOWLEDGE SEARCH (RAG) ---
     let knowledgeContext = "";
     let sourceNames: string[] = [];
+    let maxRank = 0;
+    const searchCount = parseInt(settings.search_results_count) || 5;
 
     try {
       const { data: chunks } = await supabase.rpc("search_knowledge", {
         query_text: lastUserMessage,
-        max_results: 5,
+        max_results: searchCount,
       });
 
       if (chunks && chunks.length > 0) {
-        // Deduplicate source names
         sourceNames = [...new Set(chunks.map((c: any) => c.document_name))];
-        
+        maxRank = Math.max(...chunks.map((c: any) => c.rank));
+
         knowledgeContext = "\n\n--- معلومات من قاعدة المعرفة الجامعية ---\n" +
-          chunks.map((c: any, i: number) => 
+          chunks.map((c: any) =>
             `[مصدر: ${c.document_name} | درجة الصلة: ${(c.rank * 100).toFixed(0)}%]\n${c.content}`
           ).join("\n\n") +
           "\n--- نهاية المعلومات ---";
@@ -135,7 +197,45 @@ serve(async (req) => {
       console.error("Knowledge search error:", e);
     }
 
-    const systemPrompt = `أنت المساعد الجامعي الذكي، مساعد ذكاء اصطناعي متخصص في مساعدة طلاب الجامعة.
+    // --- CONFIDENCE CHECK ---
+    const confidenceThreshold = parseInt(settings.confidence_threshold) || 30;
+    const confidencePercent = maxRank * 100;
+
+    if (settings.strict_sources === "true" && sourceNames.length === 0) {
+      // No sources found and strict mode is on
+      const fallback = settings.fallback_message;
+      try {
+        await supabase.from("chat_logs").insert({
+          question: lastUserMessage,
+          question_hash: questionHash,
+          sources: null,
+          cached: false,
+          user_id: null,
+          category: classifyQuestion(lastUserMessage),
+        });
+      } catch {}
+      return new Response(
+        JSON.stringify({ cached: true, content: fallback, sources: null }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    if (confidencePercent < confidenceThreshold && sourceNames.length > 0) {
+      knowledgeContext += `\n\n⚠️ ملاحظة: درجة الصلة منخفضة (${confidencePercent.toFixed(0)}%). إذا لم تكن المعلومات كافية، استخدم هذه الرسالة: "${settings.low_confidence_message}"`;
+    }
+
+    // Build dynamic system prompt from settings
+    const toneInstruction = buildToneInstruction(settings.tone);
+    const maxLen = parseInt(settings.max_response_length) || 1000;
+    const showSourcesInstruction = settings.show_sources === "true"
+      ? "- **مهم جداً**: في نهاية إجابتك، إذا استخدمت معلومات من قاعدة المعرفة، أضف سطراً بالتنسيق التالي:\n  [المصادر: اسم_الملف1، اسم_الملف2]"
+      : "- لا تذكر المصادر في إجابتك";
+
+    const strictInstruction = settings.strict_sources === "true"
+      ? `- إذا لم تجد معلومات في قاعدة المعرفة، لا تتخمن أو تنشئ إجابة. أجب فقط بـ: "${settings.fallback_message}"`
+      : "- إذا لم تكن متأكداً من إجابة، اذكر ذلك بوضوح وانصح الطالب بالتواصل مع الجهة المختصة";
+
+    const systemPrompt = `أنت ${settings.assistant_name}، مساعد ذكاء اصطناعي متخصص في مساعدة طلاب الجامعة.
 
 مهامك:
 - الإجابة على أسئلة الطلاب المتعلقة بالجامعة والدراسة
@@ -145,11 +245,11 @@ serve(async (req) => {
 
 قواعد:
 - أجب دائماً باللغة العربية
-- كن مهذباً ومحترفاً
+${toneInstruction}
+- حافظ على إجابتك بحد أقصى ${maxLen} كلمة
 - إذا وجدت معلومات من قاعدة المعرفة أدناه، استخدمها في إجابتك
-- **مهم جداً**: في نهاية إجابتك، إذا استخدمت معلومات من قاعدة المعرفة، أضف سطراً بالتنسيق التالي:
-  [المصادر: اسم_الملف1، اسم_الملف2]
-- إذا لم تكن متأكداً من إجابة، اذكر ذلك بوضوح وانصح الطالب بالتواصل مع الجهة المختصة
+${showSourcesInstruction}
+${strictInstruction}
 - استخدم تنسيق Markdown عند الحاجة لتنظيم الإجابات
 - كن مختصراً ومفيداً${knowledgeContext}`;
 
@@ -160,7 +260,7 @@ serve(async (req) => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
+        model: settings.ai_model || "google/gemini-3-flash-preview",
         messages: [
           { role: "system", content: systemPrompt },
           ...messages,
@@ -190,13 +290,10 @@ serve(async (req) => {
       );
     }
 
-    // For streaming, we need to intercept the stream to cache the response
-    // We'll use a TransformStream to collect the full response while streaming
     const { readable, writable } = new TransformStream();
     const writer = writable.getWriter();
     const reader = response.body!.getReader();
 
-    // Process stream in background - collect full response for caching
     (async () => {
       let fullContent = "";
       const decoder = new TextDecoder();
@@ -204,11 +301,7 @@ serve(async (req) => {
         while (true) {
           const { done, value } = await reader.read();
           if (done) break;
-          
-          // Pass through to client
           await writer.write(value);
-          
-          // Collect content for caching
           const text = decoder.decode(value, { stream: true });
           for (const line of text.split("\n")) {
             if (!line.startsWith("data: ")) continue;
@@ -227,7 +320,6 @@ serve(async (req) => {
         await writer.close();
       }
 
-      // Log to chat_logs
       if (fullContent) {
         try {
           const sourcesStr = sourceNames.length > 0 ? sourceNames.join("، ") : null;
@@ -245,10 +337,12 @@ serve(async (req) => {
         }
       }
 
-      // Cache the response (only for single-turn, non-empty responses)
-      if (fullContent && messages.length <= 1) {
+      // Cache the response
+      if (fullContent && settings.cache_enabled === "true" && messages.length <= 1) {
         try {
           const sourcesStr = sourceNames.length > 0 ? sourceNames.join("، ") : null;
+          const ttlMinutes = parseInt(settings.cache_ttl_minutes) || 1440;
+          const expiresAt = new Date(Date.now() + ttlMinutes * 60 * 1000).toISOString();
           await supabase
             .from("response_cache")
             .upsert({
@@ -256,13 +350,13 @@ serve(async (req) => {
               question: lastUserMessage,
               answer: fullContent,
               sources: sourcesStr,
+              expires_at: expiresAt,
             }, { onConflict: "question_hash" });
         } catch (e) {
           console.error("Cache save error:", e);
         }
       }
 
-      // Cleanup expired cache entries (best-effort, non-blocking)
       try {
         await supabase
           .from("response_cache")
