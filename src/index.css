@@ -163,6 +163,7 @@ input:-webkit-autofill:focus {
     -webkit-backdrop-filter: blur(16px);
     border: 1px solid rgba(255, 255, 255, 0.08);
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+    transition: background-color 0.3s, border-color 0.3s, color 0.3s, box-shadow 0.3s;
   }
 
   .glass-sidebar {
@@ -170,6 +171,7 @@ input:-webkit-autofill:focus {
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
     border-color: rgba(255, 255, 255, 0.06);
+    transition: background-color 0.3s, border-color 0.3s, color 0.3s;
   }
 
   .glass-header {
@@ -177,6 +179,7 @@ input:-webkit-autofill:focus {
     backdrop-filter: blur(16px);
     -webkit-backdrop-filter: blur(16px);
     border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    transition: background-color 0.3s, border-color 0.3s, color 0.3s;
   }
 
   .glass-input {
@@ -184,6 +187,7 @@ input:-webkit-autofill:focus {
     backdrop-filter: blur(8px);
     -webkit-backdrop-filter: blur(8px);
     border: 1px solid rgba(255, 255, 255, 0.1);
+    transition: background-color 0.3s, border-color 0.3s, color 0.3s;
   }
 
   /* Glow effects */
