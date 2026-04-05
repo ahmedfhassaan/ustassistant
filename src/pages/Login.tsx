@@ -61,7 +61,27 @@ const Login = () => {
         }
       }
 
-      localStorage.setItem("student", JSON.stringify({ id: studentId, name: "طالب جامعي" }));
+      // Verify student credentials from DB
+      const { data, error: rpcError } = await supabase.rpc("verify_student_login", {
+        p_student_id: studentId,
+        p_password: password,
+      });
+
+      if (rpcError) {
+        setError("حدث خطأ أثناء تسجيل الدخول");
+        setIsLoading(false);
+        return;
+      }
+
+      const result = data as { success: boolean; id?: string; student_id?: string; name?: string };
+
+      if (!result?.success) {
+        setError("الرقم الجامعي أو كلمة المرور غير صحيحة");
+        setIsLoading(false);
+        return;
+      }
+
+      localStorage.setItem("student", JSON.stringify({ id: result.student_id, name: result.name }));
       setIsLoading(false);
       navigate("/chat");
     } catch {
