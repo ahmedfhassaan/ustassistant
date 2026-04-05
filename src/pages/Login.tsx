@@ -120,17 +120,17 @@ const Login = () => {
 
       {/* Right panel - Login form */}
       <div className={`flex-1 flex items-center justify-center p-6 sm:p-8 relative ${
-        isDark ? "" : "lg:bg-secondary/30"
+        isDark ? "" : "lg:bg-muted/40"
       }`}>
         {/* Subtle divider line for light mode */}
         {!isDark && (
-          <div className="hidden lg:block absolute right-0 top-[10%] bottom-[10%] w-px bg-border" />
+          <div className="hidden lg:block absolute right-0 top-[10%] bottom-[10%] w-px bg-border/50" />
         )}
 
         <div className={`w-full max-w-sm space-y-7 relative z-10 p-8 rounded-3xl transition-all duration-300 animate-scale-in ${
           isDark
-            ? "glass-card border border-primary/20 shadow-2xl shadow-primary/10"
-            : "bg-background shadow-2xl shadow-primary/10 border border-border/50 ring-1 ring-primary/5"
+            ? "bg-[hsl(222_40%_14%)] border border-primary/25 shadow-[0_0_40px_rgba(112,200,255,0.08),0_20px_60px_rgba(0,0,0,0.4)] ring-1 ring-white/5"
+            : "bg-background shadow-[0_20px_60px_rgba(0,0,0,0.08)] border border-border/40 ring-1 ring-primary/5"
         }`}>
           {/* Mobile logo */}
           <div className="flex flex-col items-center gap-3 lg:hidden animate-fade-in-up" style={{ animationDelay: "0.1s", opacity: 0 }}>
