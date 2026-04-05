@@ -1,5 +1,5 @@
 import { useState, useRef } from "react";
-import { Send } from "lucide-react";
+import { ArrowUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useTheme } from "@/hooks/use-theme";
 
@@ -42,22 +42,11 @@ const ChatInput = ({ onSend, isLoading }: ChatInputProps) => {
       isDark ? "glass-header border-t border-white/5" : "border-t border-border/50 bg-background/80 backdrop-blur-sm"
     }`}>
       <div className="max-w-3xl mx-auto">
-        <div className={`flex items-end gap-2 rounded-2xl px-4 py-2.5 transition-all duration-200 ${
+        <div className={`flex items-end gap-2 rounded-2xl px-4 py-2.5 transition-all duration-200 flex-row-reverse ${
           isDark
             ? "glass-input focus-within:border-primary/40 focus-within:shadow-[0_0_15px_rgba(112,200,255,0.1)]"
             : "bg-secondary/60 border border-border/50 focus-within:border-primary/50 focus-within:bg-secondary/80 focus-within:shadow-[0_0_0_3px_hsl(var(--primary)/0.1)]"
         }`}>
-          <textarea
-            ref={textareaRef}
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            onKeyDown={handleKeyDown}
-            onInput={handleInput}
-            placeholder="اكتب سؤالك هنا..."
-            rows={1}
-            dir="rtl"
-            className="flex-1 bg-transparent resize-none outline-none text-sm leading-6 max-h-[150px] py-1 text-foreground placeholder:text-muted-foreground"
-          />
           <Button
             size="icon"
             onClick={handleSubmit}
@@ -68,8 +57,19 @@ const ChatInput = ({ onSend, isLoading }: ChatInputProps) => {
                 : "bg-primary hover:bg-primary/90 text-primary-foreground"
             }`}
           >
-            <Send className="w-4 h-4 rotate-180" />
+            <ArrowUp className="w-4 h-4" />
           </Button>
+          <textarea
+            ref={textareaRef}
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            onKeyDown={handleKeyDown}
+            onInput={handleInput}
+            placeholder="اكتب سؤالك هنا..."
+            rows={1}
+            dir="rtl"
+            className="flex-1 bg-transparent resize-none outline-none text-sm leading-6 max-h-[150px] py-1 text-foreground placeholder:text-muted-foreground text-right"
+          />
         </div>
         <p className="text-[11px] text-muted-foreground/50 text-center mt-2">
           المساعد الجامعي الذكي قد يخطئ أحيانًا. تحقق من المعلومات المهمة.
