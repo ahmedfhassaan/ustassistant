@@ -16,7 +16,7 @@ const ChatHeader = ({ studentName, onLogout, onMenuClick }: ChatHeaderProps) => 
   const { settings } = useSettings();
 
   return (
-    <header className={`h-14 border-b flex items-center justify-between px-4 shrink-0 transition-all duration-300 animate-slide-in-left ${
+    <header className={`h-14 border-b flex items-center justify-between px-4 shrink-0 transition-colors duration-300 animate-slide-in-left ${
       isDark ? "glass-header border-transparent" : "bg-background border-border"
     }`}>
       <div className="flex items-center gap-3">

@@ -163,7 +163,7 @@ const Login = () => {
           <div className="hidden lg:block absolute right-0 top-[10%] bottom-[10%] w-px bg-border/50" />
         )}
 
-        <div className={`w-full max-w-sm space-y-7 relative z-10 p-8 rounded-3xl transition-all duration-300 animate-scale-in ${
+        <div className={`w-full max-w-sm space-y-7 relative z-10 p-8 rounded-3xl transition-colors duration-300 animate-scale-in ${
           isDark
             ? "bg-[hsl(222_40%_14%)] border border-primary/25 shadow-[0_0_40px_rgba(112,200,255,0.08),0_20px_60px_rgba(0,0,0,0.4)] ring-1 ring-white/5"
             : "bg-background shadow-[0_20px_60px_rgba(0,0,0,0.08)] border border-border/40 ring-1 ring-primary/5"

@@ -38,7 +38,7 @@ const ChatInput = ({ onSend, isLoading }: ChatInputProps) => {
   };
 
   return (
-    <div className={`p-3 sm:p-4 shrink-0 transition-all duration-300 ${
+    <div className={`p-3 sm:p-4 shrink-0 transition-colors duration-300 ${
       isDark ? "glass-header border-t border-white/5" : "border-t border-border/50 bg-background/80 backdrop-blur-sm"
     }`}>
       <div className="max-w-3xl mx-auto">

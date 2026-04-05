@@ -161,7 +161,7 @@ const AdminStudents = () => {
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto animate-fade-in">
-      <Card className={`transition-all duration-300 rounded-2xl ${cardBase}`}>
+      <Card className={`transition-colors duration-300 rounded-2xl ${cardBase}`}>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
           <CardTitle className={`text-lg font-bold ${isDark ? "text-primary glow-text" : "text-foreground"}`}>
             إدارة حسابات الطلاب
@@ -216,7 +216,7 @@ const AdminStudents = () => {
               {filteredStudents.map((student) => (
                 <div
                   key={student.id}
-                  className={`flex items-center justify-between p-4 rounded-xl transition-all duration-300 ${rowBase}`}
+                  className={`flex items-center justify-between p-4 rounded-xl transition-colors duration-300 ${rowBase}`}
                 >
                   <div className="min-w-0">
                     <p className="text-sm font-semibold text-foreground">{student.name}</p>
