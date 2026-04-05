@@ -76,6 +76,36 @@ export type Database = {
         }
         Relationships: []
       }
+      response_cache: {
+        Row: {
+          answer: string
+          created_at: string
+          expires_at: string
+          id: string
+          question: string
+          question_hash: string
+          sources: string | null
+        }
+        Insert: {
+          answer: string
+          created_at?: string
+          expires_at?: string
+          id?: string
+          question: string
+          question_hash: string
+          sources?: string | null
+        }
+        Update: {
+          answer?: string
+          created_at?: string
+          expires_at?: string
+          id?: string
+          question?: string
+          question_hash?: string
+          sources?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
