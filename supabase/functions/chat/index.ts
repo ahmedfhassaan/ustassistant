@@ -210,7 +210,7 @@ serve(async (req) => {
           question_hash: questionHash,
           sources: null,
           cached: false,
-          user_id: null,
+          user_id: userId,
           category: classifyQuestion(lastUserMessage),
         });
       } catch {}
