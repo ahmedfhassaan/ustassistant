@@ -128,7 +128,9 @@ const Login = () => {
         )}
 
         <div className={`w-full max-w-sm space-y-7 relative z-10 p-8 rounded-3xl transition-all duration-300 animate-scale-in ${
-          isDark ? "glass-card" : "bg-background shadow-xl shadow-primary/5 border border-border/50"
+          isDark
+            ? "glass-card border border-primary/20 shadow-2xl shadow-primary/10"
+            : "bg-background shadow-2xl shadow-primary/10 border border-border/50 ring-1 ring-primary/5"
         }`}>
           {/* Mobile logo */}
           <div className="flex flex-col items-center gap-3 lg:hidden animate-fade-in-up" style={{ animationDelay: "0.1s", opacity: 0 }}>
