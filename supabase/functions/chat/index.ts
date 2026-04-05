@@ -63,6 +63,18 @@ serve(async (req) => {
           .maybeSingle();
 
         if (cached) {
+          // Log cached hit
+          try {
+            await supabase.from("chat_logs").insert({
+              question: lastUserMessage,
+              question_hash: questionHash,
+              sources: cached.sources,
+              cached: true,
+            });
+          } catch (e) {
+            console.error("Cache log error:", e);
+          }
+
           // Return cached response as a non-streaming JSON response
           return new Response(
             JSON.stringify({ 
@@ -192,6 +204,19 @@ serve(async (req) => {
         console.error("Stream processing error:", e);
       } finally {
         await writer.close();
+      }
+
+      // Log the question for analytics
+      try {
+        const sourcesStr = sourceNames.length > 0 ? sourceNames.join("، ") : null;
+        await supabase.from("chat_logs").insert({
+          question: lastUserMessage,
+          question_hash: questionHash,
+          sources: sourcesStr,
+          cached: false,
+        });
+      } catch (e) {
+        console.error("Chat log error:", e);
       }
 
       // Cache the response (only for single-turn, non-empty responses)
