@@ -227,6 +227,7 @@ export type Database = {
           created_at: string
           id: string
           name: string
+          plain_password: string
           student_id: string
         }[]
       }
