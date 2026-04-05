@@ -96,8 +96,9 @@ const AdminKnowledge = () => {
           // Read text files directly
           contentText = await file.text();
         } else {
-          // Upload PDF to storage
-          const storagePath = `${docData.id}/${file.name}`;
+          // Upload PDF to storage - use ASCII-safe path
+          const safeFileName = `${Date.now()}.${fileExt}`;
+          const storagePath = `${docData.id}/${safeFileName}`;
           const { error: uploadError } = await supabase.storage
             .from("knowledge")
             .upload(storagePath, file);
