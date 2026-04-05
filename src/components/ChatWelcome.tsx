@@ -50,9 +50,11 @@ const ChatWelcome = ({ studentName, onSuggestionClick }: ChatWelcomeProps) => {
 
   const getGreeting = () => {
     const hour = new Date().getHours();
-    if (hour < 12) return "صباح الخير";
-    if (hour < 17) return "مساء الخير";
-    return "مساء الخير";
+    if (hour < 6) return "أهلاً بك 🌙";
+    if (hour < 12) return "صباح الخير ☀️";
+    if (hour < 17) return "مساء الخير 🌤️";
+    if (hour < 21) return "مساء النور 🌆";
+    return "أهلاً بك 🌙";
   };
 
   return (
