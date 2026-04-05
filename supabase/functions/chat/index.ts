@@ -63,6 +63,19 @@ serve(async (req) => {
           .maybeSingle();
 
         if (cached) {
+          // Log cached response
+          try {
+            await supabase.from("chat_logs").insert({
+              question: lastUserMessage,
+              question_hash: questionHash,
+              sources: cached.sources,
+              cached: true,
+              user_id: null,
+            });
+          } catch (e) {
+            console.error("Cache log error:", e);
+          }
+
           // Return cached response as a non-streaming JSON response
           return new Response(
             JSON.stringify({ 
