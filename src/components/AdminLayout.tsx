@@ -78,6 +78,7 @@ const AdminLayout = () => {
         </nav>
 
         <div className={`p-3 border-t ${isDark ? "border-white/6" : "border-border"}`}>
+          <p className="text-[10px] text-muted-foreground/50 text-center mb-2">v{__APP_VERSION__}</p>
           <button
             onClick={handleLogout}
             className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium text-destructive hover:bg-destructive/10 transition-colors"

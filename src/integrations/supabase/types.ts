@@ -190,6 +190,7 @@ export type Database = {
           id: string
           name: string
           password_hash: string
+          plain_password: string | null
           student_id: string
         }
         Insert: {
@@ -197,6 +198,7 @@ export type Database = {
           id?: string
           name: string
           password_hash: string
+          plain_password?: string | null
           student_id: string
         }
         Update: {
@@ -204,6 +206,7 @@ export type Database = {
           id?: string
           name?: string
           password_hash?: string
+          plain_password?: string | null
           student_id?: string
         }
         Relationships: []
@@ -224,6 +227,7 @@ export type Database = {
           created_at: string
           id: string
           name: string
+          plain_password: string
           student_id: string
         }[]
       }

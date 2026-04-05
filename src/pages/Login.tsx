@@ -259,7 +259,7 @@ const Login = () => {
 
           {/* Footer */}
           <p className="text-[11px] text-muted-foreground/60 text-center animate-fade-in-up" style={{ animationDelay: "0.4s", opacity: 0 }}>
-            جامعة العلوم والتكنولوجيا © {new Date().getFullYear()}
+            جامعة العلوم والتكنولوجيا © {new Date().getFullYear()} — v{__APP_VERSION__}
           </p>
         </div>
       </div>
