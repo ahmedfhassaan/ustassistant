@@ -2,6 +2,7 @@ import { LogOut, Menu, Moon, Sun } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useTheme } from "@/hooks/use-theme";
 import universityLogo from "@/assets/university-logo.png";
+import universityLogoDark from "@/assets/university-logo-dark.jpeg";
 
 interface ChatHeaderProps {
   studentName: string;
@@ -25,7 +26,11 @@ const ChatHeader = ({ studentName, onLogout, onMenuClick }: ChatHeaderProps) => 
         >
           <Menu className="w-5 h-5" />
         </Button>
-        <img src={universityLogo} alt="شعار الجامعة" className={`h-9 w-auto ${isDark ? "brightness-125 drop-shadow-[0_0_3px_rgba(112,200,255,0.2)]" : ""}`} />
+        <img
+          src={isDark ? universityLogoDark : universityLogo}
+          alt="شعار جامعة العلوم والتكنولوجيا"
+          className={`h-10 w-auto object-contain ${isDark ? "drop-shadow-[0_0_6px_rgba(112,200,255,0.15)]" : ""}`}
+        />
         <span className={`font-bold text-base hidden sm:inline ${isDark ? "text-foreground glow-text" : "text-foreground"}`}>
           المساعد الجامعي الذكي
         </span>
