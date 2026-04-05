@@ -190,6 +190,7 @@ export type Database = {
           id: string
           name: string
           password_hash: string
+          plain_password: string | null
           student_id: string
         }
         Insert: {
@@ -197,6 +198,7 @@ export type Database = {
           id?: string
           name: string
           password_hash: string
+          plain_password?: string | null
           student_id: string
         }
         Update: {
@@ -204,6 +206,7 @@ export type Database = {
           id?: string
           name?: string
           password_hash?: string
+          plain_password?: string | null
           student_id?: string
         }
         Relationships: []
@@ -213,6 +216,29 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      admin_add_student: {
+        Args: { p_name: string; p_password: string; p_student_id: string }
+        Returns: Json
+      }
+      admin_delete_student: { Args: { p_id: string }; Returns: Json }
+      admin_list_students: {
+        Args: never
+        Returns: {
+          created_at: string
+          id: string
+          name: string
+          plain_password: string
+          student_id: string
+        }[]
+      }
+      admin_reset_password: {
+        Args: { p_id: string; p_new_password: string }
+        Returns: Json
+      }
+      admin_update_student: {
+        Args: { p_id: string; p_name: string }
+        Returns: Json
+      }
       get_dashboard_stats: { Args: never; Returns: Json }
       get_question_stats: {
         Args: { limit_count?: number }
