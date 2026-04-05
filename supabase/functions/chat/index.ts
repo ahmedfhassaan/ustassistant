@@ -21,6 +21,25 @@ function hashQuestion(text: string): string {
   return "q_" + Math.abs(hash).toString(36);
 }
 
+/**
+ * Auto-classify question into a category based on keywords.
+ */
+function classifyQuestion(text: string): string {
+  const lower = text.trim().toLowerCase();
+  const categories: [string, string[]][] = [
+    ["تسجيل", ["تسجيل", "قبول", "تقديم", "التحاق", "فصل دراسي", "الفصل القادم"]],
+    ["امتحانات", ["امتحان", "اختبار", "تأجيل امتحان", "درجات", "نتائج", "معدل", "تراكمي", "كشف درجات"]],
+    ["مالي", ["رسوم", "مالي", "دفع", "أقساط", "منحة", "خصم"]],
+    ["إداري", ["تحويل", "انسحاب", "وثيقة", "شهادة", "خطاب", "تعريف", "إفادة"]],
+    ["خدمات", ["مكتبة", "سكن", "مواقف", "كافتيريا", "نادي", "رياضة", "نشاط"]],
+    ["أكاديمي", ["مادة", "مقرر", "حذف مادة", "إضافة مادة", "جدول", "ساعات", "خطة دراسية", "تخصص"]],
+  ];
+  for (const [cat, keywords] of categories) {
+    if (keywords.some(k => lower.includes(k))) return cat;
+  }
+  return "عام";
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -71,6 +90,7 @@ serve(async (req) => {
               sources: cached.sources,
               cached: true,
               user_id: null,
+              category: classifyQuestion(lastUserMessage),
             });
           } catch (e) {
             console.error("Cache log error:", e);
@@ -218,6 +238,7 @@ serve(async (req) => {
             sources: sourcesStr,
             cached: false,
             user_id: userId,
+            category: classifyQuestion(lastUserMessage),
           });
         } catch (e) {
           console.error("Chat log error:", e);
