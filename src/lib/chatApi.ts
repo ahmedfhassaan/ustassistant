@@ -2,17 +2,14 @@ const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat`;
 
 type Msg = { role: "user" | "assistant"; content: string };
 
-export async function streamChat({
-  messages,
-  onDelta,
-  onDone,
-  signal,
-}: {
+interface StreamChatOptions {
   messages: Msg[];
   onDelta: (deltaText: string) => void;
-  onDone: () => void;
+  onDone: (meta?: { sources?: string; cached?: boolean }) => void;
   signal?: AbortSignal;
-}) {
+}
+
+export async function streamChat({ messages, onDelta, onDone, signal }: StreamChatOptions) {
   const resp = await fetch(CHAT_URL, {
     method: "POST",
     headers: {
@@ -30,6 +27,19 @@ export async function streamChat({
 
   if (!resp.body) throw new Error("لم يتم استلام رد");
 
+  const contentType = resp.headers.get("content-type") || "";
+
+  // Handle cached (non-streaming) response
+  if (contentType.includes("application/json")) {
+    const data = await resp.json();
+    if (data.cached && data.content) {
+      onDelta(data.content);
+      onDone({ sources: data.sources || undefined, cached: true });
+      return;
+    }
+  }
+
+  // Handle streaming response
   const reader = resp.body.getReader();
   const decoder = new TextDecoder();
   let textBuffer = "";

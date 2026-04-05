@@ -28,10 +28,8 @@ serve(async (req) => {
     let text = "";
 
     if (content_text) {
-      // Direct text content
       text = content_text;
     } else if (file_path) {
-      // Download file from storage
       const { data, error } = await supabase.storage
         .from("knowledge")
         .download(file_path);
@@ -44,14 +42,11 @@ serve(async (req) => {
       if (fileName.endsWith(".txt") || fileName.endsWith(".md") || fileName.endsWith(".csv")) {
         text = await data.text();
       } else if (fileName.endsWith(".pdf")) {
-        // For PDFs, use the AI to extract text
         const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
         if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY غير مهيأ");
 
-        // Convert PDF to base64 for the AI to process
         const arrayBuffer = await data.arrayBuffer();
         const bytes = new Uint8Array(arrayBuffer);
-        // Encode base64 in chunks to avoid stack overflow
         let binary = "";
         const chunkLen = 8192;
         for (let i = 0; i < bytes.length; i += chunkLen) {
@@ -98,9 +93,7 @@ serve(async (req) => {
         try {
           aiData = JSON.parse(respText);
         } catch {
-          // Try to extract partial JSON
-          console.error("Failed to parse AI response, length:", respText.length, "preview:", respText.substring(0, 200));
-          // Attempt to find the content field directly
+          console.error("Failed to parse AI response, length:", respText.length);
           const contentMatch = respText.match(/"content"\s*:\s*"((?:[^"\\]|\\.)*)"/);
           if (contentMatch) {
             text = contentMatch[1].replace(/\\n/g, "\n").replace(/\\"/g, '"').replace(/\\\\/g, "\\");
@@ -112,7 +105,6 @@ serve(async (req) => {
           text = aiData.choices?.[0]?.message?.content || "";
         }
       } else {
-        // Try reading as text
         text = await data.text();
       }
     }
@@ -128,10 +120,9 @@ serve(async (req) => {
       );
     }
 
-    // Split text into chunks (approximately 500 chars each with overlap)
-    const chunks = splitIntoChunks(text, 500, 50);
+    // Split text into word-based chunks (500-1000 words with 50-word overlap)
+    const chunks = splitIntoChunks(text, 600, 80);
 
-    // Insert chunks
     const chunkRows = chunks.map((content, index) => ({
       document_id,
       content,
@@ -146,7 +137,6 @@ serve(async (req) => {
       throw new Error("فشل حفظ الأجزاء: " + insertError.message);
     }
 
-    // Update document status
     await supabase
       .from("knowledge_documents")
       .update({ status: "processed" })
@@ -165,45 +155,50 @@ serve(async (req) => {
   }
 });
 
-function splitIntoChunks(text: string, chunkSize: number, overlap: number): string[] {
+/**
+ * Word-based chunking with overlap.
+ * Target: ~600 words per chunk with 80-word overlap for context continuity.
+ * Respects paragraph boundaries when possible.
+ */
+function splitIntoChunks(text: string, targetWords: number, overlapWords: number): string[] {
   const chunks: string[] = [];
-  // Split by paragraphs first
-  const paragraphs = text.split(/\n\s*\n/);
-  let current = "";
-
+  const paragraphs = text.split(/\n\s*\n/).map(p => p.trim()).filter(Boolean);
+  
+  let currentWords: string[] = [];
+  
   for (const para of paragraphs) {
-    const trimmed = para.trim();
-    if (!trimmed) continue;
-
-    if ((current + "\n" + trimmed).length > chunkSize && current) {
-      chunks.push(current.trim());
-      // Keep overlap from end of current chunk
-      const words = current.split(/\s+/);
-      const overlapWords = words.slice(-Math.floor(overlap / 5));
-      current = overlapWords.join(" ") + "\n" + trimmed;
-    } else {
-      current += (current ? "\n" : "") + trimmed;
+    const paraWords = para.split(/\s+/).filter(Boolean);
+    
+    // If adding this paragraph exceeds target and we have content, flush
+    if (currentWords.length + paraWords.length > targetWords && currentWords.length > 0) {
+      chunks.push(currentWords.join(" "));
+      // Keep overlap words from the end
+      currentWords = currentWords.slice(-overlapWords);
+    }
+    
+    currentWords.push(...paraWords);
+    
+    // If current chunk is very large, force split
+    while (currentWords.length > targetWords * 1.5) {
+      const chunk = currentWords.slice(0, targetWords);
+      chunks.push(chunk.join(" "));
+      currentWords = currentWords.slice(targetWords - overlapWords);
     }
   }
-
-  if (current.trim()) {
-    chunks.push(current.trim());
+  
+  // Flush remaining
+  if (currentWords.length > 0) {
+    chunks.push(currentWords.join(" "));
   }
-
-  // If no chunks were created (single block of text), force split
+  
+  // If no chunks, force split the raw text
   if (chunks.length === 0 && text.trim()) {
-    const words = text.trim().split(/\s+/);
-    let chunk = "";
-    for (const word of words) {
-      if ((chunk + " " + word).length > chunkSize && chunk) {
-        chunks.push(chunk.trim());
-        chunk = word;
-      } else {
-        chunk += (chunk ? " " : "") + word;
-      }
+    const allWords = text.trim().split(/\s+/);
+    for (let i = 0; i < allWords.length; i += targetWords - overlapWords) {
+      const chunk = allWords.slice(i, i + targetWords);
+      if (chunk.length > 0) chunks.push(chunk.join(" "));
     }
-    if (chunk.trim()) chunks.push(chunk.trim());
   }
-
+  
   return chunks;
 }
