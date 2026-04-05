@@ -4,19 +4,20 @@ type Msg = { role: "user" | "assistant"; content: string };
 
 interface StreamChatOptions {
   messages: Msg[];
+  userId?: string;
   onDelta: (deltaText: string) => void;
   onDone: (meta?: { sources?: string; cached?: boolean }) => void;
   signal?: AbortSignal;
 }
 
-export async function streamChat({ messages, onDelta, onDone, signal }: StreamChatOptions) {
+export async function streamChat({ messages, userId, onDelta, onDone, signal }: StreamChatOptions) {
   const resp = await fetch(CHAT_URL, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
     },
-    body: JSON.stringify({ messages }),
+    body: JSON.stringify({ messages, user_id: userId }),
     signal,
   });
 
