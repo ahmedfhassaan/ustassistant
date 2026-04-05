@@ -200,6 +200,7 @@ const Login = () => {
                 placeholder="أدخل رقمك الجامعي"
                 value={studentId}
                 onChange={(e) => setStudentId(e.target.value)}
+                autoComplete="off"
                 className={`text-right h-12 rounded-xl transition-all duration-200 ${
                   isDark
                     ? "glass-input focus:border-primary/40 focus:shadow-[0_0_12px_rgba(112,200,255,0.08)]"
