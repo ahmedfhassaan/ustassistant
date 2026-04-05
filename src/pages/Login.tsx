@@ -63,7 +63,7 @@ const Login = () => {
 
       // Verify student credentials from DB
       const { data, error: rpcError } = await supabase.rpc("verify_student_login", {
-        p_student_id: studentId,
+        p_student_id: studentId.trim(),
         p_password: password,
       });
 
