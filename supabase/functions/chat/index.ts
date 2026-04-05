@@ -194,6 +194,23 @@ serve(async (req) => {
         await writer.close();
       }
 
+      // Log to chat_logs
+      if (fullContent) {
+        try {
+          const sourcesStr = sourceNames.length > 0 ? sourceNames.join("، ") : null;
+          const userId = messages[0]?.user_id || null;
+          await supabase.from("chat_logs").insert({
+            question: lastUserMessage,
+            question_hash: questionHash,
+            sources: sourcesStr,
+            cached: false,
+            user_id: userId,
+          });
+        } catch (e) {
+          console.error("Chat log error:", e);
+        }
+      }
+
       // Cache the response (only for single-turn, non-empty responses)
       if (fullContent && messages.length <= 1) {
         try {
