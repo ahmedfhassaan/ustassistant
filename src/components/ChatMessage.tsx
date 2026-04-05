@@ -29,9 +29,9 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
         }`}
       >
         {isUser ? (
-          <p className="whitespace-pre-wrap text-sm leading-7" dir="rtl">{message.content}</p>
+          <p className="whitespace-pre-wrap text-sm leading-7">{message.content}</p>
         ) : (
-          <div className="prose prose-sm prose-chat max-w-none text-sm leading-[1.9]" dir="rtl">
+          <div className="prose prose-sm prose-chat max-w-none text-sm leading-7" dir="rtl">
             <ReactMarkdown>{message.content}</ReactMarkdown>
           </div>
         )}

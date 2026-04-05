@@ -220,34 +220,23 @@
   /* Markdown styles inside chat bubbles */
   .prose-chat {
     color: inherit;
-    text-align: right;
-    direction: rtl;
   }
   .prose-chat p {
-    @apply my-2;
+    @apply my-1.5;
   }
   .prose-chat h1, .prose-chat h2, .prose-chat h3 {
-    @apply font-bold mt-4 mb-2 pb-1;
-    border-bottom: 1px solid hsl(var(--primary) / 0.15);
-    color: hsl(var(--primary));
+    @apply font-bold mt-3 mb-1.5;
   }
   .prose-chat h1 { @apply text-base; }
   .prose-chat h2 { @apply text-sm; }
   .prose-chat h3 { @apply text-sm; }
   .prose-chat ul, .prose-chat ol {
-    @apply my-2 pr-6 space-y-1.5;
+    @apply my-1.5 pr-5 space-y-1;
   }
   .prose-chat ul { @apply list-disc; }
   .prose-chat ol { @apply list-decimal; }
-  .prose-chat li {
-    @apply pr-1;
-  }
   .prose-chat li::marker {
     color: hsl(var(--primary));
-    font-weight: 700;
-  }
-  .prose-chat li > ul, .prose-chat li > ol {
-    @apply mt-1;
   }
   .prose-chat a {
     @apply text-primary underline underline-offset-2 hover:opacity-80 transition-opacity;
@@ -255,14 +244,10 @@
   .prose-chat code {
     @apply rounded px-1.5 py-0.5 text-xs font-mono;
     background: hsl(var(--foreground) / 0.1);
-    direction: ltr;
-    unicode-bidi: embed;
   }
   .prose-chat pre {
-    @apply rounded-lg p-3 my-2.5 overflow-x-auto;
+    @apply rounded-lg p-3 my-2 overflow-x-auto;
     background: hsl(var(--foreground) / 0.1);
-    direction: ltr;
-    text-align: left;
   }
   .prose-chat pre code {
     @apply bg-transparent p-0;
@@ -273,7 +258,6 @@
   }
   .prose-chat strong {
     @apply font-bold;
-    color: hsl(var(--primary));
   }
   .prose-chat table {
     @apply w-full my-2 text-xs;
