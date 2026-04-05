@@ -14,6 +14,36 @@ export type Database = {
   }
   public: {
     Tables: {
+      chat_logs: {
+        Row: {
+          cached: boolean | null
+          created_at: string
+          id: string
+          question: string
+          question_hash: string
+          sources: string | null
+          user_id: string | null
+        }
+        Insert: {
+          cached?: boolean | null
+          created_at?: string
+          id?: string
+          question: string
+          question_hash: string
+          sources?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          cached?: boolean | null
+          created_at?: string
+          id?: string
+          question?: string
+          question_hash?: string
+          sources?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       knowledge_chunks: {
         Row: {
           chunk_index: number
@@ -111,6 +141,16 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_dashboard_stats: { Args: never; Returns: Json }
+      get_question_stats: {
+        Args: { limit_count?: number }
+        Returns: {
+          count: number
+          last_asked: string
+          question: string
+          question_hash: string
+        }[]
+      }
       search_knowledge: {
         Args: { max_results?: number; query_text: string }
         Returns: {
