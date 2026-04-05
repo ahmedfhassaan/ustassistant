@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Moon, Sun, GraduationCap, BookOpen, Users, Shield } from "lucide-react";
+import { Moon, Sun, GraduationCap, BookOpen, Users, Shield, AlertCircle } from "lucide-react";
 import { useTheme } from "@/hooks/use-theme";
 import { supabase } from "@/integrations/supabase/client";
 import universityLogo from "@/assets/university-logo.png";
@@ -227,7 +227,14 @@ const Login = () => {
             </div>
 
             {error && (
-              <p className="text-sm text-destructive text-center font-medium animate-fade-in">{error}</p>
+              <div className={`flex items-center gap-2 justify-center p-3 rounded-xl text-sm font-medium animate-fade-in ${
+                isDark
+                  ? "bg-destructive/10 border border-destructive/20 text-destructive"
+                  : "bg-destructive/5 border border-destructive/15 text-destructive"
+              }`}>
+                <AlertCircle className="w-4 h-4 shrink-0" />
+                {error}
+              </div>
             )}
 
             <Button

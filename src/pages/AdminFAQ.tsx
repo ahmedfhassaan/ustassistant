@@ -4,7 +4,9 @@ import { useTheme } from "@/hooks/use-theme";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Skeleton } from "@/components/ui/skeleton";
-import { RefreshCw } from "lucide-react";
+import { RefreshCw, HelpCircle } from "lucide-react";
+import EmptyState from "@/components/EmptyState";
+import ErrorState from "@/components/ErrorState";
 import { Button } from "@/components/ui/button";
 
 const categoryColors: Record<string, string> = {
@@ -30,7 +32,7 @@ const categoryColorsLight: Record<string, string> = {
 const AdminFAQ = () => {
   const { isDark } = useTheme();
 
-  const { data: questions, isLoading: loadingQuestions, refetch } = useQuery({
+  const { data: questions, isLoading: loadingQuestions, isError: questionsError, refetch } = useQuery({
     queryKey: ["faq-questions"],
     queryFn: async () => {
       const { data, error } = await supabase.rpc("get_question_stats", { limit_count: 50 });
@@ -40,7 +42,7 @@ const AdminFAQ = () => {
     refetchInterval: 30000,
   });
 
-  const { data: stats, isLoading: loadingStats } = useQuery({
+  const { data: stats, isLoading: loadingStats, isError: statsError } = useQuery({
     queryKey: ["faq-stats"],
     queryFn: async () => {
       const { data, error } = await supabase.rpc("get_dashboard_stats");
@@ -117,8 +119,14 @@ const AdminFAQ = () => {
                 <Skeleton key={i} className="h-16 w-full rounded-xl" />
               ))}
             </div>
+          ) : questionsError ? (
+            <ErrorState message="تعذّر تحميل الأسئلة" onRetry={() => refetch()} />
           ) : !questions?.length ? (
-            <p className="text-center text-muted-foreground py-8">لا توجد أسئلة مسجلة بعد</p>
+            <EmptyState
+              icon={HelpCircle}
+              title="لا توجد أسئلة مسجلة بعد"
+              description="ستظهر هنا الأسئلة تلقائياً بعد تفاعل الطلاب مع المساعد"
+            />
           ) : (
             <div className="space-y-3">
               {questions.map((q, i) => (
