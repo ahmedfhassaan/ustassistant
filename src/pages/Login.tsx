@@ -5,10 +5,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Moon, Sun, GraduationCap, BookOpen, Users, Shield } from "lucide-react";
 import { useTheme } from "@/hooks/use-theme";
+import { supabase } from "@/integrations/supabase/client";
 import universityLogo from "@/assets/university-logo.png";
 import universityLogoDark from "@/assets/university-logo-dark.jpeg";
-
-const ADMIN_CREDENTIALS = { id: "admin", password: "admin123" };
 
 const features = [
   { icon: GraduationCap, text: "التقويم الأكاديمي والمواعيد" },
@@ -40,18 +39,35 @@ const Login = () => {
 
     setIsLoading(true);
 
-    setTimeout(() => {
-      if (studentId === ADMIN_CREDENTIALS.id && password === ADMIN_CREDENTIALS.password) {
-        localStorage.setItem("admin", JSON.stringify({ id: studentId, name: "المشرف" }));
-        setIsLoading(false);
-        navigate("/admin");
-        return;
+    try {
+      // Check admin credentials from DB
+      if (studentId === "admin") {
+        const { data } = await supabase
+          .from("assistant_settings")
+          .select("value")
+          .eq("key", "admin_password")
+          .maybeSingle();
+
+        const adminPass = data?.value || "admin123";
+        if (password === adminPass) {
+          localStorage.setItem("admin", JSON.stringify({ id: studentId, name: "المشرف" }));
+          setIsLoading(false);
+          navigate("/admin");
+          return;
+        } else {
+          setError("كلمة المرور غير صحيحة");
+          setIsLoading(false);
+          return;
+        }
       }
 
       localStorage.setItem("student", JSON.stringify({ id: studentId, name: "طالب جامعي" }));
       setIsLoading(false);
       navigate("/chat");
-    }, 800);
+    } catch {
+      setError("حدث خطأ أثناء تسجيل الدخول");
+      setIsLoading(false);
+    }
   };
 
   return (

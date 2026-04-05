@@ -1,6 +1,7 @@
 import { LogOut, Menu, Moon, Sun } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useTheme } from "@/hooks/use-theme";
+import { useSettings } from "@/hooks/use-settings";
 import universityLogo from "@/assets/university-logo.png";
 import universityLogoDark from "@/assets/university-logo-dark.jpeg";
 
@@ -12,6 +13,7 @@ interface ChatHeaderProps {
 
 const ChatHeader = ({ studentName, onLogout, onMenuClick }: ChatHeaderProps) => {
   const { isDark, toggle } = useTheme();
+  const { settings } = useSettings();
 
   return (
     <header className={`h-14 border-b flex items-center justify-between px-4 shrink-0 transition-all duration-300 animate-slide-in-left ${
@@ -32,7 +34,7 @@ const ChatHeader = ({ studentName, onLogout, onMenuClick }: ChatHeaderProps) => 
           className={`h-10 w-auto object-contain ${isDark ? "drop-shadow-[0_0_6px_rgba(112,200,255,0.15)]" : ""}`}
         />
         <span className={`font-bold text-base hidden sm:inline ${isDark ? "text-foreground glow-text" : "text-foreground"}`}>
-          المساعد الجامعي الذكي
+          {settings.assistant_name}
         </span>
       </div>
 
