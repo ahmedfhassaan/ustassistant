@@ -36,8 +36,8 @@ const AdminDashboard = () => {
   });
 
   const satisfactionRate = dashStats
-    ? dashStats.total_responses > 0
-      ? Math.round((dashStats.cached_responses / dashStats.total_responses) * 100)
+    ? (dashStats as any).total_feedback > 0
+      ? Math.round(((dashStats as any).positive_feedback / (dashStats as any).total_feedback) * 100)
       : 0
     : 0;
 
