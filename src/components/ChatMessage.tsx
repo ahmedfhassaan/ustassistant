@@ -10,7 +10,7 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
   const isUser = message.role === "user";
 
   return (
-    <div className={`flex gap-3 animate-fade-in ${isUser ? "flex-row" : "flex-row-reverse"}`} dir="rtl">
+    <div className={`flex gap-3 animate-fade-in ${isUser ? "flex-row-reverse" : "flex-row"}`} dir="rtl">
       {/* Avatar */}
       <div
         className={`shrink-0 w-8 h-8 rounded-full flex items-center justify-center mt-1 transition-all duration-200 ${
