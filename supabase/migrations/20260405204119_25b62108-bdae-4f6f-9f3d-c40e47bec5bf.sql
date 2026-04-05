@@ -1,0 +1,1 @@
+ALTER TABLE public.chat_logs ADD COLUMN category text DEFAULT NULL;

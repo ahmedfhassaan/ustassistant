@@ -17,6 +17,7 @@ export type Database = {
       chat_logs: {
         Row: {
           cached: boolean | null
+          category: string | null
           created_at: string
           id: string
           question: string
@@ -26,6 +27,7 @@ export type Database = {
         }
         Insert: {
           cached?: boolean | null
+          category?: string | null
           created_at?: string
           id?: string
           question: string
@@ -35,6 +37,7 @@ export type Database = {
         }
         Update: {
           cached?: boolean | null
+          category?: string | null
           created_at?: string
           id?: string
           question?: string
@@ -169,6 +172,8 @@ export type Database = {
       get_question_stats: {
         Args: { limit_count?: number }
         Returns: {
+          answered: boolean
+          category: string
           count: number
           last_asked: string
           question: string
