@@ -10,6 +10,7 @@ import AdminLayout from "./components/AdminLayout";
 import AdminDashboard from "./pages/AdminDashboard";
 import AdminKnowledge from "./pages/AdminKnowledge";
 import AdminFAQ from "./pages/AdminFAQ";
+import AdminSettings from "./pages/AdminSettings";
 
 const queryClient = new QueryClient();
 
@@ -39,6 +40,7 @@ const App = () => (
             <Route index element={<AdminDashboard />} />
             <Route path="knowledge" element={<AdminKnowledge />} />
             <Route path="faq" element={<AdminFAQ />} />
+            <Route path="settings" element={<AdminSettings />} />
           </Route>
           <Route path="*" element={<NotFound />} />
         </Routes>
