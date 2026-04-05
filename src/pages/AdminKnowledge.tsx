@@ -59,6 +59,7 @@ const AdminKnowledge = () => {
     setUploading(true);
 
     for (const file of Array.from(files)) {
+      let docId: string | null = null;
       try {
         const fileExt = file.name.split(".").pop()?.toLowerCase() || "";
         const isText = ["txt", "md", "csv"].includes(fileExt);
