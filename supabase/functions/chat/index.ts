@@ -114,8 +114,8 @@ serve(async (req) => {
     // --- RATE LIMITING (abuse protection) ---
     if (settings.abuse_protection === "true") {
       try {
-        const userId = messages[0]?.user_id || null;
         if (userId) {
+          const { count } = await supabase
           const { count } = await supabase
             .from("chat_logs")
             .select("id", { count: "exact", head: true })
@@ -151,9 +151,7 @@ serve(async (req) => {
               question: lastUserMessage,
               question_hash: questionHash,
               sources: cached.sources,
-              cached: true,
-              user_id: null,
-              category: classifyQuestion(lastUserMessage),
+              user_id: userId,
             });
           } catch (e) {
             console.error("Cache log error:", e);
