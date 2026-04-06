@@ -1,4 +1,5 @@
-import { MessageSquare, Users, FileText, TrendingUp } from "lucide-react";
+import { MessageSquare, Users, FileText, TrendingUp, ThumbsDown } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useTheme } from "@/hooks/use-theme";
 import { useQuery } from "@tanstack/react-query";
@@ -18,6 +19,7 @@ interface DashboardStats {
 
 const AdminDashboard = () => {
   const { isDark } = useTheme();
+  const navigate = useNavigate();
 
   const { data: dashStats, isLoading: statsLoading, isError: statsError, refetch: refetchStats } = useQuery({
     queryKey: ["dashboard-stats"],
@@ -43,11 +45,16 @@ const AdminDashboard = () => {
       : 0
     : 0;
 
+  const negativeFeedback = dashStats
+    ? (dashStats as any).total_feedback - (dashStats as any).positive_feedback
+    : 0;
+
   const stats = [
     { label: "إجمالي المحادثات", value: dashStats?.total_questions ?? 0, icon: MessageSquare, color: "text-primary" },
     { label: "المستخدمون النشطون", value: dashStats?.unique_users ?? 0, icon: Users, color: "text-emerald-400" },
     { label: "المستندات المرفوعة", value: dashStats?.total_documents ?? 0, icon: FileText, color: "text-[hsl(var(--highlight))]" },
     { label: "معدل الرضا", value: `${satisfactionRate}%`, icon: TrendingUp, color: "text-purple-400" },
+    { label: "تقييمات سلبية", value: negativeFeedback, icon: ThumbsDown, color: "text-destructive", onClick: () => navigate("/admin/feedback") },
   ];
 
   const cardBase = isDark
