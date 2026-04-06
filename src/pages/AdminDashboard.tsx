@@ -1,4 +1,5 @@
-import { MessageSquare, Users, FileText, TrendingUp } from "lucide-react";
+import { MessageSquare, Users, FileText, TrendingUp, ThumbsDown } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useTheme } from "@/hooks/use-theme";
 import { useQuery } from "@tanstack/react-query";
@@ -18,6 +19,7 @@ interface DashboardStats {
 
 const AdminDashboard = () => {
   const { isDark } = useTheme();
+  const navigate = useNavigate();
 
   const { data: dashStats, isLoading: statsLoading, isError: statsError, refetch: refetchStats } = useQuery({
     queryKey: ["dashboard-stats"],
@@ -43,11 +45,16 @@ const AdminDashboard = () => {
       : 0
     : 0;
 
+  const negativeFeedback = dashStats
+    ? (dashStats as any).total_feedback - (dashStats as any).positive_feedback
+    : 0;
+
   const stats = [
     { label: "إجمالي المحادثات", value: dashStats?.total_questions ?? 0, icon: MessageSquare, color: "text-primary" },
     { label: "المستخدمون النشطون", value: dashStats?.unique_users ?? 0, icon: Users, color: "text-emerald-400" },
     { label: "المستندات المرفوعة", value: dashStats?.total_documents ?? 0, icon: FileText, color: "text-[hsl(var(--highlight))]" },
     { label: "معدل الرضا", value: `${satisfactionRate}%`, icon: TrendingUp, color: "text-purple-400" },
+    { label: "تقييمات سلبية", value: negativeFeedback, icon: ThumbsDown, color: "text-destructive", onClick: () => navigate("/admin/feedback") },
   ];
 
   const cardBase = isDark
@@ -61,12 +68,13 @@ const AdminDashboard = () => {
   return (
     <div className="space-y-6 max-w-6xl mx-auto animate-fade-in">
       {/* Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-5">
         {stats.map((stat, idx) => (
           <Card
             key={stat.label}
-            className={`transition-all duration-300 ease-out animate-fade-in-up rounded-2xl ${cardBase}`}
+            className={`transition-all duration-300 ease-out animate-fade-in-up rounded-2xl ${cardBase} ${(stat as any).onClick ? "cursor-pointer" : ""}`}
             style={{ animationDelay: `${0.1 + idx * 0.08}s`, opacity: 0 }}
+            onClick={(stat as any).onClick}
           >
             <CardContent className="p-6 flex items-center gap-4">
               <div className={`p-3 rounded-xl ${stat.color} transition-all duration-200 ${
