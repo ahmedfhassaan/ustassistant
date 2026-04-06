@@ -136,6 +136,11 @@ export type Database = {
           id: string
           is_helpful: boolean
           message_content: string
+          notes: string | null
+          question_content: string | null
+          reason: string | null
+          reason_other: string | null
+          sources: string | null
           user_id: string | null
         }
         Insert: {
@@ -143,6 +148,11 @@ export type Database = {
           id?: string
           is_helpful: boolean
           message_content: string
+          notes?: string | null
+          question_content?: string | null
+          reason?: string | null
+          reason_other?: string | null
+          sources?: string | null
           user_id?: string | null
         }
         Update: {
@@ -150,6 +160,11 @@ export type Database = {
           id?: string
           is_helpful?: boolean
           message_content?: string
+          notes?: string | null
+          question_content?: string | null
+          reason?: string | null
+          reason_other?: string | null
+          sources?: string | null
           user_id?: string | null
         }
         Relationships: []
