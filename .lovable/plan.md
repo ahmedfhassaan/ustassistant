@@ -1,29 +1,20 @@
 
 
-# إصلاح تأخر التبديل بين الوضع الداكن والفاتح
+# تقييد رفع الملفات إلى صيغة Markdown فقط (.md)
 
-## المشكلة
-عند التبديل بين الوضعين، بعض العناصر (خاصة التي تستخدم تأثيرات زجاجية) تتأخر في تغيير مظهرها. السبب هو استخدام `transition-all` مع `backdrop-filter` — المتصفح يحاول تحريك تأثير الضبابية تدريجياً وهو مكلف في الأداء.
+## التعديلات
 
-## الحل
-استبدال `transition-all` بخصائص محددة (`transition-colors` أو `transition-shadow`) في العناصر المتأثرة، مع إضافة `transition: none` لخصائص `backdrop-filter` في فئات الزجاج.
+### 1. `src/pages/AdminKnowledge.tsx` — الواجهة والتحقق
 
-### التعديلات
+- **السطر 256**: تغيير `accept` من `".pdf,.txt,.md,.csv"` إلى `".md,text/markdown"`
+- **السطور 86-97**: تبسيط التحقق ليقبل فقط `.md` مع فحص MIME type (إن وُجد: `text/markdown` أو `text/x-markdown` أو فارغ). إذا فشل → رسالة `"يسمح فقط برفع ملفات Markdown (.md)"`
+- **السطور 115-136**: إزالة منطق رفع الملف للتخزين (كان للـ PDF). جميع ملفات `.md` تُقرأ كنص مباشرة عبر `file.text()` وتُرسل كـ `content_text` بدون `file_path`
+- **السطر 264**: تغيير النص الوصفي إلى `"الملفات المدعومة: .md فقط"`
+- **السطر 288**: تحديث نص الحالة الفارغة ليعكس دعم Markdown فقط
 
-**1. `src/index.css`** — إضافة `transition: background-color 0.3s, border-color 0.3s, color 0.3s` لفئات `.glass-*` بدلاً من ترك `backdrop-filter` يتحرك تدريجياً.
+### 2. `supabase/functions/process-document/index.ts` — تبسيط المعالجة
 
-**2. `src/components/ChatHeader.tsx`** — تغيير `transition-all duration-300` إلى `transition-colors duration-300`.
-
-**3. `src/components/ChatSidebar.tsx`** — نفس التغيير.
-
-**4. `src/components/ChatInput.tsx`** — نفس التغيير للحاوية الرئيسية.
-
-**5. `src/pages/Login.tsx`** — تغيير `transition-all duration-300` في مربع تسجيل الدخول إلى `transition-colors duration-300`.
-
-**6. `src/pages/AdminStudents.tsx`** — نفس التغيير للبطاقات والصفوف.
-
-### التفاصيل التقنية
-- `transition-all` يشمل `backdrop-filter` و `background` و `box-shadow` وكل الخصائص — المتصفح يعيد حساب الضبابية كل إطار
-- `transition-colors` ينقل فقط الألوان (background-color, color, border-color) وهو أخف بكثير
-- العناصر التي تحتاج `transition` لتأثيرات hover (مثل shadow) ستستخدم `transition: color 0.3s, background-color 0.3s, box-shadow 0.3s` محدداً
+- إزالة كامل منطق PDF (السطور 44-109): استخراج النص عبر AI، base64، إلخ
+- إبقاء فقط قراءة النص من `content_text` أو تحميل الملف كنص عادي من التخزين
+- الدالة ستعالج النص المُرسل مباشرة (content_text) وتقسّمه إلى chunks كما هو
 
