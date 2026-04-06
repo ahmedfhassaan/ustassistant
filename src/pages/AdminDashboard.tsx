@@ -68,12 +68,13 @@ const AdminDashboard = () => {
   return (
     <div className="space-y-6 max-w-6xl mx-auto animate-fade-in">
       {/* Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-5">
         {stats.map((stat, idx) => (
           <Card
             key={stat.label}
-            className={`transition-all duration-300 ease-out animate-fade-in-up rounded-2xl ${cardBase}`}
+            className={`transition-all duration-300 ease-out animate-fade-in-up rounded-2xl ${cardBase} ${(stat as any).onClick ? "cursor-pointer" : ""}`}
             style={{ animationDelay: `${0.1 + idx * 0.08}s`, opacity: 0 }}
+            onClick={(stat as any).onClick}
           >
             <CardContent className="p-6 flex items-center gap-4">
               <div className={`p-3 rounded-xl ${stat.color} transition-all duration-200 ${
