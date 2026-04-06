@@ -3,6 +3,7 @@ import { BookOpen, Bot, User, ThumbsUp, ThumbsDown } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
+import FeedbackDialog from "@/components/FeedbackDialog";
 import type { Message } from "@/pages/Chat";
 
 interface ChatMessageProps {
@@ -13,8 +14,9 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
   const isUser = message.role === "user";
   const [feedback, setFeedback] = useState<boolean | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [feedbackDialogOpen, setFeedbackDialogOpen] = useState(false);
 
-  const handleFeedback = async (isHelpful: boolean) => {
+  const handleHelpful = async () => {
     if (feedback !== null || submitting) return;
     setSubmitting(true);
     try {
@@ -22,10 +24,12 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
       const { error } = await supabase.from("message_feedback" as any).insert({
         user_id: student?.id || null,
         message_content: message.content.slice(0, 500),
-        is_helpful: isHelpful,
+        is_helpful: true,
+        question_content: message.question?.slice(0, 500) || null,
+        sources: message.source || null,
       } as any);
       if (error) throw error;
-      setFeedback(isHelpful);
+      setFeedback(true);
     } catch {
       toast({ title: "خطأ", description: "فشل إرسال التقييم", variant: "destructive" });
     } finally {
@@ -33,9 +37,13 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
     }
   };
 
+  const handleNotHelpfulClick = () => {
+    if (feedback !== null || submitting) return;
+    setFeedbackDialogOpen(true);
+  };
+
   return (
     <div className={`flex gap-3 animate-fade-in ${isUser ? "flex-row" : "flex-row-reverse"}`} dir="rtl">
-      {/* Avatar */}
       <div
         className={`shrink-0 w-8 h-8 rounded-full flex items-center justify-center mt-1 transition-all duration-200 ${
           isUser
@@ -46,7 +54,6 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
         {isUser ? <User className="w-4 h-4" /> : <Bot className="w-4 h-4" />}
       </div>
 
-      {/* Bubble */}
       <div className={`max-w-[80%] sm:max-w-[70%]`}>
         <div
           className={`group relative transition-all duration-200 ${
@@ -68,13 +75,12 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
           )}
         </div>
 
-        {/* Feedback buttons for assistant messages */}
         {!isUser && message.content && (
           <div className="flex items-center gap-2 mt-1.5 mr-1" dir="rtl">
             {feedback === null ? (
               <>
                 <button
-                  onClick={() => handleFeedback(true)}
+                  onClick={handleHelpful}
                   disabled={submitting}
                   className="flex items-center gap-1 text-xs text-muted-foreground hover:text-emerald-500 transition-colors duration-200 px-2 py-1 rounded-md hover:bg-emerald-500/10"
                 >
@@ -82,7 +88,7 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
                   <span>مفيد</span>
                 </button>
                 <button
-                  onClick={() => handleFeedback(false)}
+                  onClick={handleNotHelpfulClick}
                   disabled={submitting}
                   className="flex items-center gap-1 text-xs text-muted-foreground hover:text-red-500 transition-colors duration-200 px-2 py-1 rounded-md hover:bg-red-500/10"
                 >
@@ -101,6 +107,15 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
           </div>
         )}
       </div>
+
+      <FeedbackDialog
+        open={feedbackDialogOpen}
+        onOpenChange={setFeedbackDialogOpen}
+        messageContent={message.content}
+        questionContent={message.question}
+        sources={message.source}
+        onSubmitted={() => setFeedback(false)}
+      />
     </div>
   );
 };

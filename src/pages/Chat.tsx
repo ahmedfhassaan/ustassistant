@@ -14,6 +14,7 @@ export interface Message {
   role: "user" | "assistant";
   content: string;
   source?: string;
+  question?: string;
 }
 
 export interface Conversation {
@@ -144,7 +145,7 @@ const Chat = () => {
           
           const finalMessages: Message[] = [
             ...newMessages,
-            { id: assistantId, role: "assistant", content: cleanContent, source },
+            { id: assistantId, role: "assistant", content: cleanContent, source, question: text },
           ];
           
           // Update displayed message with clean content and source
