@@ -84,13 +84,12 @@ const AdminKnowledge = () => {
       let docId: string | null = null;
       try {
         const fileExt = file.name.split(".").pop()?.toLowerCase() || "";
-        const isText = ["txt", "md", "csv"].includes(fileExt);
-        const isPdf = fileExt === "pdf";
+        const validMime = ["text/markdown", "text/x-markdown", ""].includes(file.type);
 
-        if (!isText && !isPdf) {
+        if (fileExt !== "md" || !validMime) {
           toast({
             title: "نوع ملف غير مدعوم",
-            description: `الملف ${file.name} غير مدعوم. يُقبل PDF و TXT و MD و CSV فقط.`,
+            description: "يُسمح فقط برفع ملفات Markdown (.md)",
             variant: "destructive",
           });
           continue;
@@ -112,33 +111,11 @@ const AdminKnowledge = () => {
         }
         docId = docData.id;
 
-        let filePath: string | null = null;
-        let contentText: string | null = null;
-
-        if (isText) {
-          contentText = await file.text();
-        } else {
-          const safeFileName = `${Date.now()}.${fileExt}`;
-          const storagePath = `${docData.id}/${safeFileName}`;
-          const { error: uploadError } = await supabase.storage
-            .from("knowledge")
-            .upload(storagePath, file);
-
-          if (uploadError) {
-            throw new Error("فشل رفع الملف: " + uploadError.message);
-          }
-          filePath = storagePath;
-
-          await supabase
-            .from("knowledge_documents")
-            .update({ file_path: filePath })
-            .eq("id", docData.id);
-        }
+        const contentText = await file.text();
 
         const { error: fnError } = await supabase.functions.invoke("process-document", {
           body: {
             document_id: docData.id,
-            file_path: filePath,
             content_text: contentText,
           },
         });
@@ -253,7 +230,7 @@ const AdminKnowledge = () => {
           <input
             ref={fileInputRef}
             type="file"
-            accept=".pdf,.txt,.md,.csv"
+            accept=".md,text/markdown"
             multiple
             onChange={handleFileUpload}
             className="hidden"
@@ -261,7 +238,7 @@ const AdminKnowledge = () => {
         </CardHeader>
         <CardContent className="space-y-4">
           <p className="text-sm text-muted-foreground">
-            ارفع ملفات PDF أو نصوص (TXT, MD, CSV) ليتمكن المساعد الذكي من استخدامها في الإجابة على أسئلة الطلاب.
+            ارفع ملفات Markdown (.md) ليتمكن المساعد الذكي من استخدامها في الإجابة على أسئلة الطلاب. <span className="font-medium">الملفات المدعومة: .md فقط</span>
           </p>
 
           <div className="relative">
@@ -285,7 +262,7 @@ const AdminKnowledge = () => {
                 <EmptyState
                   icon={FileText}
                   title="لم يتم رفع أي مستندات بعد"
-                  description="ارفع ملفات PDF أو نصوص ليتمكن المساعد من استخدامها في الإجابة"
+                  description="ارفع ملفات Markdown (.md) ليتمكن المساعد من استخدامها في الإجابة"
                   actionLabel="رفع مستند"
                   onAction={handleFileSelect}
                 />
