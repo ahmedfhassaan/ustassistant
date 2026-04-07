@@ -22,6 +22,7 @@ const Login = () => {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const { isDark, toggle } = useTheme();
 
   const handleLogin = async (e: React.FormEvent) => {
