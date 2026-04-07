@@ -1,49 +1,26 @@
 
 
-# حفظ المحادثات في قاعدة البيانات (سحابياً)
+# إصلاح مشكلة عدم تزامن الوضع الداكن
 
-## الهدف
-نقل تخزين المحادثات من localStorage إلى قاعدة البيانات، بحيث يستطيع الطالب الوصول لنفس سجل محادثاته من أي جهاز.
+## المشكلة
+كل مكون (`ChatInput`, `ChatHeader`, `ChatWelcome`, `ChatSidebar`, `Login`) يستدعي `useTheme()` بشكل مستقل، مما ينشئ نسخة منفصلة من `useState`. عند الضغط على زر التبديل في الهيدر، تتحدث فقط نسخته — بينما باقي المكونات تبقى على الحالة القديمة حتى يتم إعادة تحميل الصفحة.
 
-## الخطوات
+**العناصر المتأثرة**: حقل الإدخال، الشريط الجانبي، شاشة الترحيب، بطاقات الاقتراحات، صفحة تسجيل الدخول.
 
-### 1. إنشاء جداول قاعدة البيانات
-- جدول `conversations`: يحتوي على (id, user_id, title, created_at)
-- جدول `conversation_messages`: يحتوي على (id, conversation_id, role, content, source, question, created_at)
-- سياسات RLS تسمح للجميع بالقراءة والكتابة (نفس نمط الجداول الحالية، لأن المصادقة تتم عبر جدول students وليس Supabase Auth)
+## الحل
 
-### 2. تحديث طبقة التخزين (chatStorage.ts)
-- استبدال localStorage بطلبات Supabase
-- دوال: `loadConversations` و `saveConversation` و `updateConversationMessages`
-- جعل الدوال async
+### 1. إنشاء ThemeContext
+- تحويل `src/hooks/use-theme.ts` إلى Context Provider يشارك حالة `isDark` و `toggle` عبر شجرة المكونات بالكامل.
 
-### 3. تحديث صفحة المحادثة (Chat.tsx)
-- تعديل useEffect لتحميل المحادثات من قاعدة البيانات
-- حفظ كل محادثة جديدة ورسائلها في قاعدة البيانات بدلاً من localStorage
-- إضافة حالة تحميل أولية أثناء جلب المحادثات
+### 2. تغليف التطبيق بـ ThemeProvider
+- إضافة `<ThemeProvider>` في `App.tsx` حول كل المكونات.
 
-### 4. ترحيل البيانات المحلية (اختياري)
-- عند أول تحميل، نقل المحادثات الموجودة في localStorage إلى قاعدة البيانات ثم حذفها محلياً
+### 3. تحديث useTheme hook
+- جعل `useTheme()` يقرأ من Context بدلاً من إنشاء حالة مستقلة.
+
+**النتيجة**: عند الضغط على زر التبديل في أي مكان، تتحدث جميع المكونات فوراً.
 
 ## التفاصيل التقنية
-
-```text
-students (موجود)
-  └── conversations (جديد)
-        ├── id (uuid, PK)
-        ├── user_id (text) → student_id
-        ├── title (text)
-        └── created_at (timestamptz)
-              └── conversation_messages (جديد)
-                    ├── id (uuid, PK)
-                    ├── conversation_id (uuid, FK)
-                    ├── role (text: user/assistant)
-                    ├── content (text)
-                    ├── source (text, nullable)
-                    ├── question (text, nullable)
-                    └── created_at (timestamptz)
-```
-
-- RLS مفتوحة (public) لتتوافق مع نظام المصادقة الحالي القائم على جدول students
-- الفلترة حسب user_id تتم في الكود
+- الملفات المتأثرة: `src/hooks/use-theme.ts`, `src/App.tsx`
+- لا تغييرات في المكونات الفرعية (تستمر باستدعاء `useTheme()` كما هي)
 
