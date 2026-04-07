@@ -1,6 +1,14 @@
-import { useState, useEffect } from "react";
+import { createContext, useContext, useState, useEffect } from "react";
+import React from "react";
 
-export function useTheme() {
+interface ThemeContextType {
+  isDark: boolean;
+  toggle: () => void;
+}
+
+const ThemeContext = createContext<ThemeContextType | null>(null);
+
+export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [isDark, setIsDark] = useState(() => {
     if (typeof window !== "undefined") {
       return localStorage.getItem("theme") === "dark";
@@ -21,5 +29,11 @@ export function useTheme() {
 
   const toggle = () => setIsDark((prev) => !prev);
 
-  return { isDark, toggle };
+  return React.createElement(ThemeContext.Provider, { value: { isDark, toggle } }, children);
+}
+
+export function useTheme() {
+  const ctx = useContext(ThemeContext);
+  if (!ctx) throw new Error("useTheme must be used within ThemeProvider");
+  return ctx;
 }
