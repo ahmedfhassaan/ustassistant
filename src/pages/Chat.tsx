@@ -7,7 +7,12 @@ import ChatMessage from "@/components/ChatMessage";
 import ChatInput from "@/components/ChatInput";
 import ChatWelcome from "@/components/ChatWelcome";
 import { streamChat } from "@/lib/chatApi";
-import { loadConversations, saveConversations } from "@/lib/chatStorage";
+import {
+  loadConversations,
+  saveNewConversation,
+  addMessagesToConversation,
+  migrateLocalConversations,
+} from "@/lib/chatStorage";
 
 export interface Message {
   id: string;
@@ -30,6 +35,7 @@ const Chat = () => {
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingConversations, setIsLoadingConversations] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);
@@ -42,47 +48,25 @@ const Chat = () => {
     }
   }, [student, navigate]);
 
-  // Load saved conversations on mount
+  // Load conversations from database on mount
   useEffect(() => {
-    if (student?.id) {
-      const saved = loadConversations(student.id);
+    if (!student?.id) return;
+    const load = async () => {
+      setIsLoadingConversations(true);
+      // Migrate local data first (one-time)
+      await migrateLocalConversations(student.id);
+      const saved = await loadConversations(student.id);
       setConversations(saved);
-    }
+      setIsLoadingConversations(false);
+    };
+    load();
   }, []);
-
-  // Save conversations whenever they change
-  useEffect(() => {
-    if (student?.id && conversations.length > 0) {
-      saveConversations(student.id, conversations);
-    }
-  }, [conversations]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
   const isWelcomeScreen = messages.length === 0;
-
-  const updateConversations = useCallback((updatedMessages: Message[], text: string) => {
-    if (!activeConversationId) {
-      const newConv: Conversation = {
-        id: Date.now().toString(),
-        title: text.slice(0, 40) + (text.length > 40 ? "..." : ""),
-        messages: updatedMessages,
-        createdAt: new Date(),
-      };
-      setConversations((prev) => [newConv, ...prev]);
-      setActiveConversationId(newConv.id);
-    } else {
-      setConversations((prev) =>
-        prev.map((c) =>
-          c.id === activeConversationId
-            ? { ...c, messages: updatedMessages }
-            : c
-        )
-      );
-    }
-  }, [activeConversationId]);
 
   const handleSend = async (text: string) => {
     if (isLoading) return;
@@ -97,7 +81,6 @@ const Chat = () => {
     setMessages(newMessages);
     setIsLoading(true);
 
-    // Prepare messages for API (only role and content)
     const apiMessages = newMessages.map((m) => ({
       role: m.role,
       content: m.content,
@@ -128,29 +111,53 @@ const Chat = () => {
             ];
           });
         },
-        onDone: (meta) => {
+        onDone: async (meta) => {
           setIsLoading(false);
           abortRef.current = null;
-          
-          // Extract sources from response content or meta
+
           let source = meta?.sources || undefined;
           let cleanContent = assistantContent;
-          
-          // Try to extract [المصادر: ...] from the end of the response
+
           const sourceMatch = assistantContent.match(/\[المصادر:\s*([^\]]+)\]\s*$/);
           if (sourceMatch) {
             source = sourceMatch[1].trim();
             cleanContent = assistantContent.replace(sourceMatch[0], "").trim();
           }
-          
-          const finalMessages: Message[] = [
-            ...newMessages,
-            { id: assistantId, role: "assistant", content: cleanContent, source, question: text },
-          ];
-          
-          // Update displayed message with clean content and source
+
+          const assistantMsg: Message = {
+            id: assistantId,
+            role: "assistant",
+            content: cleanContent,
+            source,
+            question: text,
+          };
+
+          const finalMessages: Message[] = [...newMessages, assistantMsg];
           setMessages(finalMessages);
-          updateConversations(finalMessages, text);
+
+          // Save to database
+          if (!activeConversationId) {
+            const title = text.slice(0, 40) + (text.length > 40 ? "..." : "");
+            const convId = await saveNewConversation(student.id, title, finalMessages);
+            if (convId) {
+              const newConv: Conversation = {
+                id: convId,
+                title,
+                messages: finalMessages,
+                createdAt: new Date(),
+              };
+              setConversations((prev) => [newConv, ...prev]);
+              setActiveConversationId(convId);
+            }
+          } else {
+            // Add new messages (user + assistant) to existing conversation
+            await addMessagesToConversation(activeConversationId, [userMsg, assistantMsg]);
+            setConversations((prev) =>
+              prev.map((c) =>
+                c.id === activeConversationId ? { ...c, messages: finalMessages } : c
+              )
+            );
+          }
         },
       });
     } catch (error: any) {
@@ -162,7 +169,6 @@ const Chat = () => {
         description: error.message || "حدث خطأ غير متوقع",
         variant: "destructive",
       });
-      // Remove the user message on error
       setMessages(messages);
     }
   };
@@ -217,7 +223,14 @@ const Chat = () => {
           onMenuClick={() => setSidebarOpen(true)}
         />
 
-        {isWelcomeScreen ? (
+        {isLoadingConversations ? (
+          <div className="flex-1 flex items-center justify-center">
+            <div className="flex flex-col items-center gap-3">
+              <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+              <p className="text-muted-foreground text-sm">جارٍ تحميل المحادثات...</p>
+            </div>
+          </div>
+        ) : isWelcomeScreen ? (
           <ChatWelcome
             studentName={student.name}
             onSuggestionClick={handleSend}
