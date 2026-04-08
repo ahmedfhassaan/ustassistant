@@ -7,22 +7,29 @@ import { readFileSync } from "fs";
 const pkg = JSON.parse(readFileSync("./package.json", "utf-8"));
 
 // https://vitejs.dev/config/
-export default defineConfig(({ mode }) => ({
-  server: {
-    host: "::",
-    port: 8080,
-    hmr: {
-      overlay: false,
+export default defineConfig(({ mode }) => {
+  const plugins: any[] = [react()];
+  if (mode === "development") {
+    plugins.push(componentTagger());
+  }
+
+  return {
+    server: {
+      host: "::",
+      port: 8080,
+      hmr: {
+        overlay: false,
+      },
     },
-  },
-  plugins: [react(), mode === "development" && componentTagger()].filter(Boolean),
-  define: {
-    __APP_VERSION__: JSON.stringify(pkg.version),
-  },
-  resolve: {
-    alias: {
-      "@": path.resolve(__dirname, "./src"),
+    plugins,
+    define: {
+      __APP_VERSION__: JSON.stringify(pkg.version),
     },
-    dedupe: ["react", "react-dom", "react/jsx-runtime", "react/jsx-dev-runtime", "@tanstack/react-query", "@tanstack/query-core"],
-  },
-}));
+    resolve: {
+      alias: {
+        "@": path.resolve(__dirname, "./src"),
+      },
+      dedupe: ["react", "react-dom", "react/jsx-runtime", "react/jsx-dev-runtime", "@tanstack/react-query", "@tanstack/query-core"],
+    },
+  };
+});
