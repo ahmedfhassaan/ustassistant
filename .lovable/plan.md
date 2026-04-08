@@ -1,16 +1,19 @@
 
 
-# إضافة زر إظهار/إخفاء كلمة المرور
+# إصلاح خطأين في البناء
 
-## التغيير
-إضافة أيقونة عين (Eye/EyeOff) داخل حقل كلمة المرور في صفحة تسجيل الدخول، للتبديل بين إظهار وإخفاء النص.
+## المشكلة
+1. **Cloudflare Wrangler** يتطلب Vite 6+ لكن تم تخفيض الإصدار إلى 5.4.19
+2. **خطأ TypeScript** في `supabase/functions/chat/index.ts` السطر 186: نوع `unknown[]` غير متوافق مع `string[]`
 
-## التنفيذ
+## الحل
 
-### ملف واحد: `src/pages/Login.tsx`
-1. إضافة `Eye` و `EyeOff` من lucide-react إلى الاستيرادات
-2. إضافة state جديد: `showPassword` (boolean)
-3. تغليف حقل الإدخال بـ `div` ذو `position: relative`
-4. تغيير `type` الحقل من `"password"` الثابت إلى `showPassword ? "text" : "password"`
-5. إضافة زر أيقونة داخل الـ div (يسار الحقل) يبدّل بين `Eye` و `EyeOff`
+### 1. إرجاع Vite إلى الإصدار 6
+- تعديل `package.json`: إرجاع `"vite": "^6.0.0"`
+
+### 2. إصلاح خطأ TypeScript في دالة chat
+- السطر 186: إضافة تحويل نوع صريح:
+  ```typescript
+  sourceNames = [...new Set(chunks.map((c: any) => c.document_name as string))];
+  ```
 
