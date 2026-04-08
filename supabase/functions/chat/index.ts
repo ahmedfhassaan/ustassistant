@@ -183,7 +183,7 @@ serve(async (req) => {
       });
 
       if (chunks && chunks.length > 0) {
-        sourceNames = [...new Set(chunks.map((c: any) => c.document_name))];
+        sourceNames = [...new Set(chunks.map((c: any) => c.document_name as string))];
         maxRank = Math.max(...chunks.map((c: any) => c.rank));
 
         knowledgeContext = "\n\n--- معلومات من قاعدة المعرفة الجامعية ---\n" +
