@@ -8,7 +8,7 @@ const pkg = JSON.parse(readFileSync("./package.json", "utf-8"));
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => {
-  const plugins = [react()];
+  const plugins: any[] = [react()];
   if (mode === "development") {
     plugins.push(componentTagger());
   }
