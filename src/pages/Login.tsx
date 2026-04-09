@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Moon, Sun, GraduationCap, BookOpen, Users, Shield, AlertCircle, Eye, EyeOff } from "lucide-react";
+import { Moon, Sun, GraduationCap, BookOpen, Users, Shield, FileText, AlertCircle, Eye, EyeOff } from "lucide-react";
 import { useTheme } from "@/hooks/use-theme";
 import { supabase } from "@/integrations/supabase/client";
 import universityLogo from "@/assets/university-logo.png";
@@ -14,6 +14,7 @@ const features = [
   { icon: BookOpen, text: "اللوائح والأنظمة الجامعية" },
   { icon: Users, text: "الإجراءات الإدارية" },
   { icon: Shield, text: "دعم فوري على مدار الساعة" },
+  { icon: FileText, text: "مشاريع التخرج السابقة" },
 ];
 
 const Login = () => {
@@ -144,6 +145,8 @@ const Login = () => {
               <div
                 key={i}
                 className={`flex items-center gap-3 p-3.5 rounded-xl transition-all duration-300 animate-fade-in-up ${
+                  i === features.length - 1 ? "col-span-2 max-w-[60%] mx-auto" : ""
+                } ${
                   isDark
                     ? "bg-white/5 border border-white/8 hover:bg-white/8"
                     : "bg-primary/5 border border-primary/10 hover:bg-primary/10"
