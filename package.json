@@ -11,8 +11,7 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
-    "cf:deploy": "vite build && wrangler pages deploy dist",
-    "cf:preview": "vite build && wrangler pages dev dist"
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
@@ -66,7 +65,6 @@
     "tailwind-merge": "^2.6.0",
     "tailwindcss-animate": "^1.0.7",
     "vaul": "^0.9.9",
-    "wrangler": "^4.81.0",
     "zod": "^3.25.76"
   },
   "devDependencies": {
