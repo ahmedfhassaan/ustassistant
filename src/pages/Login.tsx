@@ -227,29 +227,19 @@ const Login = () => {
 
             <div className="space-y-2">
               <Label htmlFor="password" className="text-sm font-medium">كلمة المرور</Label>
-              <div className="relative">
-                <Input
-                  id="password"
-                  type={showPassword ? "text" : "password"}
-                  placeholder="أدخل كلمة المرور"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className={`text-right h-12 rounded-xl transition-all duration-200 pl-10 ${
-                    isDark
-                      ? "glass-input focus:border-primary/40 focus:shadow-[0_0_12px_rgba(112,200,255,0.08)]"
-                      : "border-border/60 focus:border-primary focus:shadow-[0_0_0_3px_hsl(var(--primary)/0.1)]"
-                  }`}
-                  dir="rtl"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                  tabIndex={-1}
-                >
-                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </button>
-              </div>
+              <Input
+                id="password"
+                type="password"
+                placeholder="أدخل كلمة المرور"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className={`text-right h-12 rounded-xl transition-all duration-200 ${
+                  isDark
+                    ? "glass-input focus:border-primary/40 focus:shadow-[0_0_12px_rgba(112,200,255,0.08)]"
+                    : "border-border/60 focus:border-primary focus:shadow-[0_0_0_3px_hsl(var(--primary)/0.1)]"
+                }`}
+                dir="rtl"
+              />
             </div>
 
             {error && (
