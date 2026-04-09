@@ -1,12 +1,18 @@
-# Cloudflare Pages Static Deployment — Complete
 
-## Setup
-- Pure static Vite + React project
-- `wrangler.jsonc` deleted (was causing Cloudflare to run `wrangler deploy` instead of static hosting)
-- No Wrangler dependency, no deploy scripts
-- `public/_redirects` handles SPA routing
 
-## Cloudflare Pages Dashboard Settings
-- **Build command**: `bun run build`
-- **Output directory**: `dist`
-- **Deploy command**: (empty)
+# إصلاح مشكلة عدم ظهور المعاينة
+
+## السبب الجذري
+خطأ في Console: `RefreshRuntime.getRefreshReg is not a function`
+
+الإصدار المثبت من `@vitejs/plugin-react-swc` هو **4.3.0** وهو متوافق مع **Vite 5 فقط**. المشروع يستخدم **Vite 6.4.2**، مما يسبب فشل React Fast Refresh وتوقف التطبيق بالكامل عن العرض.
+
+## الحل
+تحديث `@vitejs/plugin-react-swc` إلى إصدار متوافق مع Vite 6:
+
+### ملف `package.json`
+- تغيير `"@vitejs/plugin-react-swc": "^4.3.0"` إلى `"@vitejs/plugin-react-swc": "^4.4.0"`
+- ثم تشغيل `bun install` لتحديث الحزمة
+
+هذا تعديل سطر واحد فقط. لا حاجة لتغيير أي ملف آخر.
+
