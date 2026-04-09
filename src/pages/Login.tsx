@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Moon, Sun, GraduationCap, BookOpen, Users, Shield, AlertCircle, Eye, EyeOff } from "lucide-react";
+import { Moon, Sun, GraduationCap, BookOpen, Users, Shield, AlertCircle } from "lucide-react";
 import { useTheme } from "@/hooks/use-theme";
 import { supabase } from "@/integrations/supabase/client";
 import universityLogo from "@/assets/university-logo.png";
@@ -22,7 +22,6 @@ const Login = () => {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
   const { isDark, toggle } = useTheme();
 
   const handleLogin = async (e: React.FormEvent) => {
