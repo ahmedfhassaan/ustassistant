@@ -1,41 +1,33 @@
 
 
-# Fix Deployment for Cloudflare Pages (Static Site)
+# إزالة `wrangler.jsonc` — السبب الجذري لفشل النشر
 
-## Problem
-- `wrangler` is in `dependencies` (not even devDependencies) — bloats production
-- `cf:deploy` and `cf:preview` scripts use `wrangler` commands
-- `@vitejs/plugin-react-swc` is incorrectly in `dependencies` instead of `devDependencies`
-- No code splitting configured despite 800KB bundle warning
-- `wrangler.jsonc` still present (unnecessary if deploying via Cloudflare Pages dashboard)
+## التشخيص
 
-## Changes
+بعد فحص المشروع بالكامل، الملف الوحيد المتبقي الذي يحتوي على إعدادات Wrangler هو:
 
-### 1. `package.json`
-- Remove `wrangler` from dependencies entirely
-- Move `@vitejs/plugin-react-swc` from dependencies to devDependencies
-- Remove `cf:deploy` and `cf:preview` scripts
-- Keep scripts clean: `build`, `dev`, `preview`, `lint`, `test`
+**`wrangler.jsonc`** — هذا الملف هو السبب المباشر لأن Cloudflare يعامل المشروع كـ Worker ويشغّل `npx wrangler deploy` تلقائياً بدلاً من نشره كـ static Pages site.
 
-### 2. `vite.config.ts`
-- Add `build.rollupOptions.output.manualChunks` for code splitting (vendor chunk for react, radix, recharts)
-- Remove `readFileSync` for version — use a simpler approach or hardcode
-- Keep the static `defineConfig({...})` with literal `plugins: [react()]`
+عندما يجد Cloudflare ملف `wrangler.jsonc` أو `wrangler.toml` في جذر المشروع، يفترض تلقائياً أن المشروع هو Worker/Pages Function ويشغّل مسار Wrangler deploy — حتى لو لم يكن هناك deploy script في `package.json`.
 
-### 3. `wrangler.jsonc`
-- Keep it — Cloudflare Pages uses `pages_build_output_dir` from it. It does no harm and helps if deploying via CLI later.
+## التعديلات المطلوبة
 
-### 4. `public/_redirects`
-- Already exists with `/* /index.html 200` — no change needed.
+### 1. حذف `wrangler.jsonc`
+- **السبب**: وجوده يجبر Cloudflare على استخدام مسار Workers بدلاً من Pages static hosting.
+- لا حاجة لهذا الملف في مشروع static site ينشر عبر Cloudflare Pages dashboard.
 
-## Cloudflare Pages Dashboard Settings
-After these changes, configure in Cloudflare:
+### 2. تحديث `.lovable/plan.md`
+- إزالة السطر الذي يقول "Keep wrangler.jsonc" وتحديثه ليعكس أنه تم حذفه.
+
+لا يوجد أي ملف آخر في المشروع (خارج `node_modules`) يشير إلى Wrangler.
+
+## إعدادات Cloudflare Pages Dashboard
 - **Build command**: `bun run build`
 - **Output directory**: `dist`
-- No deploy command needed — Pages handles static hosting automatically.
+- **Deploy command**: فارغ (لا شيء)
 
-## Result
-- Clean static Vite project, no server/worker dependencies
-- Bundle split into smaller chunks
-- Ready for Cloudflare Pages with `bun run build` → `dist`
+## النتيجة
+- Cloudflare سيعامل المشروع كـ static site بالكامل
+- لن يحاول تشغيل `wrangler deploy` مطلقاً
+- `_redirects` يتكفل بـ SPA routing
 
