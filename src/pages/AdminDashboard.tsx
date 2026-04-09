@@ -33,7 +33,7 @@ const AdminDashboard = () => {
   const { data: questionStats, isLoading: questionsLoading, isError: questionsError, refetch: refetchQuestions } = useQuery({
     queryKey: ["question-stats"],
     queryFn: async () => {
-      const { data, error } = await supabase.rpc("get_question_stats", { limit_count: 10 });
+      const { data, error } = await supabase.rpc("get_question_stats", { limit_count: 8 });
       if (error) throw error;
       return data;
     },
@@ -110,7 +110,7 @@ const AdminDashboard = () => {
         <CardContent>
           <div className="space-y-3">
             {questionsLoading ? (
-              Array.from({ length: 5 }).map((_, i) => (
+              Array.from({ length: 4 }).map((_, i) => (
                 <Skeleton key={i} className="h-14 w-full rounded-xl" />
               ))
             ) : questionsError ? (
