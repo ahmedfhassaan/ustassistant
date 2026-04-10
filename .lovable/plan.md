@@ -1,73 +1,64 @@
 
 
-# ترقية نظام البحث إلى بحث دلالي حقيقي (Semantic Search with Embeddings)
+# إصلاح نظام الـ Embeddings — المشكلة والحل
 
-## الوضع الحالي
-النظام يستخدم بحث نصي بالكلمات المفتاحية فقط (Full-Text Search + Regex). لا يفهم المعنى — مثلاً البحث عن "كيف أسجل مواد" لن يجد نصاً يحتوي "إضافة مقررات".
+## المشكلة الحالية
 
-## الحل المقترح: بحث هجين (Hybrid Search)
-الجمع بين البحث النصي الحالي + بحث دلالي بالـ embeddings للحصول على أفضل النتائج. لن نحذف البحث القديم بل نضيف عليه.
+دالة `generate-embedding` تستخدم **chat completions** لتوليد embeddings — تطلب من نموذج Gemini أن "يخترع" 768 رقماً عشوائياً. هذا **ليس بحثاً دلالياً حقيقياً** لأن:
+
+- الأرقام المُنتجة غير متسقة: نفس النص يعطي أرقاماً مختلفة كل مرة
+- لا توجد علاقة رياضية بين متجهات النصوص المتشابهة
+- cosine similarity بين هذه المتجهات سيكون عشوائياً
+
+## الحل: استخدام Gemini Embeddings API الحقيقي
+
+Lovable AI Gateway يدعم `/v1/embeddings` مع نماذج Gemini. سنستبدل الأسلوب الحالي بطلب embeddings حقيقي.
 
 ---
 
-## التعديلات المطلوبة
+## التعديلات
 
-### 1. قاعدة البيانات (Migration)
-- تفعيل إضافة `pgvector`
-- إضافة عمود `embedding vector(768)` لجدول `knowledge_chunks`
-- إنشاء فهرس IVFFlat للبحث السريع
-- إنشاء دالة `search_knowledge_semantic` تجمع بين البحث النصي والدلالي مع ترتيب هجين
+### 1. إعادة كتابة `generate-embedding/index.ts`
+- استخدام endpoint `/v1/embeddings` بدلاً من `/v1/chat/completions`
+- استخدام نموذج embedding مناسب (مثل `google/text-embedding-004`)
+- إرسال النصوص دفعة واحدة بدلاً من واحد تلو الآخر
+- إذا لم يدعم الـ gateway هذا الـ endpoint، نستخدم Google AI API مباشرة
 
-```sql
--- تفعيل pgvector
-CREATE EXTENSION IF NOT EXISTS vector WITH SCHEMA extensions;
+### 2. تعديل حجم المتجه إذا لزم الأمر
+- نموذج `text-embedding-004` من Google ينتج متجهات بحجم 768 (متوافق مع الحالي)
+- إذا كان الحجم مختلفاً، نحتاج migration لتعديل عمود `vector`
 
--- إضافة عمود الـ embedding
-ALTER TABLE knowledge_chunks ADD COLUMN embedding vector(768);
+### 3. إعادة توليد embeddings للمستندات الحالية
+- الـ embeddings الحالية (إن وُجدت) ستكون عشوائية ويجب استبدالها
 
--- فهرس للبحث السريع
-CREATE INDEX ON knowledge_chunks 
-  USING ivfflat (embedding vector_cosine_ops) WITH (lists = 100);
-
--- دالة بحث هجين
-CREATE FUNCTION search_knowledge_hybrid(
-  query_text text, query_embedding vector(768), max_results int
-) ...
-```
-
-### 2. Edge Function جديدة: `generate-embedding`
-- دالة تولّد embeddings باستخدام Lovable AI Gateway (endpoint: `/v1/embeddings`)
-- إذا لم يدعم الـ gateway الـ embeddings، سنستخدم نموذج Gemini عبر chat completions كبديل
-- تُستدعى من `process-document` ومن `chat`
-
-### 3. تعديل `process-document/index.ts`
-- بعد تقسيم النص إلى chunks، استدعاء `generate-embedding` لكل chunk
-- حفظ الـ embedding مع كل chunk في قاعدة البيانات
-
-### 4. تعديل `chat/index.ts`
-- توليد embedding لسؤال المستخدم
-- استدعاء دالة البحث الهجين بدلاً من `search_knowledge`
-- النتائج ستكون أدق لأنها تجمع بين تطابق الكلمات وتشابه المعنى
-
-### 5. إعادة معالجة المستندات الحالية
-- إضافة زر في لوحة المشرف "إعادة توليد Embeddings" لمعالجة المستندات الموجودة
+### 4. اختبار عملي
+- بعد الإصلاح، سأنشئ ملف Markdown تجريبي لاختبار البحث الدلالي
 
 ---
 
 ## التفاصيل التقنية
 
-**نموذج الـ Embeddings**: سيتم استخدام الـ gateway endpoint `/v1/embeddings` مع نموذج متوافق. حجم الـ vector: 768 بُعد.
+**الملفات المتأثرة:**
+- `supabase/functions/generate-embedding/index.ts` — إعادة كتابة كاملة
+- قد نحتاج migration إذا تغيّر حجم المتجه
 
-**صيغة البحث الهجين**:
+**الكود الجديد لـ generate-embedding:**
+```typescript
+// استخدام /v1/embeddings endpoint
+const response = await fetch("https://ai.gateway.lovable.dev/v1/embeddings", {
+  method: "POST",
+  headers: {
+    Authorization: `Bearer ${LOVABLE_API_KEY}`,
+    "Content-Type": "application/json",
+  },
+  body: JSON.stringify({
+    model: "google/text-embedding-004",
+    input: texts,
+  }),
+});
+const data = await response.json();
+// data.data[i].embedding → real vector
 ```
-final_score = 0.4 × keyword_rank + 0.6 × cosine_similarity
-```
-يعطي وزناً أكبر للتشابه الدلالي مع الاحتفاظ بدقة الكلمات المفتاحية.
 
-**الملفات المتأثرة**:
-- `supabase/functions/generate-embedding/index.ts` (جديد)
-- `supabase/functions/process-document/index.ts` (تعديل)
-- `supabase/functions/chat/index.ts` (تعديل)
-- `src/pages/AdminKnowledge.tsx` (إضافة زر إعادة المعالجة)
-- Migration جديد لقاعدة البيانات
+إذا لم يدعم الـ gateway هذا، سنجرب بديلاً باستخدام Google Generative AI API مباشرة.
 
