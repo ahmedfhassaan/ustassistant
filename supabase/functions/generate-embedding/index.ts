@@ -28,85 +28,60 @@ serve(async (req) => {
       );
     }
 
-    // Use Lovable AI Gateway chat completions to generate embeddings
-    // Since the gateway may not have a dedicated /v1/embeddings endpoint,
-    // we use a chat completion approach to generate numerical representations
-    const embeddings: number[][] = [];
+    // Truncate texts to avoid token limits
+    const truncatedTexts = texts.map((t: string) => t.slice(0, 2000));
 
-    for (const text of texts) {
-      const truncated = text.slice(0, 2000);
-      
-      const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${LOVABLE_API_KEY}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: "google/gemini-2.5-flash-lite",
-          messages: [
-            {
-              role: "system",
-              content: `You are an embedding generator. Given input text, output ONLY a JSON array of exactly 768 floating point numbers between -1 and 1 that represent the semantic meaning of the text. The numbers should capture: topic, intent, entities, and sentiment. Output ONLY the JSON array, nothing else. No explanation, no markdown, just the raw JSON array.`
-            },
-            {
-              role: "user",
-              content: truncated
-            }
-          ],
-          temperature: 0,
-        }),
-      });
+    // Use the real /v1/embeddings endpoint for proper semantic vectors
+    const response = await fetch("https://ai.gateway.lovable.dev/v1/embeddings", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${LOVABLE_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "google/text-embedding-004",
+        input: truncatedTexts,
+      }),
+    });
 
-      if (!response.ok) {
-        if (response.status === 429) {
-          // Rate limited - wait and retry once
-          await new Promise(r => setTimeout(r, 2000));
-          const retryResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-            method: "POST",
-            headers: {
-              Authorization: `Bearer ${LOVABLE_API_KEY}`,
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              model: "google/gemini-2.5-flash-lite",
-              messages: [
-                {
-                  role: "system",
-                  content: `You are an embedding generator. Given input text, output ONLY a JSON array of exactly 768 floating point numbers between -1 and 1 that represent the semantic meaning of the text. Output ONLY the JSON array, nothing else.`
-                },
-                { role: "user", content: truncated }
-              ],
-              temperature: 0,
-            }),
-          });
-          if (!retryResponse.ok) {
-            const t = await retryResponse.text();
-            console.error("Embedding retry failed:", retryResponse.status, t);
-            // Return zero vector as fallback
-            embeddings.push(new Array(768).fill(0));
-            continue;
-          }
-          const retryData = await retryResponse.json();
-          const retryContent = retryData.choices?.[0]?.message?.content || "";
-          const retryEmbedding = parseEmbedding(retryContent);
-          embeddings.push(retryEmbedding);
-          continue;
-        }
-        const t = await response.text();
-        console.error("Embedding generation failed:", response.status, t);
-        embeddings.push(new Array(768).fill(0));
-        continue;
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("Embeddings API error:", response.status, errorText);
+
+      if (response.status === 429) {
+        return new Response(
+          JSON.stringify({ error: "Rate limited, please try again later" }),
+          { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
       }
 
-      const data = await response.json();
-      const content = data.choices?.[0]?.message?.content || "";
-      const embedding = parseEmbedding(content);
-      embeddings.push(embedding);
-      
-      // Small delay between requests to avoid rate limiting
-      if (texts.length > 1) {
-        await new Promise(r => setTimeout(r, 500));
+      return new Response(
+        JSON.stringify({ error: `Embeddings API error: ${response.status}` }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const data = await response.json();
+    
+    // Extract embeddings from OpenAI-compatible response format
+    // Response: { data: [{ embedding: number[], index: number }, ...] }
+    const embeddings: number[][] = [];
+    
+    if (data.data && Array.isArray(data.data)) {
+      // Sort by index to maintain order
+      const sorted = data.data.sort((a: any, b: any) => a.index - b.index);
+      for (const item of sorted) {
+        if (item.embedding && Array.isArray(item.embedding)) {
+          embeddings.push(item.embedding);
+        } else {
+          embeddings.push(new Array(768).fill(0));
+        }
+      }
+    } else {
+      console.error("Unexpected embeddings response format:", JSON.stringify(data).slice(0, 500));
+      // Return zero vectors as fallback
+      for (let i = 0; i < truncatedTexts.length; i++) {
+        embeddings.push(new Array(768).fill(0));
       }
     }
 
@@ -122,32 +97,3 @@ serve(async (req) => {
     );
   }
 });
-
-function parseEmbedding(content: string): number[] {
-  try {
-    // Try to extract JSON array from the content
-    const jsonMatch = content.match(/\[[\s\S]*\]/);
-    if (jsonMatch) {
-      const arr = JSON.parse(jsonMatch[0]);
-      if (Array.isArray(arr) && arr.length === 768) {
-        return arr.map((n: any) => {
-          const val = parseFloat(n);
-          return isNaN(val) ? 0 : Math.max(-1, Math.min(1, val));
-        });
-      }
-      // If not exactly 768, pad or truncate
-      if (Array.isArray(arr)) {
-        const normalized = arr.slice(0, 768).map((n: any) => {
-          const val = parseFloat(n);
-          return isNaN(val) ? 0 : Math.max(-1, Math.min(1, val));
-        });
-        while (normalized.length < 768) normalized.push(0);
-        return normalized;
-      }
-    }
-  } catch (e) {
-    console.error("Failed to parse embedding:", e);
-  }
-  // Return zero vector as fallback
-  return new Array(768).fill(0);
-}
