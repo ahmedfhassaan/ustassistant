@@ -133,6 +133,7 @@ export type Database = {
           content: string
           created_at: string
           document_id: string
+          embedding: string | null
           id: string
         }
         Insert: {
@@ -140,6 +141,7 @@ export type Database = {
           content: string
           created_at?: string
           document_id: string
+          embedding?: string | null
           id?: string
         }
         Update: {
@@ -147,6 +149,7 @@ export type Database = {
           content?: string
           created_at?: string
           document_id?: string
+          embedding?: string | null
           id?: string
         }
         Relationships: [
@@ -327,6 +330,19 @@ export type Database = {
       }
       search_knowledge: {
         Args: { max_results?: number; query_text: string }
+        Returns: {
+          chunk_id: string
+          content: string
+          document_name: string
+          rank: number
+        }[]
+      }
+      search_knowledge_hybrid: {
+        Args: {
+          max_results?: number
+          query_embedding: string
+          query_text: string
+        }
         Returns: {
           chunk_id: string
           content: string
