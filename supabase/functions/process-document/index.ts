@@ -40,10 +40,36 @@ serve(async (req) => {
 
     const chunks = splitIntoChunks(text, 600, 80);
 
+    // Generate embeddings for all chunks
+    let embeddings: number[][] = [];
+    try {
+      const embeddingResponse = await fetch(
+        `${supabaseUrl}/functions/v1/generate-embedding`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${supabaseKey}`,
+          },
+          body: JSON.stringify({ texts: chunks }),
+        }
+      );
+
+      if (embeddingResponse.ok) {
+        const embData = await embeddingResponse.json();
+        embeddings = embData.embeddings || [];
+      } else {
+        console.error("Embedding generation failed, proceeding without embeddings");
+      }
+    } catch (e) {
+      console.error("Embedding generation error:", e);
+    }
+
     const chunkRows = chunks.map((content, index) => ({
       document_id,
       content,
       chunk_index: index,
+      ...(embeddings[index] ? { embedding: JSON.stringify(embeddings[index]) } : {}),
     }));
 
     const { error: insertError } = await supabase
@@ -60,7 +86,11 @@ serve(async (req) => {
       .eq("id", document_id);
 
     return new Response(
-      JSON.stringify({ success: true, chunks_count: chunks.length }),
+      JSON.stringify({ 
+        success: true, 
+        chunks_count: chunks.length,
+        embeddings_count: embeddings.length 
+      }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (e) {
@@ -72,11 +102,6 @@ serve(async (req) => {
   }
 });
 
-/**
- * Word-based chunking with overlap.
- * Target: ~600 words per chunk with 80-word overlap for context continuity.
- * Respects paragraph boundaries when possible.
- */
 function splitIntoChunks(text: string, targetWords: number, overlapWords: number): string[] {
   const chunks: string[] = [];
   const paragraphs = text.split(/\n\s*\n/).map(p => p.trim()).filter(Boolean);
