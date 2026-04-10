@@ -170,17 +170,57 @@ serve(async (req) => {
       }
     }
 
-    // --- KNOWLEDGE SEARCH (RAG) ---
+    // --- KNOWLEDGE SEARCH (RAG) with Hybrid Search ---
     let knowledgeContext = "";
     let sourceNames: string[] = [];
     let maxRank = 0;
     const searchCount = parseInt(settings.search_results_count) || 5;
 
     try {
-      const { data: chunks } = await supabase.rpc("search_knowledge", {
-        query_text: lastUserMessage,
-        max_results: searchCount,
-      });
+      // Generate embedding for the user's question
+      let queryEmbedding: number[] | null = null;
+      try {
+        const embResponse = await fetch(
+          `${supabaseUrl}/functions/v1/generate-embedding`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${supabaseKey}`,
+            },
+            body: JSON.stringify({ texts: [lastUserMessage] }),
+          }
+        );
+        if (embResponse.ok) {
+          const embData = await embResponse.json();
+          if (embData.embeddings?.[0]) {
+            queryEmbedding = embData.embeddings[0];
+          }
+        }
+      } catch (e) {
+        console.error("Query embedding error:", e);
+      }
+
+      let chunks: any[] | null = null;
+
+      // Try hybrid search first if we have an embedding
+      if (queryEmbedding) {
+        const { data } = await supabase.rpc("search_knowledge_hybrid", {
+          query_text: lastUserMessage,
+          query_embedding: JSON.stringify(queryEmbedding),
+          max_results: searchCount,
+        });
+        chunks = data;
+      }
+
+      // Fallback to keyword search
+      if (!chunks || chunks.length === 0) {
+        const { data } = await supabase.rpc("search_knowledge", {
+          query_text: lastUserMessage,
+          max_results: searchCount,
+        });
+        chunks = data;
+      }
 
       if (chunks && chunks.length > 0) {
         sourceNames = [...new Set(chunks.map((c: any) => c.document_name as string))];

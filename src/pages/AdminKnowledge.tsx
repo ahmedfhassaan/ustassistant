@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { Upload, FileText, Trash2, Search, Loader2, CheckCircle, AlertCircle, AlertTriangle } from "lucide-react";
+import { Upload, FileText, Trash2, Search, Loader2, CheckCircle, AlertCircle, AlertTriangle, RefreshCw } from "lucide-react";
 import EmptyState from "@/components/EmptyState";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -35,6 +35,7 @@ const AdminKnowledge = () => {
   const [deleteTarget, setDeleteTarget] = useState<KnowledgeDoc | null>(null);
   const [deleteConfirmEnabled, setDeleteConfirmEnabled] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [regenerating, setRegenerating] = useState(false);
   const { isDark } = useTheme();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -178,6 +179,58 @@ const AdminKnowledge = () => {
     }
   };
 
+  const handleRegenerateEmbeddings = async () => {
+    setRegenerating(true);
+    try {
+      const processedDocs = documents.filter(d => d.status === "processed");
+      if (processedDocs.length === 0) {
+        toast({ title: "لا توجد مستندات جاهزة", description: "لم يتم العثور على مستندات معالجة لإعادة توليد الـ embeddings لها.", variant: "destructive" });
+        setRegenerating(false);
+        return;
+      }
+
+      for (const doc of processedDocs) {
+        // Get chunks for this document
+        const { data: chunks } = await supabase
+          .from("knowledge_chunks")
+          .select("id, content")
+          .eq("document_id", doc.id)
+          .order("chunk_index");
+
+        if (!chunks || chunks.length === 0) continue;
+
+        const texts = chunks.map(c => c.content);
+
+        // Generate embeddings
+        const { data: embData, error: embError } = await supabase.functions.invoke("generate-embedding", {
+          body: { texts },
+        });
+
+        if (embError || !embData?.embeddings) {
+          console.error("Embedding error for doc:", doc.name, embError);
+          continue;
+        }
+
+        // Update each chunk with its embedding
+        for (let i = 0; i < chunks.length; i++) {
+          if (embData.embeddings[i]) {
+            await supabase
+              .from("knowledge_chunks")
+              .update({ embedding: JSON.stringify(embData.embeddings[i]) } as any)
+              .eq("id", chunks[i].id);
+          }
+        }
+      }
+
+      toast({ title: "تم إعادة توليد Embeddings", description: `تمت معالجة ${processedDocs.length} مستند بنجاح.` });
+    } catch (err: any) {
+      console.error("Regenerate error:", err);
+      toast({ title: "خطأ", description: err.message || "حدث خطأ أثناء إعادة التوليد", variant: "destructive" });
+    } finally {
+      setRegenerating(false);
+    }
+  };
+
   const formatSize = (bytes: number) => {
     if (bytes < 1024) return bytes + " B";
     if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + " KB";
@@ -211,22 +264,37 @@ const AdminKnowledge = () => {
       <Card className={`transition-all duration-300 ease-out animate-scale-in rounded-2xl ${isDark ? "glass-card border-0" : "bg-white border border-black/5 shadow-[0_4px_20px_rgba(0,0,0,0.08)]"}`}>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
           <CardTitle className="text-lg">إدارة قاعدة المعرفة</CardTitle>
-          <Button
-            onClick={handleFileSelect}
-            disabled={uploading}
-            className={`gap-2 transition-all duration-200 ${
-              isDark
-                ? "bg-primary/20 hover:bg-primary/30 text-primary border border-primary/30 glow-primary"
-                : "bg-primary hover:bg-primary-hover text-primary-foreground"
-            }`}
-          >
-            {uploading ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : (
-              <Upload className="w-4 h-4" />
-            )}
-            {uploading ? "جاري الرفع..." : "رفع مستند"}
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              onClick={handleRegenerateEmbeddings}
+              disabled={regenerating || documents.filter(d => d.status === "processed").length === 0}
+              variant="outline"
+              className="gap-2"
+            >
+              {regenerating ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <RefreshCw className="w-4 h-4" />
+              )}
+              {regenerating ? "جاري التوليد..." : "إعادة توليد Embeddings"}
+            </Button>
+            <Button
+              onClick={handleFileSelect}
+              disabled={uploading}
+              className={`gap-2 transition-all duration-200 ${
+                isDark
+                  ? "bg-primary/20 hover:bg-primary/30 text-primary border border-primary/30 glow-primary"
+                  : "bg-primary hover:bg-primary-hover text-primary-foreground"
+              }`}
+            >
+              {uploading ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Upload className="w-4 h-4" />
+              )}
+              {uploading ? "جاري الرفع..." : "رفع مستند"}
+            </Button>
+          </div>
           <input
             ref={fileInputRef}
             type="file"
