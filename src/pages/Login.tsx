@@ -43,7 +43,7 @@ const Login = () => {
 
     try {
       // Check admin credentials from DB
-      if (studentId === "admin") {
+      if (studentId.trim() === "admin") {
         const { data } = await supabase
           .from("assistant_settings")
           .select("value")
@@ -51,7 +51,7 @@ const Login = () => {
           .maybeSingle();
 
         const adminPass = data?.value || "admin123";
-        if (password === adminPass) {
+        if (password.trim() === adminPass) {
           localStorage.setItem("admin", JSON.stringify({ id: studentId, name: "المشرف" }));
           setIsLoading(false);
           navigate("/admin");
@@ -66,7 +66,7 @@ const Login = () => {
       // Verify student credentials from DB
       const { data, error: rpcError } = await supabase.rpc("verify_student_login", {
         p_student_id: studentId.trim(),
-        p_password: password,
+        p_password: password.trim(),
       });
 
       if (rpcError) {
