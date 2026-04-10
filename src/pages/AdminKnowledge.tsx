@@ -35,6 +35,7 @@ const AdminKnowledge = () => {
   const [deleteTarget, setDeleteTarget] = useState<KnowledgeDoc | null>(null);
   const [deleteConfirmEnabled, setDeleteConfirmEnabled] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [regenerating, setRegenerating] = useState(false);
   const { isDark } = useTheme();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
