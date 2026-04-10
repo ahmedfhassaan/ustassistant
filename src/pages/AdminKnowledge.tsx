@@ -264,22 +264,37 @@ const AdminKnowledge = () => {
       <Card className={`transition-all duration-300 ease-out animate-scale-in rounded-2xl ${isDark ? "glass-card border-0" : "bg-white border border-black/5 shadow-[0_4px_20px_rgba(0,0,0,0.08)]"}`}>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
           <CardTitle className="text-lg">إدارة قاعدة المعرفة</CardTitle>
-          <Button
-            onClick={handleFileSelect}
-            disabled={uploading}
-            className={`gap-2 transition-all duration-200 ${
-              isDark
-                ? "bg-primary/20 hover:bg-primary/30 text-primary border border-primary/30 glow-primary"
-                : "bg-primary hover:bg-primary-hover text-primary-foreground"
-            }`}
-          >
-            {uploading ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : (
-              <Upload className="w-4 h-4" />
-            )}
-            {uploading ? "جاري الرفع..." : "رفع مستند"}
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              onClick={handleRegenerateEmbeddings}
+              disabled={regenerating || documents.filter(d => d.status === "processed").length === 0}
+              variant="outline"
+              className="gap-2"
+            >
+              {regenerating ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <RefreshCw className="w-4 h-4" />
+              )}
+              {regenerating ? "جاري التوليد..." : "إعادة توليد Embeddings"}
+            </Button>
+            <Button
+              onClick={handleFileSelect}
+              disabled={uploading}
+              className={`gap-2 transition-all duration-200 ${
+                isDark
+                  ? "bg-primary/20 hover:bg-primary/30 text-primary border border-primary/30 glow-primary"
+                  : "bg-primary hover:bg-primary-hover text-primary-foreground"
+              }`}
+            >
+              {uploading ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Upload className="w-4 h-4" />
+              )}
+              {uploading ? "جاري الرفع..." : "رفع مستند"}
+            </Button>
+          </div>
           <input
             ref={fileInputRef}
             type="file"
