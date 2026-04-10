@@ -35,7 +35,7 @@ const AdminFAQ = () => {
   const { data: questions, isLoading: loadingQuestions, isError: questionsError, refetch } = useQuery({
     queryKey: ["faq-questions"],
     queryFn: async () => {
-      const { data, error } = await supabase.rpc("get_question_stats", { limit_count: 50 });
+      const { data, error } = await supabase.rpc("get_question_stats", { limit_count: 8 });
       if (error) throw error;
       return data as { question: string; question_hash: string; count: number; last_asked: string; category: string | null; answered: boolean }[];
     },
