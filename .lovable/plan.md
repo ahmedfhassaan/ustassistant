@@ -1,50 +1,36 @@
 
 
-# إصلاح توليد Embeddings — Google AI Gemini API مباشرة
+# تحويل توليد النصوص إلى Google AI مباشرة — لتقليل التكاليف
 
-## المشكلة
-بوابة Lovable AI Gateway ترفض نماذج Embeddings (خطأ 400). كل الـ 20 chunk بدون embeddings.
+## الفكرة
+استخدام مفتاح `GOOGLE_AI_API_KEY` الموجود بالفعل لتوليد النصوص عبر Google Gemini API مباشرة، بدلاً من Lovable AI Gateway. هذا يلغي استهلاك رصيد Lovable AI ويستخدم حصة Google المجانية/المدفوعة مباشرة.
 
-## الحل
-استخدام Google AI Gemini API مباشرة مع نموذج `gemini-embedding-001` (768 بُعد — متوافق مع عمود DB الحالي، لا حاجة لـ migration).
+## التغييرات المطلوبة
 
-## الخطوات
-
-### 1. إضافة secret `GOOGLE_AI_API_KEY`
-طلب المفتاح من المستخدم عبر أداة `add_secret`.
-
-### 2. تعديل `supabase/functions/generate-embedding/index.ts`
-- حذف استدعاء Lovable AI Gateway بالكامل
-- استدعاء مباشر لـ:
+### 1. تعديل `supabase/functions/chat/index.ts`
+- **استبدال** استدعاء `https://ai.gateway.lovable.dev/v1/chat/completions` بـ Google Gemini API:
   ```
-  POST https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-001:batchEmbedContents?key=API_KEY
+  POST https://generativelanguage.googleapis.com/v1beta/models/{model}:streamGenerateContent?alt=sse&key=API_KEY
   ```
-- Body format:
-  ```json
-  {
-    "requests": [
-      { "model": "models/gemini-embedding-001", "content": { "parts": [{ "text": "..." }] } }
-    ]
-  }
-  ```
-- Timeout: 3 ثوانٍ عادي، 15 ثانية للـ backfill (عبر header `x-timeout`)
-- عند الفشل: إرجاع `null` لكل نص بدون كسر الطلب
-- Logs واضحة: نجاح/فشل، مدة التنفيذ، عدد النصوص، سبب الخطأ
+- **تحويل صيغة الرسائل** من OpenAI format إلى Google Gemini format:
+  - `system` → `systemInstruction`
+  - `user`/`assistant` → `contents` بأدوار `user`/`model`
+- **تحويل صيغة SSE الصادرة**: Google ترسل بصيغة مختلفة (`candidates[0].content.parts[0].text`). سنحولها إلى نفس صيغة OpenAI SSE حتى لا نغير الـ frontend
+- **استخدام** `GOOGLE_AI_API_KEY` بدل `LOVABLE_API_KEY` (مع إبقاء fallback لـ Lovable إذا أردت لاحقاً)
+- **ربط اسم النموذج**: تحويل `google/gemini-3-flash-preview` → `gemini-3-flash-preview` (حذف البادئة `google/`)
 
-### 3. لا تغييرات أخرى مطلوبة
-- `chat/index.ts` يعمل بشكل صحيح (يستدعي `generate-embedding` ويمرر `null` عند الفشل)
-- `search_knowledge_hybrid` SQL يدعم `query_embedding IS NULL` ويعود لـ full-text فقط
-- `backfill-embeddings` يستدعي `generate-embedding` — سيعمل تلقائياً بعد الإصلاح
-- أبعاد `gemini-embedding-001` = 768 = نفس عمود DB — لا migration
+### 2. لا تغيير في الـ Frontend
+- `chatApi.ts` يبقى كما هو — سنرسل نفس صيغة SSE من الـ Edge Function
 
-### 4. التحقق بعد التنفيذ
-- استدعاء `generate-embedding` مباشرة للتأكد من توليد embedding
-- استدعاء `backfill-embeddings` لتحديث الـ 20 chunk
-- التحقق من عدد chunks التي أصبح لديها embedding
+### 3. لا تغيير في إعدادات النموذج
+- صفحة الإعدادات تبقى كما هي — المشرف يختار النموذج والدالة تستخدمه
+
+## ملاحظات
+- Google Gemini API لها حصة مجانية سخية (15 طلب/دقيقة مجاناً)
+- الحصة المدفوعة أرخص بكثير من Lovable AI Gateway
+- نماذج Google المتاحة مباشرة: `gemini-2.5-flash`, `gemini-2.5-pro`, `gemini-3-flash-preview` وغيرها
+- نماذج OpenAI (مثل `gpt-5`) لن تكون متاحة عبر Google API — فقط نماذج Google
 
 ## الملفات المتأثرة
-- `supabase/functions/generate-embedding/index.ts` — إعادة كتابة كاملة
-
-## المتطلبات
-- مفتاح `GOOGLE_AI_API_KEY` من [Google AI Studio](https://aistudio.google.com/apikey)
+- `supabase/functions/chat/index.ts` — تعديل قسم استدعاء AI فقط
 
