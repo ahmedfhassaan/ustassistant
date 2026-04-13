@@ -267,7 +267,7 @@ ${toneInstruction}
 ${showSourcesInstruction}
 ${strictInstruction}
 - استخدم تنسيق Markdown عند الحاجة لتنظيم الإجابات
-- كن مختصراً ومفيداً${knowledgeContext}`;
+- كن مختصراً ومفيداً${knowledgeContext}${settings.custom_instruction?.trim() ? `\n\nتعليمات إضافية:\n${settings.custom_instruction}` : ""}`;
 
     // Convert model name: remove "google/" prefix if present
     let modelName = settings.ai_model || "gemini-3-flash-preview";

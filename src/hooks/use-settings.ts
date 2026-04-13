@@ -19,6 +19,7 @@ export interface AssistantSettings {
   ai_model: string;
   confidence_threshold: string;
   low_confidence_message: string;
+  custom_instruction: string;
   [key: string]: string;
 }
 
@@ -40,6 +41,7 @@ const DEFAULTS: AssistantSettings = {
   ai_model: "google/gemini-3-flash-preview",
   confidence_threshold: "30",
   low_confidence_message: "لا توجد معلومة مؤكدة حول هذا الموضوع. يرجى مراجعة الجهة المختصة.",
+  custom_instruction: "",
 };
 
 export function useSettings() {

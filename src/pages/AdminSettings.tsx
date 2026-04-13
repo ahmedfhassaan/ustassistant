@@ -363,6 +363,18 @@ const AdminSettings = () => {
                   rows={2}
                 />
               </div>
+              <div className="space-y-2">
+                <Label>تعليمات مخصصة</Label>
+                <Textarea
+                  value={form.custom_instruction}
+                  onChange={(e) => update("custom_instruction", e.target.value)}
+                  placeholder="أضف تعليمات إضافية للمساعد، مثل: أنت مختص بكلية الهندسة فقط..."
+                  rows={4}
+                />
+                <p className="text-xs text-muted-foreground">
+                  هذه التعليمات تُضاف تلقائياً إلى نظام المساعد وتؤثر على جميع الردود
+                </p>
+              </div>
             </div>
           </div>
         </TabsContent>
