@@ -1,24 +1,30 @@
 
 
-# إصلاح تسجيل حالة cached في chat_logs
+# إضافة Custom Instruction (تعليمات مخصصة) لإعدادات المساعد
 
-## المشكلة
-عند إرجاع رد من الكاش، يُسجَّل في `chat_logs` بقيمة `cached: false` — مما يجعل إحصائية "الردود المخدومة من الكاش" دائماً صفر.
+## الفكرة
+إضافة حقل نصي في إعدادات المشرف يسمح بكتابة تعليمات مخصصة تُضاف تلقائياً إلى system prompt الخاص بالمساعد الذكي.
 
-## الإصلاح
-في `supabase/functions/chat/index.ts` السطر ~171-176، إضافة `cached: true` و `category` إلى insert:
+## التغييرات
 
+### 1. `src/hooks/use-settings.ts`
+- إضافة `custom_instruction: ""` إلى `AssistantSettings` interface و `DEFAULTS`
+
+### 2. `src/pages/AdminSettings.tsx`
+- إضافة حقل Textarea في تبويب الذكاء الاصطناعي بعنوان "تعليمات مخصصة" مع وصف توضيحي
+- مثال placeholder: "أنت مختص بكلية الهندسة فقط..."
+
+### 3. `supabase/functions/chat/index.ts`
+- إدراج `settings.custom_instruction` في نهاية system prompt إذا لم يكن فارغاً:
 ```typescript
-await supabase.from("chat_logs").insert({
-  question: lastUserMessage,
-  question_hash: questionHash,
-  sources: cached.sources,
-  user_id: userId,
-  cached: true,
-  category: classifyQuestion(lastUserMessage),
-});
+const customInstruction = settings.custom_instruction?.trim()
+  ? `\n\nتعليمات إضافية:\n${settings.custom_instruction}`
+  : "";
+// append to systemPrompt
 ```
 
 ## الملفات المتأثرة
-- `supabase/functions/chat/index.ts` — تعديل سطر واحد
+- `src/hooks/use-settings.ts` — سطر واحد في interface + سطر في DEFAULTS
+- `src/pages/AdminSettings.tsx` — إضافة حقل Textarea
+- `supabase/functions/chat/index.ts` — إضافة 3 أسطر في بناء system prompt
 
