@@ -1,30 +1,24 @@
 
 
-# إضافة Custom Instruction (تعليمات مخصصة) لإعدادات المساعد
+# إزالة نماذج OpenAI وإبقاء نماذج Google فقط
 
-## الفكرة
-إضافة حقل نصي في إعدادات المشرف يسمح بكتابة تعليمات مخصصة تُضاف تلقائياً إلى system prompt الخاص بالمساعد الذكي.
+## السبب
+النظام يستدعي Google AI API مباشرة عبر `GOOGLE_AI_API_KEY`. نماذج OpenAI (`gpt-5`, `gpt-5-mini`) لا تعمل عبر هذا المفتاح وستسبب أخطاء إذا اختارها المشرف.
 
-## التغييرات
+## التغيير
+في `src/pages/AdminSettings.tsx` — تعديل مصفوفة `modelOptions` لإزالة نماذج OpenAI وإبقاء نماذج Google المتاحة فعلياً:
 
-### 1. `src/hooks/use-settings.ts`
-- إضافة `custom_instruction: ""` إلى `AssistantSettings` interface و `DEFAULTS`
-
-### 2. `src/pages/AdminSettings.tsx`
-- إضافة حقل Textarea في تبويب الذكاء الاصطناعي بعنوان "تعليمات مخصصة" مع وصف توضيحي
-- مثال placeholder: "أنت مختص بكلية الهندسة فقط..."
-
-### 3. `supabase/functions/chat/index.ts`
-- إدراج `settings.custom_instruction` في نهاية system prompt إذا لم يكن فارغاً:
 ```typescript
-const customInstruction = settings.custom_instruction?.trim()
-  ? `\n\nتعليمات إضافية:\n${settings.custom_instruction}`
-  : "";
-// append to systemPrompt
+const modelOptions = [
+  { value: "gemini-3-flash-preview", label: "Gemini 3 Flash (سريع)" },
+  { value: "gemini-2.5-flash", label: "Gemini 2.5 Flash (متوازن)" },
+  { value: "gemini-2.5-pro", label: "Gemini 2.5 Pro (متقدم)" },
+];
 ```
 
+> ملاحظة: يجب أيضاً إزالة بادئة `google/` من أسماء النماذج لأن Google AI API تستخدم اسم النموذج بدون بادئة (مثل `gemini-2.5-flash` وليس `google/gemini-2.5-flash`). سيتم التأكد من أن دالة `chat` في Edge Function تتعامل مع الاسم بشكل صحيح.
+
 ## الملفات المتأثرة
-- `src/hooks/use-settings.ts` — سطر واحد في interface + سطر في DEFAULTS
-- `src/pages/AdminSettings.tsx` — إضافة حقل Textarea
-- `supabase/functions/chat/index.ts` — إضافة 3 أسطر في بناء system prompt
+- `src/pages/AdminSettings.tsx` — تعديل `modelOptions`
+- قد يلزم تعديل `supabase/functions/chat/index.ts` إذا كان يُزيل البادئة يدوياً
 
