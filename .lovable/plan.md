@@ -1,24 +1,32 @@
 
 
-# إزالة نماذج OpenAI وإبقاء نماذج Google فقط
+# إضافة إمكانية تعديل الرقم الجامعي للمشرف
 
-## السبب
-النظام يستدعي Google AI API مباشرة عبر `GOOGLE_AI_API_KEY`. نماذج OpenAI (`gpt-5`, `gpt-5-mini`) لا تعمل عبر هذا المفتاح وستسبب أخطاء إذا اختارها المشرف.
+## الفكرة
+حالياً الرقم الجامعي للمشرف مكتوب يدوياً في الكود (`"20260000"`). سنجعله إعداداً قابلاً للتعديل من لوحة التحكم.
 
-## التغيير
-في `src/pages/AdminSettings.tsx` — تعديل مصفوفة `modelOptions` لإزالة نماذج OpenAI وإبقاء نماذج Google المتاحة فعلياً:
+## التغييرات
 
+### 1. `src/hooks/use-settings.ts`
+- إضافة `admin_student_id: "20260000"` إلى interface و DEFAULTS
+
+### 2. `src/pages/AdminSettings.tsx`
+- إضافة حقل Input في تبويب الأمان بعنوان "الرقم الجامعي للمشرف" يسمح بتعديل وحفظ القيمة
+
+### 3. `src/pages/Login.tsx`
+- بدلاً من المقارنة الثابتة `=== "20260000"`، جلب قيمة `admin_student_id` من جدول `assistant_settings` والمقارنة بها:
 ```typescript
-const modelOptions = [
-  { value: "gemini-3-flash-preview", label: "Gemini 3 Flash (سريع)" },
-  { value: "gemini-2.5-flash", label: "Gemini 2.5 Flash (متوازن)" },
-  { value: "gemini-2.5-pro", label: "Gemini 2.5 Pro (متقدم)" },
-];
+const { data: adminIdData } = await supabase
+  .from("assistant_settings")
+  .select("value")
+  .eq("key", "admin_student_id")
+  .maybeSingle();
+const adminId = adminIdData?.value || "20260000";
+if (studentId.trim() === adminId) { ... }
 ```
 
-> ملاحظة: يجب أيضاً إزالة بادئة `google/` من أسماء النماذج لأن Google AI API تستخدم اسم النموذج بدون بادئة (مثل `gemini-2.5-flash` وليس `google/gemini-2.5-flash`). سيتم التأكد من أن دالة `chat` في Edge Function تتعامل مع الاسم بشكل صحيح.
-
 ## الملفات المتأثرة
-- `src/pages/AdminSettings.tsx` — تعديل `modelOptions`
-- قد يلزم تعديل `supabase/functions/chat/index.ts` إذا كان يُزيل البادئة يدوياً
+- `src/hooks/use-settings.ts` — سطر في interface + سطر في DEFAULTS
+- `src/pages/AdminSettings.tsx` — إضافة حقل إدخال
+- `src/pages/Login.tsx` — تعديل منطق التحقق من المشرف
 
