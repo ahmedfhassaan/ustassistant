@@ -10,6 +10,8 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  const startTime = Date.now();
+
   try {
     const { texts } = await req.json();
 
@@ -28,147 +30,76 @@ serve(async (req) => {
       );
     }
 
+    // Truncate texts to 2000 chars each
     const truncatedTexts = texts.map((t: string) => t.slice(0, 2000));
+    const timeout = (req.headers.get("x-timeout") === "long") ? 15000 : 3000;
 
-    // Try /v1/embeddings with an allowed model first
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/embeddings", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-flash-lite",
-        input: truncatedTexts,
-      }),
-    });
+    console.log(`[generate-embedding] Processing ${truncatedTexts.length} texts, timeout=${timeout}ms`);
 
-    if (response.ok) {
-      const data = await response.json();
-      
-      if (data.data && Array.isArray(data.data)) {
-        const sorted = data.data.sort((a: any, b: any) => a.index - b.index);
-        const embeddings = sorted.map((item: any) => 
-          item.embedding && Array.isArray(item.embedding) 
-            ? item.embedding 
-            : new Array(768).fill(0)
-        );
-        return new Response(
-          JSON.stringify({ embeddings }),
-          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-    }
+    // Use Lovable AI Gateway embeddings endpoint
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeout);
 
-    // Fallback: use chat completions with structured tool calling for deterministic embeddings
-    console.log("Embeddings endpoint not available, using structured extraction fallback");
-    
-    const embeddings: number[][] = [];
-
-    for (let i = 0; i < truncatedTexts.length; i++) {
-      const text = truncatedTexts[i];
-      
-      const chatResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    try {
+      const response = await fetch("https://ai.gateway.lovable.dev/v1/embeddings", {
         method: "POST",
         headers: {
           Authorization: `Bearer ${LOVABLE_API_KEY}`,
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model: "google/gemini-2.5-flash-lite",
-          messages: [
-            {
-              role: "system",
-              content: "You generate semantic embedding vectors. Analyze the text and produce a 768-dimension vector capturing its meaning. Output ONLY a JSON array of 768 floats between -1 and 1. No explanation."
-            },
-            { role: "user", content: text }
-          ],
-          temperature: 0,
-          tools: [{
-            type: "function",
-            function: {
-              name: "store_embedding",
-              description: "Store the embedding vector for the given text",
-              parameters: {
-                type: "object",
-                properties: {
-                  vector: {
-                    type: "array",
-                    items: { type: "number" },
-                    description: "768-dimensional embedding vector with values between -1 and 1"
-                  }
-                },
-                required: ["vector"]
-              }
-            }
-          }],
-          tool_choice: { type: "function", function: { name: "store_embedding" } }
+          model: "google/text-embedding-004",
+          input: truncatedTexts,
+          dimensions: 768,
         }),
+        signal: controller.signal,
       });
 
-      if (!chatResponse.ok) {
-        console.error("Chat fallback failed:", chatResponse.status);
-        embeddings.push(new Array(768).fill(0));
-        if (truncatedTexts.length > 1) await new Promise(r => setTimeout(r, 1000));
-        continue;
-      }
+      clearTimeout(timer);
 
-      const chatData = await chatResponse.json();
-      
-      // Extract from tool call response
-      const toolCall = chatData.choices?.[0]?.message?.tool_calls?.[0];
-      if (toolCall?.function?.arguments) {
-        try {
-          const args = JSON.parse(toolCall.function.arguments);
-          if (args.vector && Array.isArray(args.vector)) {
-            const vec = args.vector.slice(0, 768).map((n: any) => {
-              const v = parseFloat(n);
-              return isNaN(v) ? 0 : Math.max(-1, Math.min(1, v));
-            });
-            while (vec.length < 768) vec.push(0);
-            embeddings.push(vec);
-          } else {
-            embeddings.push(new Array(768).fill(0));
-          }
-        } catch {
-          embeddings.push(new Array(768).fill(0));
+      if (response.ok) {
+        const data = await response.json();
+        if (data.data && Array.isArray(data.data)) {
+          const sorted = data.data.sort((a: any, b: any) => a.index - b.index);
+          const embeddings = sorted.map((item: any) =>
+            item.embedding && Array.isArray(item.embedding)
+              ? item.embedding
+              : null
+          );
+          const elapsed = Date.now() - startTime;
+          console.log(`[generate-embedding] Success: ${embeddings.filter(Boolean).length}/${truncatedTexts.length} embeddings in ${elapsed}ms`);
+          return new Response(
+            JSON.stringify({ embeddings }),
+            { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
         }
-      } else {
-        // Try parsing from content as fallback
-        const content = chatData.choices?.[0]?.message?.content || "";
-        embeddings.push(parseEmbeddingFromContent(content));
       }
 
-      if (truncatedTexts.length > 1) await new Promise(r => setTimeout(r, 500));
+      // If response not ok, log and return nulls
+      const errorText = await response.text().catch(() => "unknown");
+      console.error(`[generate-embedding] Gateway returned ${response.status}: ${errorText.slice(0, 200)}`);
+      const elapsed = Date.now() - startTime;
+      console.log(`[generate-embedding] Failed after ${elapsed}ms`);
+      return new Response(
+        JSON.stringify({ embeddings: truncatedTexts.map(() => null) }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    } catch (e) {
+      clearTimeout(timer);
+      const elapsed = Date.now() - startTime;
+      const reason = e instanceof Error && e.name === "AbortError" ? "timeout" : (e instanceof Error ? e.message : "unknown");
+      console.error(`[generate-embedding] Failed after ${elapsed}ms: ${reason}`);
+      return new Response(
+        JSON.stringify({ embeddings: truncatedTexts.map(() => null) }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
-
-    return new Response(
-      JSON.stringify({ embeddings }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
   } catch (e) {
-    console.error("generate-embedding error:", e);
+    const elapsed = Date.now() - startTime;
+    console.error(`[generate-embedding] Error after ${elapsed}ms:`, e);
     return new Response(
       JSON.stringify({ error: e instanceof Error ? e.message : "Unknown error" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
 });
-
-function parseEmbeddingFromContent(content: string): number[] {
-  try {
-    const jsonMatch = content.match(/\[[\s\S]*\]/);
-    if (jsonMatch) {
-      const arr = JSON.parse(jsonMatch[0]);
-      if (Array.isArray(arr)) {
-        const normalized = arr.slice(0, 768).map((n: any) => {
-          const val = parseFloat(n);
-          return isNaN(val) ? 0 : Math.max(-1, Math.min(1, val));
-        });
-        while (normalized.length < 768) normalized.push(0);
-        return normalized;
-      }
-    }
-  } catch { /* ignore */ }
-  return new Array(768).fill(0);
-}

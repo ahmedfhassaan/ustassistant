@@ -33,7 +33,6 @@ function classifyQuestion(text: string): string {
   return "عام";
 }
 
-/** Load all settings from assistant_settings table */
 async function loadSettings(supabase: any): Promise<Record<string, string>> {
   const defaults: Record<string, string> = {
     assistant_name: "المساعد الجامعي الذكي",
@@ -52,18 +51,12 @@ async function loadSettings(supabase: any): Promise<Record<string, string>> {
     max_messages_per_day: "100",
     abuse_protection: "true",
   };
-
   try {
     const { data } = await supabase.from("assistant_settings").select("key, value");
-    if (data) {
-      for (const row of data) {
-        defaults[row.key] = row.value;
-      }
-    }
+    if (data) for (const row of data) defaults[row.key] = row.value;
   } catch (e) {
     console.error("Failed to load settings:", e);
   }
-
   return defaults;
 }
 
@@ -105,130 +98,117 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Load settings from DB
-    const settings = await loadSettings(supabase);
-
     const lastUserMessage = [...messages].reverse().find(m => m.role === "user")?.content || "";
     const questionHash = hashQuestion(lastUserMessage);
 
-    // --- RATE LIMITING (abuse protection) ---
-    if (settings.abuse_protection === "true") {
-      try {
-        if (userId) {
-          const { count } = await supabase
-            .from("chat_logs")
-            .select("id", { count: "exact", head: true })
-            .eq("user_id", userId)
-            .gte("created_at", new Date(Date.now() - 86400000).toISOString());
+    // --- Run settings, rate limit, cache, and embedding in parallel ---
+    const settingsPromise = loadSettings(supabase);
 
-          const maxPerDay = parseInt(settings.max_messages_per_day) || 100;
-          if (count && count >= maxPerDay) {
-            return new Response(
-              JSON.stringify({ error: "تم تجاوز الحد اليومي للرسائل. حاول مرة أخرى غداً." }),
-              { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-            );
-          }
-        }
-      } catch (e) {
-        console.error("Rate limit check error:", e);
-      }
-    }
-
-    // --- CACHE CHECK ---
-    if (settings.cache_enabled === "true" && messages.length <= 1) {
+    const rateLimitPromise = (async () => {
+      if (!userId) return { limited: false };
       try {
-        const { data: cached } = await supabase
+        const { count } = await supabase
+          .from("chat_logs")
+          .select("id", { count: "exact", head: true })
+          .eq("user_id", userId)
+          .gte("created_at", new Date(Date.now() - 86400000).toISOString());
+        return { limited: false, count: count || 0 };
+      } catch { return { limited: false, count: 0 }; }
+    })();
+
+    const cachePromise = (async () => {
+      if (messages.length > 1) return null;
+      try {
+        const { data } = await supabase
           .from("response_cache")
           .select("answer, sources")
           .eq("question_hash", questionHash)
           .gt("expires_at", new Date().toISOString())
           .maybeSingle();
+        return data;
+      } catch { return null; }
+    })();
 
-        if (cached) {
-          try {
-            await supabase.from("chat_logs").insert({
-              question: lastUserMessage,
-              question_hash: questionHash,
-              sources: cached.sources,
-              user_id: userId,
-            });
-          } catch (e) {
-            console.error("Cache log error:", e);
-          }
-
-          return new Response(
-            JSON.stringify({
-              cached: true,
-              content: cached.answer,
-              sources: settings.show_sources === "true" ? cached.sources : null,
-            }),
-            { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-          );
+    const embeddingPromise = (async (): Promise<number[] | null> => {
+      try {
+        const embResponse = await fetch(`${supabaseUrl}/functions/v1/generate-embedding`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${supabaseKey}`,
+          },
+          body: JSON.stringify({ texts: [lastUserMessage] }),
+        });
+        if (embResponse.ok) {
+          const embData = await embResponse.json();
+          return embData.embeddings?.[0] || null;
         }
+        return null;
       } catch (e) {
-        console.error("Cache lookup error:", e);
+        console.error("Query embedding error:", e);
+        return null;
+      }
+    })();
+
+    const [settings, rateResult, cached, queryEmbedding] = await Promise.all([
+      settingsPromise, rateLimitPromise, cachePromise, embeddingPromise,
+    ]);
+
+    // --- Rate limit check ---
+    if (settings.abuse_protection === "true" && userId) {
+      const maxPerDay = parseInt(settings.max_messages_per_day) || 100;
+      if (rateResult.count && rateResult.count >= maxPerDay) {
+        return new Response(
+          JSON.stringify({ error: "تم تجاوز الحد اليومي للرسائل. حاول مرة أخرى غداً." }),
+          { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
       }
     }
 
-    // --- KNOWLEDGE SEARCH (RAG) with Hybrid Search ---
+    // --- Cache hit ---
+    if (cached && settings.cache_enabled === "true") {
+      try {
+        await supabase.from("chat_logs").insert({
+          question: lastUserMessage,
+          question_hash: questionHash,
+          sources: cached.sources,
+          user_id: userId,
+        });
+      } catch {}
+      return new Response(
+        JSON.stringify({
+          cached: true,
+          content: cached.answer,
+          sources: settings.show_sources === "true" ? cached.sources : null,
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // --- KNOWLEDGE SEARCH: always use hybrid ---
     let knowledgeContext = "";
     let sourceNames: string[] = [];
     let maxRank = 0;
     const searchCount = parseInt(settings.search_results_count) || 5;
 
     try {
-      // Generate embedding for the user's question
-      let queryEmbedding: number[] | null = null;
-      try {
-        const embResponse = await fetch(
-          `${supabaseUrl}/functions/v1/generate-embedding`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${supabaseKey}`,
-            },
-            body: JSON.stringify({ texts: [lastUserMessage] }),
-          }
-        );
-        if (embResponse.ok) {
-          const embData = await embResponse.json();
-          if (embData.embeddings?.[0]) {
-            queryEmbedding = embData.embeddings[0];
-          }
-        }
-      } catch (e) {
-        console.error("Query embedding error:", e);
-      }
-
-      let chunks: any[] | null = null;
-
-      // Try hybrid search first if we have an embedding
+      const rpcParams: any = {
+        query_text: lastUserMessage,
+        max_results: searchCount,
+      };
       if (queryEmbedding) {
-        const { data } = await supabase.rpc("search_knowledge_hybrid", {
-          query_text: lastUserMessage,
-          query_embedding: JSON.stringify(queryEmbedding),
-          max_results: searchCount,
-        });
-        chunks = data;
+        rpcParams.query_embedding = JSON.stringify(queryEmbedding);
       }
+      // query_embedding defaults to NULL in the SQL function if not provided
 
-      // Fallback to keyword search
-      if (!chunks || chunks.length === 0) {
-        const { data } = await supabase.rpc("search_knowledge", {
-          query_text: lastUserMessage,
-          max_results: searchCount,
-        });
-        chunks = data;
-      }
+      const { data: chunks } = await supabase.rpc("search_knowledge_hybrid", rpcParams);
 
       if (chunks && chunks.length > 0) {
         sourceNames = [...new Set(chunks.map((c: any) => c.document_name as string))];
-        maxRank = Math.max(...chunks.map((c: any) => c.rank));
-
+        maxRank = Math.max(...chunks.map((c: any) => c.rank as number));
         knowledgeContext = "\n\n--- معلومات من قاعدة المعرفة الجامعية ---\n" +
           chunks.map((c: any) =>
-            `[مصدر: ${c.document_name} | درجة الصلة: ${(c.rank * 100).toFixed(0)}%]\n${c.content}`
+            `[مصدر: ${c.document_name} | درجة الصلة: ${((c.rank as number) * 100).toFixed(0)}%]\n${c.content}`
           ).join("\n\n") +
           "\n--- نهاية المعلومات ---";
       }
@@ -236,20 +216,16 @@ serve(async (req) => {
       console.error("Knowledge search error:", e);
     }
 
-    // --- CONFIDENCE CHECK ---
+    // --- Confidence check ---
     const confidenceThreshold = parseInt(settings.confidence_threshold) || 30;
     const confidencePercent = maxRank * 100;
 
     if (settings.strict_sources === "true" && sourceNames.length === 0) {
-      // No sources found and strict mode is on
       const fallback = settings.fallback_message;
       try {
         await supabase.from("chat_logs").insert({
-          question: lastUserMessage,
-          question_hash: questionHash,
-          sources: null,
-          cached: false,
-          user_id: userId,
+          question: lastUserMessage, question_hash: questionHash,
+          sources: null, cached: false, user_id: userId,
           category: classifyQuestion(lastUserMessage),
         });
       } catch {}
@@ -263,13 +239,12 @@ serve(async (req) => {
       knowledgeContext += `\n\n⚠️ ملاحظة: درجة الصلة منخفضة (${confidencePercent.toFixed(0)}%). إذا لم تكن المعلومات كافية، استخدم هذه الرسالة: "${settings.low_confidence_message}"`;
     }
 
-    // Build dynamic system prompt from settings
+    // Build system prompt
     const toneInstruction = buildToneInstruction(settings.tone);
     const maxLen = parseInt(settings.max_response_length) || 1000;
     const showSourcesInstruction = settings.show_sources === "true"
       ? "- **مهم جداً**: في نهاية إجابتك، إذا استخدمت معلومات من قاعدة المعرفة، أضف سطراً بالتنسيق التالي:\n  [المصادر: اسم_الملف1، اسم_الملف2]"
       : "- لا تذكر المصادر في إجابتك";
-
     const strictInstruction = settings.strict_sources === "true"
       ? `- إذا لم تجد معلومات في قاعدة المعرفة، لا تتخمن أو تنشئ إجابة. أجب فقط بـ: "${settings.fallback_message}"`
       : "- إذا لم تكن متأكداً من إجابة، اذكر ذلك بوضوح وانصح الطالب بالتواصل مع الجهة المختصة";
@@ -300,10 +275,7 @@ ${strictInstruction}
       },
       body: JSON.stringify({
         model: settings.ai_model || "google/gemini-3-flash-preview",
-        messages: [
-          { role: "system", content: systemPrompt },
-          ...messages,
-        ],
+        messages: [{ role: "system", content: systemPrompt }, ...messages],
         stream: true,
       }),
     });
@@ -350,7 +322,7 @@ ${strictInstruction}
               const parsed = JSON.parse(jsonStr);
               const delta = parsed.choices?.[0]?.delta?.content;
               if (delta) fullContent += delta;
-            } catch { /* partial JSON */ }
+            } catch {}
           }
         }
       } catch (e) {
@@ -362,13 +334,9 @@ ${strictInstruction}
       if (fullContent) {
         try {
           const sourcesStr = sourceNames.length > 0 ? sourceNames.join("، ") : null;
-          
           await supabase.from("chat_logs").insert({
-            question: lastUserMessage,
-            question_hash: questionHash,
-            sources: sourcesStr,
-            cached: false,
-            user_id: userId,
+            question: lastUserMessage, question_hash: questionHash,
+            sources: sourcesStr, cached: false, user_id: userId,
             category: classifyQuestion(lastUserMessage),
           });
         } catch (e) {
@@ -376,32 +344,23 @@ ${strictInstruction}
         }
       }
 
-      // Cache the response
       if (fullContent && settings.cache_enabled === "true" && messages.length <= 1) {
         try {
           const sourcesStr = sourceNames.length > 0 ? sourceNames.join("، ") : null;
           const ttlMinutes = parseInt(settings.cache_ttl_minutes) || 1440;
           const expiresAt = new Date(Date.now() + ttlMinutes * 60 * 1000).toISOString();
-          await supabase
-            .from("response_cache")
-            .upsert({
-              question_hash: questionHash,
-              question: lastUserMessage,
-              answer: fullContent,
-              sources: sourcesStr,
-              expires_at: expiresAt,
-            }, { onConflict: "question_hash" });
+          await supabase.from("response_cache").upsert({
+            question_hash: questionHash, question: lastUserMessage,
+            answer: fullContent, sources: sourcesStr, expires_at: expiresAt,
+          }, { onConflict: "question_hash" });
         } catch (e) {
           console.error("Cache save error:", e);
         }
       }
 
       try {
-        await supabase
-          .from("response_cache")
-          .delete()
-          .lt("expires_at", new Date().toISOString());
-      } catch { /* ignore */ }
+        await supabase.from("response_cache").delete().lt("expires_at", new Date().toISOString());
+      } catch {}
     })();
 
     return new Response(readable, {
