@@ -20,6 +20,7 @@ export interface AssistantSettings {
   confidence_threshold: string;
   low_confidence_message: string;
   custom_instruction: string;
+  admin_student_id: string;
   [key: string]: string;
 }
 
@@ -42,6 +43,7 @@ const DEFAULTS: AssistantSettings = {
   confidence_threshold: "30",
   low_confidence_message: "لا توجد معلومة مؤكدة حول هذا الموضوع. يرجى مراجعة الجهة المختصة.",
   custom_instruction: "",
+  admin_student_id: "20260000",
 };
 
 export function useSettings() {
