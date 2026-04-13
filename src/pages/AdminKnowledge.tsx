@@ -182,47 +182,19 @@ const AdminKnowledge = () => {
   const handleRegenerateEmbeddings = async () => {
     setRegenerating(true);
     try {
-      const processedDocs = documents.filter(d => d.status === "processed");
-      if (processedDocs.length === 0) {
-        toast({ title: "لا توجد مستندات جاهزة", description: "لم يتم العثور على مستندات معالجة لإعادة توليد الـ embeddings لها.", variant: "destructive" });
-        setRegenerating(false);
-        return;
-      }
+      const { data, error } = await supabase.functions.invoke("backfill-embeddings");
 
-      for (const doc of processedDocs) {
-        // Get chunks for this document
-        const { data: chunks } = await supabase
-          .from("knowledge_chunks")
-          .select("id, content")
-          .eq("document_id", doc.id)
-          .order("chunk_index");
+      if (error) throw error;
 
-        if (!chunks || chunks.length === 0) continue;
-
-        const texts = chunks.map(c => c.content);
-
-        // Generate embeddings
-        const { data: embData, error: embError } = await supabase.functions.invoke("generate-embedding", {
-          body: { texts },
+      if (data?.success) {
+        toast({
+          title: "تم إعادة توليد Embeddings",
+          description: `تمت معالجة ${data.processed} من ${data.total} chunk بنجاح.${data.failed > 0 ? ` (${data.failed} فشل)` : ""}`,
+          variant: data.failed > 0 ? "destructive" : "default",
         });
-
-        if (embError || !embData?.embeddings) {
-          console.error("Embedding error for doc:", doc.name, embError);
-          continue;
-        }
-
-        // Update each chunk with its embedding
-        for (let i = 0; i < chunks.length; i++) {
-          if (embData.embeddings[i]) {
-            await supabase
-              .from("knowledge_chunks")
-              .update({ embedding: JSON.stringify(embData.embeddings[i]) } as any)
-              .eq("id", chunks[i].id);
-          }
-        }
+      } else {
+        throw new Error(data?.error || "فشل غير متوقع");
       }
-
-      toast({ title: "تم إعادة توليد Embeddings", description: `تمت معالجة ${processedDocs.length} مستند بنجاح.` });
     } catch (err: any) {
       console.error("Regenerate error:", err);
       toast({ title: "خطأ", description: err.message || "حدث خطأ أثناء إعادة التوليد", variant: "destructive" });
