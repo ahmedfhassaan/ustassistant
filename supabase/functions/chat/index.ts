@@ -86,10 +86,10 @@ serve(async (req) => {
       );
     }
 
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) {
+    const GOOGLE_AI_API_KEY = Deno.env.get("GOOGLE_AI_API_KEY");
+    if (!GOOGLE_AI_API_KEY) {
       return new Response(
-        JSON.stringify({ error: "مفتاح API غير مهيأ" }),
+        JSON.stringify({ error: "مفتاح Google AI API غير مهيأ" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -267,17 +267,34 @@ ${strictInstruction}
 - استخدم تنسيق Markdown عند الحاجة لتنظيم الإجابات
 - كن مختصراً ومفيداً${knowledgeContext}`;
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
+    // Convert model name: remove "google/" prefix if present
+    let modelName = settings.ai_model || "gemini-3-flash-preview";
+    if (modelName.startsWith("google/")) modelName = modelName.slice(7);
+    // Also remove "openai/" prefix models — they won't work with Google API, fallback
+    if (modelName.startsWith("openai/")) modelName = "gemini-3-flash-preview";
+
+    // Convert messages to Google Gemini format
+    const geminiContents = messages
+      .filter((m: any) => m.role === "user" || m.role === "assistant")
+      .map((m: any) => ({
+        role: m.role === "assistant" ? "model" : "user",
+        parts: [{ text: m.content }],
+      }));
+
+    const geminiBody: any = {
+      contents: geminiContents,
+      systemInstruction: { parts: [{ text: systemPrompt }] },
+      generationConfig: {
+        maxOutputTokens: Math.min((parseInt(settings.max_response_length) || 1000) * 4, 8192),
       },
-      body: JSON.stringify({
-        model: settings.ai_model || "google/gemini-3-flash-preview",
-        messages: [{ role: "system", content: systemPrompt }, ...messages],
-        stream: true,
-      }),
+    };
+
+    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:streamGenerateContent?alt=sse&key=${GOOGLE_AI_API_KEY}`;
+
+    const response = await fetch(geminiUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(geminiBody),
     });
 
     if (!response.ok) {
@@ -287,14 +304,8 @@ ${strictInstruction}
           { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
-      if (response.status === 402) {
-        return new Response(
-          JSON.stringify({ error: "يرجى إضافة رصيد لاستخدام المساعد الذكي." }),
-          { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
       const t = await response.text();
-      console.error("AI gateway error:", response.status, t);
+      console.error("Google AI error:", response.status, t);
       return new Response(
         JSON.stringify({ error: "حدث خطأ في المساعد الذكي" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -308,23 +319,40 @@ ${strictInstruction}
     (async () => {
       let fullContent = "";
       const decoder = new TextDecoder();
+      const encoder = new TextEncoder();
       try {
+        let buffer = "";
         while (true) {
           const { done, value } = await reader.read();
           if (done) break;
-          await writer.write(value);
-          const text = decoder.decode(value, { stream: true });
-          for (const line of text.split("\n")) {
+          buffer += decoder.decode(value, { stream: true });
+
+          let newlineIdx: number;
+          while ((newlineIdx = buffer.indexOf("\n")) !== -1) {
+            const line = buffer.slice(0, newlineIdx).replace(/\r$/, "");
+            buffer = buffer.slice(newlineIdx + 1);
+
             if (!line.startsWith("data: ")) continue;
             const jsonStr = line.slice(6).trim();
             if (jsonStr === "[DONE]") continue;
+
             try {
               const parsed = JSON.parse(jsonStr);
-              const delta = parsed.choices?.[0]?.delta?.content;
-              if (delta) fullContent += delta;
+              // Extract text from Google Gemini SSE format
+              const text = parsed.candidates?.[0]?.content?.parts?.[0]?.text;
+              if (text) {
+                fullContent += text;
+                // Convert to OpenAI-compatible SSE format for the frontend
+                const openaiChunk = {
+                  choices: [{ delta: { content: text } }],
+                };
+                await writer.write(encoder.encode(`data: ${JSON.stringify(openaiChunk)}\n\n`));
+              }
             } catch {}
           }
         }
+        // Send [DONE] marker
+        await writer.write(encoder.encode("data: [DONE]\n\n"));
       } catch (e) {
         console.error("Stream processing error:", e);
       } finally {
