@@ -45,6 +45,7 @@ serve(async (req) => {
       const requests = truncatedTexts.map((text: string) => ({
         model: "models/gemini-embedding-001",
         content: { parts: [{ text }] },
+        outputDimensionality: 768,
       }));
 
       const response = await fetch(
