@@ -1,32 +1,23 @@
 
 
-# إضافة إمكانية تعديل الرقم الجامعي للمشرف
+# إزالة ذكر كلمة Lovable من الكود
 
-## الفكرة
-حالياً الرقم الجامعي للمشرف مكتوب يدوياً في الكود (`"20260000"`). سنجعله إعداداً قابلاً للتعديل من لوحة التحكم.
+## التغييرات المطلوبة
 
-## التغييرات
+### 1. `index.html`
+- تغيير `<meta name="author" content="Lovable" />` إلى اسم مناسب مثل `"UST Assistant"`
+- تغيير `<meta name="twitter:site" content="@Lovable" />` إلى قيمة مناسبة أو إزالته
 
-### 1. `src/hooks/use-settings.ts`
-- إضافة `admin_student_id: "20260000"` إلى interface و DEFAULTS
+### 2. `README.md`
+- تغيير العنوان من `Welcome to your Lovable project` إلى `UST Assistant`
 
-### 2. `src/pages/AdminSettings.tsx`
-- إضافة حقل Input في تبويب الأمان بعنوان "الرقم الجامعي للمشرف" يسمح بتعديل وحفظ القيمة
+### 3. `src/pages/Index.tsx`
+- إزالة سطر الـ placeholder الذي يحتوي على `data-lovable-blank-page-placeholder`
 
-### 3. `src/pages/Login.tsx`
-- بدلاً من المقارنة الثابتة `=== "20260000"`، جلب قيمة `admin_student_id` من جدول `assistant_settings` والمقارنة بها:
-```typescript
-const { data: adminIdData } = await supabase
-  .from("assistant_settings")
-  .select("value")
-  .eq("key", "admin_student_id")
-  .maybeSingle();
-const adminId = adminIdData?.value || "20260000";
-if (studentId.trim() === adminId) { ... }
-```
+> ملاحظة: مكتبة `lovable-tagger` في `package.json` هي أداة بناء داخلية ولا تظهر للمستخدمين النهائيين.
 
 ## الملفات المتأثرة
-- `src/hooks/use-settings.ts` — سطر في interface + سطر في DEFAULTS
-- `src/pages/AdminSettings.tsx` — إضافة حقل إدخال
-- `src/pages/Login.tsx` — تعديل منطق التحقق من المشرف
+- `index.html`
+- `README.md`
+- `src/pages/Index.tsx`
 
