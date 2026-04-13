@@ -22,10 +22,11 @@ serve(async (req) => {
       );
     }
 
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) {
+    const GOOGLE_AI_API_KEY = Deno.env.get("GOOGLE_AI_API_KEY");
+    if (!GOOGLE_AI_API_KEY) {
+      console.error("[generate-embedding] GOOGLE_AI_API_KEY is not configured");
       return new Response(
-        JSON.stringify({ error: "LOVABLE_API_KEY is not configured" }),
+        JSON.stringify({ error: "GOOGLE_AI_API_KEY is not configured" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -34,40 +35,39 @@ serve(async (req) => {
     const truncatedTexts = texts.map((t: string) => t.slice(0, 2000));
     const timeout = (req.headers.get("x-timeout") === "long") ? 15000 : 3000;
 
-    console.log(`[generate-embedding] Processing ${truncatedTexts.length} texts, timeout=${timeout}ms`);
+    console.log(`[generate-embedding] Processing ${truncatedTexts.length} texts (avg ${Math.round(truncatedTexts.reduce((s: number, t: string) => s + t.length, 0) / truncatedTexts.length)} chars), timeout=${timeout}ms`);
 
-    // Use Lovable AI Gateway embeddings endpoint
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeout);
 
     try {
-      const response = await fetch("https://ai.gateway.lovable.dev/v1/embeddings", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${LOVABLE_API_KEY}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: "google/text-embedding-004",
-          input: truncatedTexts,
-          dimensions: 768,
-        }),
-        signal: controller.signal,
-      });
+      // Build batch request for Google AI Gemini API
+      const requests = truncatedTexts.map((text: string) => ({
+        model: "models/gemini-embedding-001",
+        content: { parts: [{ text }] },
+      }));
+
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-001:batchEmbedContents?key=${GOOGLE_AI_API_KEY}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ requests }),
+          signal: controller.signal,
+        }
+      );
 
       clearTimeout(timer);
 
       if (response.ok) {
         const data = await response.json();
-        if (data.data && Array.isArray(data.data)) {
-          const sorted = data.data.sort((a: any, b: any) => a.index - b.index);
-          const embeddings = sorted.map((item: any) =>
-            item.embedding && Array.isArray(item.embedding)
-              ? item.embedding
-              : null
+        if (data.embeddings && Array.isArray(data.embeddings)) {
+          const embeddings = data.embeddings.map((item: any) =>
+            item.values && Array.isArray(item.values) ? item.values : null
           );
           const elapsed = Date.now() - startTime;
-          console.log(`[generate-embedding] Success: ${embeddings.filter(Boolean).length}/${truncatedTexts.length} embeddings in ${elapsed}ms`);
+          const dims = embeddings[0]?.length || 0;
+          console.log(`[generate-embedding] Success: ${embeddings.filter(Boolean).length}/${truncatedTexts.length} embeddings (${dims} dims) in ${elapsed}ms`);
           return new Response(
             JSON.stringify({ embeddings }),
             { headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -75,10 +75,10 @@ serve(async (req) => {
         }
       }
 
-      // If response not ok, log and return nulls
+      // If response not ok
       const errorText = await response.text().catch(() => "unknown");
-      console.error(`[generate-embedding] Gateway returned ${response.status}: ${errorText.slice(0, 200)}`);
       const elapsed = Date.now() - startTime;
+      console.error(`[generate-embedding] Google AI returned ${response.status}: ${errorText.slice(0, 300)}`);
       console.log(`[generate-embedding] Failed after ${elapsed}ms`);
       return new Response(
         JSON.stringify({ embeddings: truncatedTexts.map(() => null) }),
