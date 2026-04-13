@@ -1,3 +1,3 @@
-# Welcome to your Lovable project
+# UST Assistant
 
-TODO: Document your project here
+المساعد الجامعي الذكي لطلاب جامعة العلوم والتكنولوجيا
