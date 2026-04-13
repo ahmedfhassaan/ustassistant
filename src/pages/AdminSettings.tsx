@@ -282,6 +282,19 @@ const AdminSettings = () => {
             </h2>
             <div className="space-y-5">
               <div className="space-y-2">
+                <Label>الرقم الجامعي للمشرف</Label>
+                <Input
+                  type="text"
+                  inputMode="numeric"
+                  value={form.admin_student_id}
+                  onChange={(e) => update("admin_student_id", e.target.value.replace(/\D/g, ""))}
+                  placeholder="20260000"
+                />
+                <p className="text-xs text-muted-foreground">
+                  الرقم الجامعي المستخدم لدخول لوحة التحكم
+                </p>
+              </div>
+              <div className="space-y-2">
                 <Label>كلمة مرور المشرف</Label>
                 <Input
                   type="password"

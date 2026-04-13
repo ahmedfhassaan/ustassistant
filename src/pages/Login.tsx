@@ -42,15 +42,18 @@ const Login = () => {
     setIsLoading(true);
 
     try {
-      // Check admin credentials from DB
-      if (studentId.trim() === "20260000") {
-        const { data } = await supabase
-          .from("assistant_settings")
-          .select("value")
-          .eq("key", "admin_password")
-          .maybeSingle();
+      // Fetch admin credentials from DB
+      const { data: adminSettings } = await supabase
+        .from("assistant_settings")
+        .select("key, value")
+        .in("key", ["admin_student_id", "admin_password"]);
 
-        const adminPass = data?.value || "admin123";
+      const settingsMap: Record<string, string> = {};
+      adminSettings?.forEach((row: any) => { settingsMap[row.key] = row.value; });
+      const adminId = settingsMap["admin_student_id"] || "20260000";
+      const adminPass = settingsMap["admin_password"] || "admin123";
+
+      if (studentId.trim() === adminId) {
         if (password.trim() === adminPass) {
           localStorage.setItem("admin", JSON.stringify({ id: studentId, name: "المشرف" }));
           setIsLoading(false);
