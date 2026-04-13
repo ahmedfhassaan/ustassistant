@@ -43,7 +43,7 @@ const Login = () => {
 
     try {
       // Check admin credentials from DB
-      if (studentId.trim() === "admin") {
+      if (studentId.trim() === "20260000") {
         const { data } = await supabase
           .from("assistant_settings")
           .select("value")
