@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Settings, User, MessageSquare, Database, Shield, Cpu, Save, Trash2, Loader2 } from "lucide-react";
+import { Settings, User, MessageSquare, Database, Shield, Cpu, Save, Trash2, Loader2, Eye, EyeOff } from "lucide-react";
 import { useTheme } from "@/hooks/use-theme";
 import { useSettings, AssistantSettings } from "@/hooks/use-settings";
 import { supabase } from "@/integrations/supabase/client";
@@ -33,6 +33,7 @@ const AdminSettings = () => {
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
   const [clearingCache, setClearingCache] = useState(false);
+  const [showAdminPassword, setShowAdminPassword] = useState(false);
 
   useEffect(() => {
     if (!loading) {
@@ -296,11 +297,17 @@ const AdminSettings = () => {
               </div>
               <div className="space-y-2">
                 <Label>كلمة مرور المشرف</Label>
-                <Input
-                  type="password"
-                  value={form.admin_password}
-                  onChange={(e) => update("admin_password", e.target.value)}
-                />
+                <div className="relative">
+                  <Input
+                    type={showAdminPassword ? "text" : "password"}
+                    value={form.admin_password}
+                    onChange={(e) => update("admin_password", e.target.value)}
+                    className="pl-10"
+                  />
+                  <button type="button" onClick={() => setShowAdminPassword(!showAdminPassword)} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors" tabIndex={-1}>
+                    {showAdminPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
               </div>
               <div className="space-y-2">
                 <Label>الحد الأقصى للرسائل لكل مستخدم يومياً</Label>

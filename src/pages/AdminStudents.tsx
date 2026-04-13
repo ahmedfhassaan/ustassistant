@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Users, Plus, Pencil, Trash2, KeyRound, Loader2, AlertTriangle } from "lucide-react";
+import { Users, Plus, Pencil, Trash2, KeyRound, Loader2, AlertTriangle, Eye, EyeOff } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -51,6 +51,8 @@ const AdminStudents = () => {
   const [formPassword, setFormPassword] = useState("");
   const [editName, setEditName] = useState("");
   const [newPassword, setNewPassword] = useState("");
+  const [showFormPassword, setShowFormPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
 
   const { data: students, isLoading, isError, refetch } = useQuery({
     queryKey: ["admin-students"],
@@ -281,7 +283,12 @@ const AdminStudents = () => {
             </div>
             <div className="space-y-2">
               <Label>كلمة المرور</Label>
-              <Input type="password" value={formPassword} onChange={(e) => setFormPassword(e.target.value)} dir="ltr" placeholder="كلمة مرور قوية" />
+              <div className="relative">
+                <Input type={showFormPassword ? "text" : "password"} value={formPassword} onChange={(e) => setFormPassword(e.target.value)} dir="ltr" placeholder="كلمة مرور قوية" className="pl-10" />
+                <button type="button" onClick={() => setShowFormPassword(!showFormPassword)} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors" tabIndex={-1}>
+                  {showFormPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
             </div>
           </div>
           <DialogFooter>
@@ -337,7 +344,12 @@ const AdminStudents = () => {
           </p>
           <div className="space-y-2 py-2">
             <Label>كلمة المرور الجديدة</Label>
-            <Input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} dir="ltr" placeholder="كلمة مرور جديدة" />
+            <div className="relative">
+              <Input type={showNewPassword ? "text" : "password"} value={newPassword} onChange={(e) => setNewPassword(e.target.value)} dir="ltr" placeholder="كلمة مرور جديدة" className="pl-10" />
+              <button type="button" onClick={() => setShowNewPassword(!showNewPassword)} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors" tabIndex={-1}>
+                {showNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
+            </div>
           </div>
           <DialogFooter>
             <Button
