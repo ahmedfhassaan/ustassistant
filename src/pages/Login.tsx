@@ -215,9 +215,11 @@ const Login = () => {
               <Input
                 id="studentId"
                 type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
                 placeholder="أدخل رقمك الجامعي"
                 value={studentId}
-                onChange={(e) => setStudentId(e.target.value)}
+                onChange={(e) => setStudentId(e.target.value.replace(/\D/g, ""))}
                 autoComplete="off"
                 className={`text-right h-12 rounded-xl transition-all duration-200 ${
                   isDark
