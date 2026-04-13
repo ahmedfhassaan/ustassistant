@@ -319,23 +319,40 @@ ${strictInstruction}
     (async () => {
       let fullContent = "";
       const decoder = new TextDecoder();
+      const encoder = new TextEncoder();
       try {
+        let buffer = "";
         while (true) {
           const { done, value } = await reader.read();
           if (done) break;
-          await writer.write(value);
-          const text = decoder.decode(value, { stream: true });
-          for (const line of text.split("\n")) {
+          buffer += decoder.decode(value, { stream: true });
+
+          let newlineIdx: number;
+          while ((newlineIdx = buffer.indexOf("\n")) !== -1) {
+            const line = buffer.slice(0, newlineIdx).replace(/\r$/, "");
+            buffer = buffer.slice(newlineIdx + 1);
+
             if (!line.startsWith("data: ")) continue;
             const jsonStr = line.slice(6).trim();
             if (jsonStr === "[DONE]") continue;
+
             try {
               const parsed = JSON.parse(jsonStr);
-              const delta = parsed.choices?.[0]?.delta?.content;
-              if (delta) fullContent += delta;
+              // Extract text from Google Gemini SSE format
+              const text = parsed.candidates?.[0]?.content?.parts?.[0]?.text;
+              if (text) {
+                fullContent += text;
+                // Convert to OpenAI-compatible SSE format for the frontend
+                const openaiChunk = {
+                  choices: [{ delta: { content: text } }],
+                };
+                await writer.write(encoder.encode(`data: ${JSON.stringify(openaiChunk)}\n\n`));
+              }
             } catch {}
           }
         }
+        // Send [DONE] marker
+        await writer.write(encoder.encode("data: [DONE]\n\n"));
       } catch (e) {
         console.error("Stream processing error:", e);
       } finally {
