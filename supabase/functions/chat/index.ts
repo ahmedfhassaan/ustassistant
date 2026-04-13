@@ -173,6 +173,8 @@ serve(async (req) => {
           question_hash: questionHash,
           sources: cached.sources,
           user_id: userId,
+          cached: true,
+          category: classifyQuestion(lastUserMessage),
         });
       } catch {}
       return new Response(
