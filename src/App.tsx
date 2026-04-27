@@ -14,6 +14,7 @@ import AdminFAQ from "./pages/AdminFAQ";
 import AdminSettings from "./pages/AdminSettings";
 import AdminStudents from "./pages/AdminStudents";
 import AdminFeedback from "./pages/AdminFeedback";
+import AdminEvaluation from "./pages/AdminEvaluation";
 
 const queryClient = new QueryClient();
 
