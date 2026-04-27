@@ -186,30 +186,6 @@ const AdminKnowledge = () => {
     }
   };
 
-  const handleRegenerateEmbeddings = async () => {
-    setRegenerating(true);
-    try {
-      const { data, error } = await supabase.functions.invoke("backfill-embeddings");
-
-      if (error) throw error;
-
-      if (data?.success) {
-        toast({
-          title: "تم إعادة توليد Embeddings",
-          description: `تمت معالجة ${data.processed} من ${data.total} chunk بنجاح.${data.failed > 0 ? ` (${data.failed} فشل)` : ""}`,
-          variant: data.failed > 0 ? "destructive" : "default",
-        });
-      } else {
-        throw new Error(data?.error || "فشل غير متوقع");
-      }
-    } catch (err: any) {
-      console.error("Regenerate error:", err);
-      toast({ title: "خطأ", description: err.message || "حدث خطأ أثناء إعادة التوليد", variant: "destructive" });
-    } finally {
-      setRegenerating(false);
-    }
-  };
-
   const handleReprocessAll = async () => {
     const targets = documents.filter(d => d.status === "processed" || d.status === "error");
     if (targets.length === 0) return;
