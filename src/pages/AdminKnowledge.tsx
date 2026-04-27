@@ -265,18 +265,6 @@ const AdminKnowledge = () => {
               {reprocessing ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
               <span className="truncate">{reprocessing ? "جاري المعالجة..." : "إعادة معالجة الكل"}</span>
             </Button>
-            <Button
-              onClick={handleRegenerateEmbeddings}
-              disabled={regenerating || documents.filter(d => d.status === "processed").length === 0}
-              variant="outline"
-              className="gap-2 flex-1 sm:flex-none"
-            >
-              {regenerating ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <RefreshCw className="w-4 h-4" />
-              )}
-              <span className="truncate">{regenerating ? "جاري التوليد..." : "إعادة توليد Embeddings"}</span>
             </Button>
             <Button
               onClick={handleFileSelect}
