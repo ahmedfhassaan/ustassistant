@@ -242,8 +242,6 @@ serve(async (req) => {
     })();
 
     // We need settings before deciding whether to rewrite — but rewriting is optional.
-    // To keep latency low, race rewrite in parallel with embedding using an early settings peek.
-    // Since loading settings is fast (< 100ms), await it briefly then kick off rewrite.
     const settings = await settingsPromise;
 
     const enableRewrite = settings.enable_query_rewriting === "true";
@@ -251,9 +249,30 @@ serve(async (req) => {
       ? tryRewriteQuery(supabaseUrl, supabaseKey, lastUserMessage)
       : Promise.resolve(lastUserMessage);
 
-    const [rateResult, cached, queryEmbedding, rewrittenQuery] = await Promise.all([
+    const [rateResult, exactCached, queryEmbedding, rewrittenQuery] = await Promise.all([
       rateLimitPromise, cachePromise, embeddingPromise, rewritePromise,
     ]);
+
+    // --- Semantic cache lookup (only if no exact hit and we have an embedding) ---
+    let cached: { answer: string; sources: string | null } | null = exactCached as any;
+    let semanticCacheHit = false;
+    if (!cached && queryEmbedding && messages.length <= 1 && settings.cache_enabled === "true") {
+      try {
+        const threshold = parseFloat(settings.semantic_cache_threshold) || 0.92;
+        const embStr = `[${queryEmbedding.join(",")}]`;
+        const { data: semData } = await supabase.rpc("find_cached_answer_semantic", {
+          query_embedding: embStr,
+          similarity_threshold: threshold,
+        });
+        if (semData && semData.length > 0) {
+          cached = { answer: semData[0].answer, sources: semData[0].sources };
+          semanticCacheHit = true;
+          console.log(`[chat] semantic cache hit similarity=${semData[0].similarity?.toFixed(3)}`);
+        }
+      } catch (e) {
+        console.error("Semantic cache error:", e);
+      }
+    }
 
     // --- Rate limit check ---
     if (settings.abuse_protection === "true" && userId) {
