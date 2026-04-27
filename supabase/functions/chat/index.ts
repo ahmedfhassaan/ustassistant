@@ -33,6 +33,34 @@ function classifyQuestion(text: string): string {
   return "عام";
 }
 
+// ----------------- Query type classifier (for dynamic weights) -----------------
+type QueryKind = "exact" | "semantic" | "default";
+
+const EXACT_KEYWORDS = [
+  "انسحاب", "اعتذار", "إنذار", "gpa", "تراكمي", "ساعة معتمدة", "ساعات معتمدة",
+  "لائحة", "مادة", "رمز", "كود", "نسبة", "رسوم", "موعد", "تاريخ",
+];
+
+function classifyQueryKind(text: string): QueryKind {
+  const t = text.trim();
+  if (!t) return "default";
+  const hasNumber = /\d/.test(t);
+  const hasQuotes = /["'«»]/.test(t);
+  const hasCode = /[A-Za-z]{2,}\d{2,}/.test(t); // e.g. CS101
+  const lower = t.toLowerCase();
+  const hasExactTerm = EXACT_KEYWORDS.some(k => lower.includes(k));
+
+  if (hasCode || hasQuotes || (hasNumber && t.length < 80) || hasExactTerm) {
+    return "exact";
+  }
+  // Long natural-language question → lean semantic
+  if (t.split(/\s+/).length >= 6 && !hasNumber) {
+    return "semantic";
+  }
+  return "default";
+}
+
+// ----------------- Settings -----------------
 async function loadSettings(supabase: any): Promise<Record<string, string>> {
   const defaults: Record<string, string> = {
     assistant_name: "المساعد الجامعي الذكي",
@@ -50,6 +78,15 @@ async function loadSettings(supabase: any): Promise<Record<string, string>> {
     low_confidence_message: "لا توجد معلومة مؤكدة حول هذا الموضوع. يرجى مراجعة الجهة المختصة.",
     max_messages_per_day: "100",
     abuse_protection: "true",
+    // ---- New RAG settings ----
+    enable_query_rewriting: "false",
+    enable_reranking: "false",
+    initial_results_count: "10",
+    final_results_count: "5",
+    weight_text_default: "0.4",
+    weight_semantic_default: "0.6",
+    weight_text_exact: "0.65",
+    weight_text_semantic_lean: "0.3",
   };
   try {
     const { data } = await supabase.from("assistant_settings").select("key, value");
@@ -69,6 +106,60 @@ function buildToneInstruction(tone: string): string {
   }
 }
 
+// ----------------- Query rewriting (optional) -----------------
+async function tryRewriteQuery(supabaseUrl: string, supabaseKey: string, question: string): Promise<string> {
+  try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 1800);
+    const r = await fetch(`${supabaseUrl}/functions/v1/rewrite-query`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${supabaseKey}` },
+      body: JSON.stringify({ question }),
+      signal: controller.signal,
+    });
+    clearTimeout(timer);
+    if (!r.ok) return question;
+    const data = await r.json();
+    const rewritten = (data?.rewritten || "").toString().trim();
+    return rewritten && rewritten.length >= 3 ? rewritten : question;
+  } catch (e) {
+    console.warn("[chat] rewrite fallback:", e instanceof Error ? e.message : e);
+    return question;
+  }
+}
+
+// ----------------- Lightweight reranking (no extra network) -----------------
+function tokenize(s: string): string[] {
+  return s.toLowerCase().split(/[\s،,.;:!\?\(\)\[\]\|\/\\"'«»]+/).filter(w => w.length >= 2);
+}
+
+function rerankChunks(
+  chunks: any[],
+  queryText: string,
+  finalCount: number,
+): any[] {
+  if (!chunks || chunks.length === 0) return [];
+  const qTokens = new Set(tokenize(queryText));
+  if (qTokens.size === 0) return chunks.slice(0, finalCount);
+
+  const maxRank = Math.max(...chunks.map((c: any) => c.rank as number)) || 1;
+
+  const scored = chunks.map((c: any, idx: number) => {
+    const cTokens = tokenize(String(c.content || ""));
+    let overlap = 0;
+    for (const t of cTokens) if (qTokens.has(t)) overlap++;
+    const overlapScore = qTokens.size > 0 ? Math.min(1, overlap / qTokens.size) : 0;
+    const positionBoost = 1 - (idx / chunks.length); // earlier = slightly higher
+    const normalizedRank = (c.rank as number) / maxRank;
+    const finalScore = 0.5 * normalizedRank + 0.35 * overlapScore + 0.15 * positionBoost;
+    return { ...c, _rerankScore: finalScore };
+  });
+
+  scored.sort((a: any, b: any) => b._rerankScore - a._rerankScore);
+  return scored.slice(0, finalCount);
+}
+
+// ----------------- Main handler -----------------
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -101,7 +192,7 @@ serve(async (req) => {
     const lastUserMessage = [...messages].reverse().find(m => m.role === "user")?.content || "";
     const questionHash = hashQuestion(lastUserMessage);
 
-    // --- Run settings, rate limit, cache, and embedding in parallel ---
+    // --- Settings + cache + rate-limit + embedding (parallel) ---
     const settingsPromise = loadSettings(supabase);
 
     const rateLimitPromise = (async () => {
@@ -150,8 +241,18 @@ serve(async (req) => {
       }
     })();
 
-    const [settings, rateResult, cached, queryEmbedding] = await Promise.all([
-      settingsPromise, rateLimitPromise, cachePromise, embeddingPromise,
+    // We need settings before deciding whether to rewrite — but rewriting is optional.
+    // To keep latency low, race rewrite in parallel with embedding using an early settings peek.
+    // Since loading settings is fast (< 100ms), await it briefly then kick off rewrite.
+    const settings = await settingsPromise;
+
+    const enableRewrite = settings.enable_query_rewriting === "true";
+    const rewritePromise: Promise<string> = enableRewrite
+      ? tryRewriteQuery(supabaseUrl, supabaseKey, lastUserMessage)
+      : Promise.resolve(lastUserMessage);
+
+    const [rateResult, cached, queryEmbedding, rewrittenQuery] = await Promise.all([
+      rateLimitPromise, cachePromise, embeddingPromise, rewritePromise,
     ]);
 
     // --- Rate limit check ---
@@ -187,29 +288,77 @@ serve(async (req) => {
       );
     }
 
-    // --- KNOWLEDGE SEARCH: always use hybrid ---
+    // --- Choose dynamic weights based on query kind ---
+    const queryKind = classifyQueryKind(lastUserMessage);
+    const wTextDefault = parseFloat(settings.weight_text_default) || 0.4;
+    const wSemDefault = parseFloat(settings.weight_semantic_default) || 0.6;
+    const wTextExact = parseFloat(settings.weight_text_exact) || 0.65;
+    const wTextLean = parseFloat(settings.weight_text_semantic_lean) || 0.3;
+
+    let weightText = wTextDefault;
+    let weightSemantic = wSemDefault;
+    if (queryKind === "exact") {
+      weightText = wTextExact;
+      weightSemantic = Math.max(0, 1 - wTextExact);
+    } else if (queryKind === "semantic") {
+      weightText = wTextLean;
+      weightSemantic = Math.max(0, 1 - wTextLean);
+    }
+    console.log(`[chat] queryKind=${queryKind} weights=text:${weightText} sem:${weightSemantic} rewrite=${enableRewrite}`);
+
+    // --- KNOWLEDGE SEARCH: hybrid with dynamic weights ---
+    const enableRerank = settings.enable_reranking === "true";
+    const finalCount = parseInt(settings.final_results_count) || parseInt(settings.search_results_count) || 5;
+    const initialCount = enableRerank
+      ? Math.max(finalCount, parseInt(settings.initial_results_count) || 10)
+      : finalCount;
+
     let knowledgeContext = "";
     let sourceNames: string[] = [];
     let maxRank = 0;
-    const searchCount = parseInt(settings.search_results_count) || 5;
 
     try {
       const rpcParams: any = {
-        query_text: lastUserMessage,
-        max_results: searchCount,
+        query_text: rewrittenQuery, // use rewritten if enabled, else original
+        max_results: initialCount,
+        weight_text: weightText,
+        weight_semantic: weightSemantic,
       };
       if (queryEmbedding) {
         rpcParams.query_embedding = JSON.stringify(queryEmbedding);
       }
-      // query_embedding defaults to NULL in the SQL function if not provided
 
-      const { data: chunks } = await supabase.rpc("search_knowledge_hybrid", rpcParams);
+      let { data: chunks, error: rpcError } = await supabase.rpc("search_knowledge_hybrid", rpcParams);
+
+      // If the rewritten search returned nothing and we used a rewrite, retry with original
+      if (enableRewrite && rewrittenQuery !== lastUserMessage && (!chunks || chunks.length === 0)) {
+        console.log("[chat] Rewrite returned 0 results, retrying with original question");
+        const fallbackParams = { ...rpcParams, query_text: lastUserMessage };
+        const retry = await supabase.rpc("search_knowledge_hybrid", fallbackParams);
+        chunks = retry.data;
+        rpcError = retry.error;
+      }
+
+      if (rpcError) console.error("[chat] hybrid search error:", rpcError);
 
       if (chunks && chunks.length > 0) {
-        sourceNames = [...new Set(chunks.map((c: any) => c.document_name as string))];
-        maxRank = Math.max(...chunks.map((c: any) => c.rank as number));
+        // Optional reranking
+        let finalChunks = chunks;
+        if (enableRerank) {
+          try {
+            finalChunks = rerankChunks(chunks, lastUserMessage, finalCount);
+          } catch (e) {
+            console.warn("[chat] rerank failed, using hybrid order:", e);
+            finalChunks = chunks.slice(0, finalCount);
+          }
+        } else {
+          finalChunks = chunks.slice(0, finalCount);
+        }
+
+        sourceNames = [...new Set(finalChunks.map((c: any) => c.document_name as string))];
+        maxRank = Math.max(...finalChunks.map((c: any) => c.rank as number));
         knowledgeContext = "\n\n--- معلومات من قاعدة المعرفة الجامعية ---\n" +
-          chunks.map((c: any) =>
+          finalChunks.map((c: any) =>
             `[مصدر: ${c.document_name} | درجة الصلة: ${((c.rank as number) * 100).toFixed(0)}%]\n${c.content}`
           ).join("\n\n") +
           "\n--- نهاية المعلومات ---";
@@ -241,56 +390,52 @@ serve(async (req) => {
       knowledgeContext += `\n\n⚠️ ملاحظة: درجة الصلة منخفضة (${confidencePercent.toFixed(0)}%). إذا لم تكن المعلومات كافية، استخدم هذه الرسالة: "${settings.low_confidence_message}"`;
     }
 
-    // Build system prompt
+    // --- Build system prompt with stronger anti-hallucination rules ---
     const toneInstruction = buildToneInstruction(settings.tone);
     const maxLen = parseInt(settings.max_response_length) || 1000;
-    const showSourcesInstruction = settings.show_sources === "true"
-      ? "- **مهم جداً**: في نهاية إجابتك، إذا استخدمت معلومات من قاعدة المعرفة، أضف سطراً بالتنسيق التالي:\n  [المصادر: اسم_الملف1، اسم_الملف2]"
-      : "- لا تذكر المصادر في إجابتك";
-    const strictInstruction = settings.strict_sources === "true"
-      ? `- إذا لم تجد معلومات في قاعدة المعرفة، لا تتخمن أو تنشئ إجابة. أجب فقط بـ: "${settings.fallback_message}"`
-      : "- إذا لم تكن متأكداً من إجابة، اذكر ذلك بوضوح وانصح الطالب بالتواصل مع الجهة المختصة";
+
+    const strictBlock = settings.strict_sources === "true"
+      ? `⛔ **قواعد إجبارية لمنع الهلوسة (لا تخالفها أبداً):**
+1. أجب **حصرياً** من محتوى "معلومات قاعدة المعرفة الجامعية" المرفقة أدناه.
+2. **ممنوع منعاً باتاً** الاستنتاج، التخمين، أو إضافة أي معلومة من معرفتك العامة.
+3. إذا لم تجد إجابة واضحة في السياق المرفق، أجب حرفياً وفقط بالعبارة التالية:
+   "${settings.fallback_message || "لا تتوفر لدي هذه المعلومة في قاعدة المعرفة الحالية."}"
+4. لا تذكر أنك ذكاء اصطناعي ولا تعتذر عن قيودك ولا تشرح سبب عدم المعرفة.`
+      : `📌 قواعد الموثوقية:
+- اعتمد بشكل أساسي على "معلومات قاعدة المعرفة الجامعية" أدناه.
+- إذا لم تكن متأكداً، اذكر ذلك بوضوح وانصح الطالب بالتواصل مع الجهة المختصة.
+- لا تخترع أرقاماً أو تواريخ أو رموز مقررات غير موجودة في السياق.`;
 
     const systemPrompt = `أنت ${settings.assistant_name}، مساعد ذكاء اصطناعي متخصص في مساعدة طلاب الجامعة.
+
+${strictBlock}
 
 مهامك:
 - الإجابة على أسئلة الطلاب المتعلقة بالجامعة والدراسة
 - تقديم معلومات عن التسجيل، الجداول، المواد، والأنظمة الأكاديمية
 - مساعدة الطلاب في فهم اللوائح والإجراءات الجامعية
-- تقديم نصائح أكاديمية ودراسية
 
-قواعد:
+قواعد عامة:
 - أجب دائماً باللغة العربية
 ${toneInstruction}
 - حافظ على إجابتك بحد أقصى ${maxLen} كلمة
-- إذا وجدت معلومات من قاعدة المعرفة أدناه، استخدمها في إجابتك
-${showSourcesInstruction}
-${strictInstruction}
 - كن مختصراً ومفيداً
+- لا تذكر أسماء الملفات أو المصادر داخل نص الإجابة (سيتم عرضها تلقائياً أسفل الرد)
 
 📐 **قواعد التنسيق الإلزامية (Markdown احترافي):**
-يجب أن تكون كل إجابة منسّقة بصرياً وواضحة. اتبع هذه القواعد دائماً:
+1. **ابدأ بعنوان رئيسي** \`##\` متبوعاً برمز تعبيري مناسب (📋 📅 📚 ⚠️ ✅ 🎓 💡 📝).
+2. **استخدم العناوين الفرعية** \`###\` لتقسيم الإجابات الطويلة.
+3. **استخدم الجداول** عند عرض بيانات متعددة (مقررات، مواعيد، رسوم، شروط).
+4. **استخدم القوائم المرقّمة** \`1.\` للخطوات، و**النقطية** \`-\` للعناصر.
+5. **أبرز المصطلحات والأرقام المهمة** بـ \`**النص**\`.
+6. استخدم **الأكواد المضمّنة** \`\\\`code\\\`\` للأرقام والرموز (مثل \`CS101\`).
+7. استخدم **الاقتباسات** \`>\` للملاحظات والتنبيهات.
+8. **افصل بين الأقسام** بسطر فارغ.
+9. لا تفرط في الرموز التعبيرية — 1-3 رموز فقط ذات صلة.${knowledgeContext}${settings.custom_instruction?.trim() ? `\n\nتعليمات إضافية:\n${settings.custom_instruction}` : ""}`;
 
-1. **ابدأ بعنوان رئيسي** يلخّص الموضوع باستخدام \`##\` متبوعاً برمز تعبيري مناسب (مثل: 📋 📅 📚 ⚠️ ✅ 🎓 💡 📝).
-2. **استخدم العناوين الفرعية** \`###\` لتقسيم الإجابات الطويلة إلى أقسام واضحة.
-3. **استخدم الجداول** عند عرض أي بيانات متعددة (مقررات، مواعيد، رسوم، شروط، مقارنات، قوائم). مثال:
-   \`\`\`
-   | # | البند | التفاصيل |
-   |---|------|----------|
-   | 1 | اسم البند | الوصف |
-   \`\`\`
-4. **استخدم القوائم المرقّمة** \`1.\` للخطوات المتسلسلة، و**القوائم النقطية** \`-\` للعناصر غير المرتبة.
-5. **أبرز المصطلحات والأرقام المهمة** بـ \`**النص**\` (غامق).
-6. استخدم **الأكواد المضمّنة** \`\\\`code\\\`\` للأرقام الجامعية، الرموز، والمعرّفات (مثل: \`CS101\`).
-7. استخدم **الاقتباسات** \`>\` للملاحظات والتنبيهات الهامة.
-8. **افصل بين الأقسام** بسطر فارغ لتحسين القراءة.
-9. اجعل الإجابة **مفيدة بصرياً من النظرة الأولى** — تجنّب الفقرات الطويلة المسطّحة.
-10. لا تفرط في الرموز التعبيرية — استخدم 1-3 رموز ذات صلة فقط.${knowledgeContext}${settings.custom_instruction?.trim() ? `\n\nتعليمات إضافية:\n${settings.custom_instruction}` : ""}`;
-
-    // Convert model name: remove "google/" prefix if present
+    // Convert model name
     let modelName = settings.ai_model || "gemini-3-flash-preview";
     if (modelName.startsWith("google/")) modelName = modelName.slice(7);
-    // Also remove "openai/" prefix models — they won't work with Google API, fallback
     if (modelName.startsWith("openai/")) modelName = "gemini-3-flash-preview";
 
     // Convert messages to Google Gemini format
@@ -309,7 +454,6 @@ ${strictInstruction}
       },
     };
 
-    // Try primary model, then fallback to a stable model on 503/429/5xx
     const FALLBACK_MODEL = "gemini-2.5-flash";
     const modelsToTry = modelName === FALLBACK_MODEL ? [modelName] : [modelName, FALLBACK_MODEL];
 
@@ -326,18 +470,16 @@ ${strictInstruction}
       });
       if (r.ok) {
         response = r;
-        if (m !== modelName) console.log(`[chat] Primary model "${modelName}" failed, succeeded with fallback "${m}"`);
+        if (m !== modelName) console.log(`[chat] Primary "${modelName}" failed, succeeded with "${m}"`);
         break;
       }
       lastStatus = r.status;
       lastErrText = await r.text().catch(() => "");
       console.error(`[chat] Model "${m}" returned ${r.status}: ${lastErrText.slice(0, 200)}`);
-      // Only retry on transient errors
       if (![429, 500, 502, 503, 504].includes(r.status)) break;
     }
 
     if (!response) {
-      // Friendly fallback — return 200 with structured error so the frontend doesn't crash
       const friendly = lastStatus === 429
         ? "⚠️ تم تجاوز حد الطلبات. يرجى المحاولة بعد دقيقة."
         : (lastStatus === 503 || lastStatus >= 500)
@@ -375,11 +517,9 @@ ${strictInstruction}
 
             try {
               const parsed = JSON.parse(jsonStr);
-              // Extract text from Google Gemini SSE format
               const text = parsed.candidates?.[0]?.content?.parts?.[0]?.text;
               if (text) {
                 fullContent += text;
-                // Convert to OpenAI-compatible SSE format for the frontend
                 const openaiChunk = {
                   choices: [{ delta: { content: text } }],
                 };
@@ -388,7 +528,11 @@ ${strictInstruction}
             } catch {}
           }
         }
-        // Send [DONE] marker
+        // Emit a meta event with sources before the final [DONE]
+        if (settings.show_sources === "true" && sourceNames.length > 0) {
+          const meta = { meta: { sources: sourceNames.join("، ") } };
+          await writer.write(encoder.encode(`data: ${JSON.stringify(meta)}\n\n`));
+        }
         await writer.write(encoder.encode("data: [DONE]\n\n"));
       } catch (e) {
         console.error("Stream processing error:", e);
