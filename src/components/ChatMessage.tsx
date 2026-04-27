@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { BookOpen, Bot, User, ThumbsUp, ThumbsDown } from "lucide-react";
 import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import FeedbackDialog from "@/components/FeedbackDialog";
@@ -64,7 +65,7 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
             <p className="whitespace-pre-wrap text-sm leading-7 text-right">{message.content}</p>
           ) : (
             <div className="prose prose-sm prose-chat max-w-none text-sm leading-7" dir="rtl">
-              <ReactMarkdown>{message.content}</ReactMarkdown>
+              <ReactMarkdown remarkPlugins={[remarkGfm]}>{message.content}</ReactMarkdown>
             </div>
           )}
           {message.source && (
