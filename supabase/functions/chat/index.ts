@@ -522,7 +522,17 @@ ${toneInstruction}
     if (modelName.startsWith("openai/")) modelName = "gemini-3-flash-preview";
 
     // Convert messages to Google Gemini format
-    const geminiContents = messages
+    const conversationForModel = messages.map((m: any, index: number) => {
+      if (m.role !== "user" && m.role !== "assistant") return m;
+      const isLatestUserMessage = m.role === "user" && index === messages.length - 1;
+      if (!isLatestUserMessage) return m;
+      return {
+        ...m,
+        content: resolvedQuestionForModel,
+      };
+    });
+
+    const geminiContents = conversationForModel
       .filter((m: any) => m.role === "user" || m.role === "assistant")
       .map((m: any) => ({
         role: m.role === "assistant" ? "model" : "user",
