@@ -519,8 +519,40 @@ ${toneInstruction}
 
     (async () => {
       let fullContent = "";
+      let pendingText = ""; // buffer to hide USED_SOURCES marker from client
       const decoder = new TextDecoder();
       const encoder = new TextEncoder();
+
+      const flushSafe = async (force = false) => {
+        const KEEP_TAIL = 60;
+        if (force) {
+          const cleaned = pendingText.replace(/<!--\s*USED_SOURCES:[\s\S]*?-->/gi, "").trimEnd();
+          if (cleaned.length > 0) {
+            const openaiChunk = { choices: [{ delta: { content: cleaned } }] };
+            await writer.write(encoder.encode(`data: ${JSON.stringify(openaiChunk)}\n\n`));
+          }
+          pendingText = "";
+          return;
+        }
+        if (pendingText.length > KEEP_TAIL) {
+          const emitLen = pendingText.length - KEEP_TAIL;
+          let emit = pendingText.slice(0, emitLen);
+          pendingText = pendingText.slice(emitLen);
+          const markerIdx = emit.indexOf("<!--");
+          if (markerIdx !== -1) {
+            const safe = emit.slice(0, markerIdx);
+            pendingText = emit.slice(markerIdx) + pendingText;
+            if (safe) {
+              const openaiChunk = { choices: [{ delta: { content: safe } }] };
+              await writer.write(encoder.encode(`data: ${JSON.stringify(openaiChunk)}\n\n`));
+            }
+          } else if (emit) {
+            const openaiChunk = { choices: [{ delta: { content: emit } }] };
+            await writer.write(encoder.encode(`data: ${JSON.stringify(openaiChunk)}\n\n`));
+          }
+        }
+      };
+
       try {
         let buffer = "";
         while (true) {
@@ -542,51 +574,72 @@ ${toneInstruction}
               const text = parsed.candidates?.[0]?.content?.parts?.[0]?.text;
               if (text) {
                 fullContent += text;
-                const openaiChunk = {
-                  choices: [{ delta: { content: text } }],
-                };
-                await writer.write(encoder.encode(`data: ${JSON.stringify(openaiChunk)}\n\n`));
+                pendingText += text;
+                await flushSafe(false);
               }
             } catch {}
           }
         }
-        // Emit a meta event with sources before the final [DONE]
-        if (settings.show_sources === "true" && sourceNames.length > 0) {
-          const meta = { meta: { sources: sourceNames.join("، ") } };
+        await flushSafe(true);
+
+        // Extract used sources from full content
+        let finalSources: string[] = sourceNames;
+        const markerMatch = fullContent.match(/<!--\s*USED_SOURCES:\s*([\s\S]*?)-->/i);
+        if (markerMatch) {
+          const raw = markerMatch[1].trim();
+          if (raw && raw !== "-") {
+            const declared = raw.split(/[|،,]/).map(s => s.trim()).filter(Boolean);
+            const intersect = declared.filter(d =>
+              sourceNames.some(s => s === d || s.includes(d) || d.includes(s))
+            );
+            finalSources = intersect.length > 0 ? [...new Set(intersect)] : [];
+          } else {
+            finalSources = [];
+          }
+        }
+        // Suppress sources entirely if confidence is below threshold
+        if (confidencePercent < confidenceThreshold) {
+          finalSources = [];
+        }
+
+        if (settings.show_sources === "true" && finalSources.length > 0) {
+          const meta = { meta: { sources: finalSources.join("، ") } };
           await writer.write(encoder.encode(`data: ${JSON.stringify(meta)}\n\n`));
         }
         await writer.write(encoder.encode("data: [DONE]\n\n"));
+
+        const cleanContent = fullContent.replace(/<!--\s*USED_SOURCES:[\s\S]*?-->/gi, "").trimEnd();
+
+        if (cleanContent) {
+          try {
+            const sourcesStr = finalSources.length > 0 ? finalSources.join("، ") : null;
+            await supabase.from("chat_logs").insert({
+              question: lastUserMessage, question_hash: questionHash,
+              sources: sourcesStr, cached: false, user_id: userId,
+              category: classifyQuestion(lastUserMessage),
+            });
+          } catch (e) {
+            console.error("Chat log error:", e);
+          }
+        }
+
+        if (cleanContent && settings.cache_enabled === "true" && messages.length <= 1) {
+          try {
+            const sourcesStr = finalSources.length > 0 ? finalSources.join("، ") : null;
+            const ttlMinutes = parseInt(settings.cache_ttl_minutes) || 1440;
+            const expiresAt = new Date(Date.now() + ttlMinutes * 60 * 1000).toISOString();
+            await supabase.from("response_cache").upsert({
+              question_hash: questionHash, question: lastUserMessage,
+              answer: cleanContent, sources: sourcesStr, expires_at: expiresAt,
+            }, { onConflict: "question_hash" });
+          } catch (e) {
+            console.error("Cache save error:", e);
+          }
+        }
       } catch (e) {
         console.error("Stream processing error:", e);
       } finally {
         await writer.close();
-      }
-
-      if (fullContent) {
-        try {
-          const sourcesStr = sourceNames.length > 0 ? sourceNames.join("، ") : null;
-          await supabase.from("chat_logs").insert({
-            question: lastUserMessage, question_hash: questionHash,
-            sources: sourcesStr, cached: false, user_id: userId,
-            category: classifyQuestion(lastUserMessage),
-          });
-        } catch (e) {
-          console.error("Chat log error:", e);
-        }
-      }
-
-      if (fullContent && settings.cache_enabled === "true" && messages.length <= 1) {
-        try {
-          const sourcesStr = sourceNames.length > 0 ? sourceNames.join("، ") : null;
-          const ttlMinutes = parseInt(settings.cache_ttl_minutes) || 1440;
-          const expiresAt = new Date(Date.now() + ttlMinutes * 60 * 1000).toISOString();
-          await supabase.from("response_cache").upsert({
-            question_hash: questionHash, question: lastUserMessage,
-            answer: fullContent, sources: sourcesStr, expires_at: expiresAt,
-          }, { onConflict: "question_hash" });
-        } catch (e) {
-          console.error("Cache save error:", e);
-        }
       }
 
       try {
