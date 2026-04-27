@@ -319,7 +319,7 @@ const Chat = () => {
           </div>
         )}
 
-        <ChatInput onSend={handleSend} isLoading={isLoading} />
+        <ChatInput onSend={handleSend} isLoading={isLoading} onStop={handleStop} />
       </div>
     </div>
   );
