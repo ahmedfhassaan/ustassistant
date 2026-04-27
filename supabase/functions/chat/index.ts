@@ -366,8 +366,11 @@ serve(async (req) => {
           finalChunks = chunks.slice(0, finalCount);
         }
 
-        sourceNames = [...new Set(finalChunks.map((c: any) => c.document_name as string))];
         maxRank = Math.max(...finalChunks.map((c: any) => c.rank as number));
+        // Filter sources: only chunks with rank >= half of confidence threshold count as "real" sources
+        const minSourceRank = (parseInt(settings.confidence_threshold) || 30) / 100 * 0.5;
+        const relevantChunks = finalChunks.filter((c: any) => (c.rank as number) >= minSourceRank);
+        sourceNames = [...new Set(relevantChunks.map((c: any) => c.document_name as string))];
         knowledgeContext = "\n\n--- معلومات من قاعدة المعرفة الجامعية ---\n" +
           finalChunks.map((c: any) =>
             `[مصدر: ${c.document_name} | درجة الصلة: ${((c.rank as number) * 100).toFixed(0)}%]\n${c.content}`
