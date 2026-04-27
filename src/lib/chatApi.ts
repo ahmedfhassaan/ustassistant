@@ -45,6 +45,24 @@ export async function streamChat({ messages, userId, onDelta, onDone, signal }: 
   const decoder = new TextDecoder();
   let textBuffer = "";
   let streamDone = false;
+  let metaSources: string | undefined;
+
+  const handleParsedLine = (jsonStr: string): boolean => {
+    if (jsonStr === "[DONE]") return true;
+    try {
+      const parsed = JSON.parse(jsonStr);
+      // Meta event: { meta: { sources: "..." } }
+      if (parsed?.meta?.sources) {
+        metaSources = String(parsed.meta.sources);
+        return false;
+      }
+      const content = parsed.choices?.[0]?.delta?.content as string | undefined;
+      if (content) onDelta(content);
+    } catch {
+      // ignore
+    }
+    return false;
+  };
 
   while (!streamDone) {
     const { done, value } = await reader.read();
@@ -65,15 +83,14 @@ export async function streamChat({ messages, userId, onDelta, onDone, signal }: 
         streamDone = true;
         break;
       }
-
+      // For partial JSON safety: try parse, if fails buffer it back
       try {
-        const parsed = JSON.parse(jsonStr);
-        const content = parsed.choices?.[0]?.delta?.content as string | undefined;
-        if (content) onDelta(content);
+        JSON.parse(jsonStr);
       } catch {
         textBuffer = line + "\n" + textBuffer;
         break;
       }
+      handleParsedLine(jsonStr);
     }
   }
 
@@ -86,13 +103,9 @@ export async function streamChat({ messages, userId, onDelta, onDone, signal }: 
       if (!raw.startsWith("data: ")) continue;
       const jsonStr = raw.slice(6).trim();
       if (jsonStr === "[DONE]") continue;
-      try {
-        const parsed = JSON.parse(jsonStr);
-        const content = parsed.choices?.[0]?.delta?.content as string | undefined;
-        if (content) onDelta(content);
-      } catch { /* ignore */ }
+      handleParsedLine(jsonStr);
     }
   }
 
-  onDone();
+  onDone({ sources: metaSources });
 }

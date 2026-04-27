@@ -21,6 +21,17 @@ export interface AssistantSettings {
   low_confidence_message: string;
   custom_instruction: string;
   admin_student_id: string;
+  // RAG tuning
+  chunk_size: string;
+  chunk_overlap: string;
+  enable_query_rewriting: string;
+  enable_reranking: string;
+  initial_results_count: string;
+  final_results_count: string;
+  weight_text_default: string;
+  weight_semantic_default: string;
+  weight_text_exact: string;
+  weight_text_semantic_lean: string;
   [key: string]: string;
 }
 
@@ -44,6 +55,17 @@ const DEFAULTS: AssistantSettings = {
   low_confidence_message: "لا توجد معلومة مؤكدة حول هذا الموضوع. يرجى مراجعة الجهة المختصة.",
   custom_instruction: "",
   admin_student_id: "20260000",
+  // RAG tuning defaults
+  chunk_size: "280",
+  chunk_overlap: "50",
+  enable_query_rewriting: "false",
+  enable_reranking: "false",
+  initial_results_count: "10",
+  final_results_count: "5",
+  weight_text_default: "0.4",
+  weight_semantic_default: "0.6",
+  weight_text_exact: "0.65",
+  weight_text_semantic_lean: "0.3",
 };
 
 export function useSettings() {
