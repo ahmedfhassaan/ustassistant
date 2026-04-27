@@ -265,7 +265,6 @@ const AdminKnowledge = () => {
               {reprocessing ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
               <span className="truncate">{reprocessing ? "جاري المعالجة..." : "إعادة معالجة الكل"}</span>
             </Button>
-            </Button>
             <Button
               onClick={handleFileSelect}
               disabled={uploading}
