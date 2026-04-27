@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Settings, User, MessageSquare, Database, Shield, Cpu, Save, Trash2, Loader2, Eye, EyeOff } from "lucide-react";
+import { Settings, User, MessageSquare, Database, Shield, Cpu, Save, Trash2, Loader2, Eye, EyeOff, Search } from "lucide-react";
 import { useTheme } from "@/hooks/use-theme";
 import { useSettings, AssistantSettings } from "@/hooks/use-settings";
 import { supabase } from "@/integrations/supabase/client";
@@ -126,7 +126,7 @@ const AdminSettings = () => {
       )}
 
       <Tabs defaultValue="personality" className="space-y-4">
-        <TabsList className="grid grid-cols-5 w-full">
+        <TabsList className="grid grid-cols-6 w-full">
           <TabsTrigger value="personality" className="text-xs sm:text-sm gap-1">
             <User className="w-4 h-4 hidden sm:block" /> الشخصية
           </TabsTrigger>
@@ -141,6 +141,9 @@ const AdminSettings = () => {
           </TabsTrigger>
           <TabsTrigger value="ai" className="text-xs sm:text-sm gap-1">
             <Cpu className="w-4 h-4 hidden sm:block" /> الذكاء
+          </TabsTrigger>
+          <TabsTrigger value="rag" className="text-xs sm:text-sm gap-1">
+            <Search className="w-4 h-4 hidden sm:block" /> RAG
           </TabsTrigger>
         </TabsList>
 
