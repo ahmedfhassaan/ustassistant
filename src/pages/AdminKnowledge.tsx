@@ -277,6 +277,15 @@ const AdminKnowledge = () => {
           <CardTitle className="text-lg">إدارة قاعدة المعرفة</CardTitle>
           <div className="flex items-center gap-2">
             <Button
+              onClick={handleReprocessAll}
+              disabled={reprocessing || documents.length === 0}
+              variant="outline"
+              className="gap-2"
+            >
+              {reprocessing ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+              {reprocessing ? "جاري المعالجة..." : "إعادة معالجة الكل"}
+            </Button>
+            <Button
               onClick={handleRegenerateEmbeddings}
               disabled={regenerating || documents.filter(d => d.status === "processed").length === 0}
               variant="outline"
