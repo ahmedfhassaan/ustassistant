@@ -340,6 +340,7 @@ serve(async (req) => {
     let knowledgeContext = "";
     let sourceNames: string[] = [];
     let maxRank = 0;
+    let resolvedQuestionForModel = lastUserMessage;
 
     try {
       const rpcParamsBase: any = {
@@ -387,10 +388,19 @@ serve(async (req) => {
         }
       });
 
+      const normalizedBestVariant = bestVariant.trim().replace(/\s+/g, " ");
+      const normalizedOriginalQuestion = lastUserMessage.trim().replace(/\s+/g, " ");
+      if (normalizedBestVariant) {
+        resolvedQuestionForModel = normalizedBestVariant;
+      }
+
       if (debugRag) {
         console.log(`[chat] variants tried: ${variants.map(v => `"${v}"`).join(" | ")}`);
         console.log(`[chat] variant scores: ${variantScores.map(s => `"${s.v}" n=${s.n} top=${s.top.toFixed(3)} sum=${s.sum.toFixed(3)} score=${s.score.toFixed(3)}`).join(" | ")}`);
         console.log(`[chat] best variant: "${bestVariant}"`);
+        if (normalizedBestVariant && normalizedBestVariant !== normalizedOriginalQuestion) {
+          console.log(`[chat] resolved question for model: "${resolvedQuestionForModel}"`);
+        }
       }
 
       if (rpcError) console.error("[chat] hybrid search error:", rpcError);
