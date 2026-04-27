@@ -1,4 +1,4 @@
-import { MessageSquare, Users, FileText, TrendingUp, ThumbsDown } from "lucide-react";
+import { MessageSquare, Users, FileText, TrendingUp, ThumbsDown, Zap, AlertTriangle, Database, Brain } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useTheme } from "@/hooks/use-theme";
