@@ -30,6 +30,15 @@ const AdminDashboard = () => {
     },
   });
 
+  const { data: advancedMetrics, isLoading: metricsLoading } = useQuery({
+    queryKey: ["advanced-metrics"],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("get_advanced_metrics");
+      if (error) throw error;
+      return data as any;
+    },
+  });
+
   const { data: questionStats, isLoading: questionsLoading, isError: questionsError, refetch: refetchQuestions } = useQuery({
     queryKey: ["question-stats"],
     queryFn: async () => {
