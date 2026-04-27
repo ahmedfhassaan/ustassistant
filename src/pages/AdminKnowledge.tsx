@@ -35,7 +35,6 @@ const AdminKnowledge = () => {
   const [deleteTarget, setDeleteTarget] = useState<KnowledgeDoc | null>(null);
   const [deleteConfirmEnabled, setDeleteConfirmEnabled] = useState(false);
   const [deleting, setDeleting] = useState(false);
-  const [regenerating, setRegenerating] = useState(false);
   const [reprocessing, setReprocessing] = useState(false);
   const { isDark } = useTheme();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -187,30 +186,6 @@ const AdminKnowledge = () => {
     }
   };
 
-  const handleRegenerateEmbeddings = async () => {
-    setRegenerating(true);
-    try {
-      const { data, error } = await supabase.functions.invoke("backfill-embeddings");
-
-      if (error) throw error;
-
-      if (data?.success) {
-        toast({
-          title: "تم إعادة توليد Embeddings",
-          description: `تمت معالجة ${data.processed} من ${data.total} chunk بنجاح.${data.failed > 0 ? ` (${data.failed} فشل)` : ""}`,
-          variant: data.failed > 0 ? "destructive" : "default",
-        });
-      } else {
-        throw new Error(data?.error || "فشل غير متوقع");
-      }
-    } catch (err: any) {
-      console.error("Regenerate error:", err);
-      toast({ title: "خطأ", description: err.message || "حدث خطأ أثناء إعادة التوليد", variant: "destructive" });
-    } finally {
-      setRegenerating(false);
-    }
-  };
-
   const handleReprocessAll = async () => {
     const targets = documents.filter(d => d.status === "processed" || d.status === "error");
     if (targets.length === 0) return;
@@ -289,19 +264,6 @@ const AdminKnowledge = () => {
             >
               {reprocessing ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
               <span className="truncate">{reprocessing ? "جاري المعالجة..." : "إعادة معالجة الكل"}</span>
-            </Button>
-            <Button
-              onClick={handleRegenerateEmbeddings}
-              disabled={regenerating || documents.filter(d => d.status === "processed").length === 0}
-              variant="outline"
-              className="gap-2 flex-1 sm:flex-none"
-            >
-              {regenerating ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <RefreshCw className="w-4 h-4" />
-              )}
-              <span className="truncate">{regenerating ? "جاري التوليد..." : "إعادة توليد Embeddings"}</span>
             </Button>
             <Button
               onClick={handleFileSelect}
