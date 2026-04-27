@@ -14,7 +14,7 @@ const ChatSidebar = ({ conversations, activeId, onSelect, onNewChat }: ChatSideb
   const { isDark } = useTheme();
 
   return (
-    <aside className={`w-72 h-full border-l flex flex-col transition-colors duration-300 ${
+    <aside className={`w-[85vw] max-w-72 lg:w-72 h-full border-l flex flex-col transition-colors duration-300 ${
       isDark ? "glass-sidebar" : "bg-sidebar border-border"
     }`}>
       <div className={`p-3 border-b ${isDark ? "border-white/6" : "border-border"}`}>

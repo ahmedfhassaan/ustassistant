@@ -102,7 +102,7 @@ const AdminSettings = () => {
   return (
     <div className="space-y-6 max-w-4xl mx-auto" dir="rtl">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
           <h1 className={`text-2xl font-bold text-foreground ${isDark ? "glow-text" : ""}`}>
             إعدادات المساعد
@@ -112,7 +112,7 @@ const AdminSettings = () => {
         <Button
           onClick={handleSave}
           disabled={!dirty || saving}
-          className="gap-2"
+          className="gap-2 w-full sm:w-auto"
         >
           {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
           حفظ الإعدادات
@@ -126,24 +126,24 @@ const AdminSettings = () => {
       )}
 
       <Tabs defaultValue="personality" className="space-y-4">
-        <TabsList className="grid grid-cols-6 w-full">
-          <TabsTrigger value="personality" className="text-xs sm:text-sm gap-1">
-            <User className="w-4 h-4 hidden sm:block" /> الشخصية
+        <TabsList className="grid grid-cols-3 sm:grid-cols-6 w-full h-auto">
+          <TabsTrigger value="personality" className="text-[11px] sm:text-sm gap-1 py-2">
+            <User className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> الشخصية
           </TabsTrigger>
-          <TabsTrigger value="responses" className="text-xs sm:text-sm gap-1">
-            <MessageSquare className="w-4 h-4 hidden sm:block" /> الردود
+          <TabsTrigger value="responses" className="text-[11px] sm:text-sm gap-1 py-2">
+            <MessageSquare className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> الردود
           </TabsTrigger>
-          <TabsTrigger value="cache" className="text-xs sm:text-sm gap-1">
-            <Database className="w-4 h-4 hidden sm:block" /> الكاش
+          <TabsTrigger value="cache" className="text-[11px] sm:text-sm gap-1 py-2">
+            <Database className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> الكاش
           </TabsTrigger>
-          <TabsTrigger value="security" className="text-xs sm:text-sm gap-1">
-            <Shield className="w-4 h-4 hidden sm:block" /> الأمان
+          <TabsTrigger value="security" className="text-[11px] sm:text-sm gap-1 py-2">
+            <Shield className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> الأمان
           </TabsTrigger>
-          <TabsTrigger value="ai" className="text-xs sm:text-sm gap-1">
-            <Cpu className="w-4 h-4 hidden sm:block" /> الذكاء
+          <TabsTrigger value="ai" className="text-[11px] sm:text-sm gap-1 py-2">
+            <Cpu className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> الذكاء
           </TabsTrigger>
-          <TabsTrigger value="rag" className="text-xs sm:text-sm gap-1">
-            <Search className="w-4 h-4 hidden sm:block" /> RAG
+          <TabsTrigger value="rag" className="text-[11px] sm:text-sm gap-1 py-2">
+            <Search className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> RAG
           </TabsTrigger>
         </TabsList>
 
