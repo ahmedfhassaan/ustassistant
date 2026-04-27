@@ -45,18 +45,18 @@ const ChatHeader = ({ studentName, onLogout, onMenuClick }: ChatHeaderProps) => 
         </span>
       </div>
 
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-1 sm:gap-2 min-w-0">
         <Button
           variant="ghost"
           size="icon"
           onClick={toggle}
           title={isDark ? "الوضع الفاتح" : "الوضع الداكن"}
-          className="text-muted-foreground hover:text-foreground transition-colors"
+          className="text-muted-foreground hover:text-foreground transition-colors shrink-0"
         >
           {isDark ? <Sun className="w-4 h-4 text-[hsl(var(--highlight))]" /> : <Moon className="w-4 h-4" />}
         </Button>
-        <span className="text-sm text-muted-foreground">{studentName}</span>
-        <Button variant="ghost" size="icon" onClick={onLogout} title="تسجيل الخروج">
+        <span className="text-sm text-muted-foreground hidden sm:inline truncate max-w-[140px]">{studentName}</span>
+        <Button variant="ghost" size="icon" onClick={onLogout} title="تسجيل الخروج" className="shrink-0">
           <LogOut className="w-4 h-4" />
         </Button>
       </div>
