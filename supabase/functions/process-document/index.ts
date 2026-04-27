@@ -325,6 +325,9 @@ function splitMarkdownAware(markdown: string, targetWords: number, overlapWords:
     // Paragraph
     if (bufferWords + blockWords > targetWords && bufferWords >= MIN_WORDS) {
       flush();
+    } else if (bufferWords >= SOFT_BREAK && blockWords > targetWords * 0.5) {
+      // Soft break: paragraph would push us over comfortably and we already have a substantial chunk
+      flush();
     }
 
     // If a single paragraph is huge, fall back to word-slicing it
