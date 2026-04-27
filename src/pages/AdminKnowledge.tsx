@@ -278,35 +278,35 @@ const AdminKnowledge = () => {
   return (
     <div className="space-y-6 max-w-4xl mx-auto animate-fade-in">
       <Card className={`transition-all duration-300 ease-out animate-scale-in rounded-2xl ${isDark ? "glass-card border-0" : "bg-white border border-black/5 shadow-[0_4px_20px_rgba(0,0,0,0.08)]"}`}>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+        <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 space-y-0 pb-4">
           <CardTitle className="text-lg">إدارة قاعدة المعرفة</CardTitle>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Button
               onClick={handleReprocessAll}
               disabled={reprocessing || documents.length === 0}
               variant="outline"
-              className="gap-2"
+              className="gap-2 flex-1 sm:flex-none"
             >
               {reprocessing ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
-              {reprocessing ? "جاري المعالجة..." : "إعادة معالجة الكل"}
+              <span className="truncate">{reprocessing ? "جاري المعالجة..." : "إعادة معالجة الكل"}</span>
             </Button>
             <Button
               onClick={handleRegenerateEmbeddings}
               disabled={regenerating || documents.filter(d => d.status === "processed").length === 0}
               variant="outline"
-              className="gap-2"
+              className="gap-2 flex-1 sm:flex-none"
             >
               {regenerating ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
               ) : (
                 <RefreshCw className="w-4 h-4" />
               )}
-              {regenerating ? "جاري التوليد..." : "إعادة توليد Embeddings"}
+              <span className="truncate">{regenerating ? "جاري التوليد..." : "إعادة توليد Embeddings"}</span>
             </Button>
             <Button
               onClick={handleFileSelect}
               disabled={uploading}
-              className={`gap-2 transition-all duration-200 ${
+              className={`gap-2 flex-1 sm:flex-none transition-all duration-200 ${
                 isDark
                   ? "bg-primary/20 hover:bg-primary/30 text-primary border border-primary/30 glow-primary"
                   : "bg-primary hover:bg-primary-hover text-primary-foreground"
@@ -317,7 +317,7 @@ const AdminKnowledge = () => {
               ) : (
                 <Upload className="w-4 h-4" />
               )}
-              {uploading ? "جاري الرفع..." : "رفع مستند"}
+              <span className="truncate">{uploading ? "جاري الرفع..." : "رفع مستند"}</span>
             </Button>
           </div>
           <input
@@ -386,16 +386,16 @@ const AdminKnowledge = () => {
                     </div>
                     <div className="min-w-0">
                       <p className="text-sm font-medium text-foreground truncate">{doc.name}</p>
-                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
                         <span>{doc.file_type.toUpperCase()}</span>
-                        <span>·</span>
+                        <span className="opacity-50">·</span>
                         <span>{formatSize(doc.file_size)}</span>
-                        <span>·</span>
+                        <span className="opacity-50">·</span>
                         <span className="flex items-center gap-1">
                           {getStatusIcon(doc.status)}
                           {getStatusText(doc.status)}
                         </span>
-                        <span>·</span>
+                        <span className="opacity-50">·</span>
                         <span>{new Date(doc.created_at).toLocaleDateString("ar-SA")}</span>
                       </div>
                     </div>

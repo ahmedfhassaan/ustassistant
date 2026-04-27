@@ -164,7 +164,7 @@ const AdminStudents = () => {
   return (
     <div className="space-y-6 max-w-4xl mx-auto animate-fade-in">
       <Card className={`transition-colors duration-300 rounded-2xl ${cardBase}`}>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+        <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 space-y-0 pb-4">
           <CardTitle className={`text-lg font-bold ${isDark ? "text-primary glow-text" : "text-foreground"}`}>
             إدارة حسابات الطلاب
           </CardTitle>

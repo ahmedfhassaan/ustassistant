@@ -89,12 +89,12 @@ const AdminFeedback = () => {
 
       {/* Filter + Table */}
       <Card className={`rounded-2xl ${cardBase}`}>
-        <CardHeader className="pb-3 flex flex-row items-center justify-between gap-4">
+        <CardHeader className="pb-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <CardTitle className={`text-xl font-bold ${isDark ? "text-primary glow-text" : "text-foreground"}`}>
             التقييمات السلبية
           </CardTitle>
           <Select value={filterReason} onValueChange={setFilterReason}>
-            <SelectTrigger className="w-48">
+            <SelectTrigger className="w-full sm:w-48">
               <SelectValue placeholder="فلترة حسب السبب" />
             </SelectTrigger>
             <SelectContent>

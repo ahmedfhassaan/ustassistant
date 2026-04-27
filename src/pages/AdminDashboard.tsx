@@ -68,7 +68,7 @@ const AdminDashboard = () => {
   return (
     <div className="space-y-6 max-w-6xl mx-auto animate-fade-in">
       {/* Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-5">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 sm:gap-5">
         {stats.map((stat, idx) => (
           <Card
             key={stat.label}
@@ -76,7 +76,7 @@ const AdminDashboard = () => {
             style={{ animationDelay: `${0.1 + idx * 0.08}s`, opacity: 0 }}
             onClick={(stat as any).onClick}
           >
-            <CardContent className="p-6 flex items-center gap-4">
+            <CardContent className="p-4 sm:p-5 flex items-center gap-3 sm:gap-4">
               <div className={`p-3 rounded-xl ${stat.color} transition-all duration-200 ${
                 isDark ? "bg-white/5 glow-highlight" : "bg-secondary"
               }`}>
