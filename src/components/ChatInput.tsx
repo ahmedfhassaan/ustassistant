@@ -1,14 +1,15 @@
 import { useState, useRef } from "react";
-import { ArrowUp } from "lucide-react";
+import { ArrowUp, Square } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useTheme } from "@/hooks/use-theme";
 
 interface ChatInputProps {
   onSend: (text: string) => void;
   isLoading: boolean;
+  onStop?: () => void;
 }
 
-const ChatInput = ({ onSend, isLoading }: ChatInputProps) => {
+const ChatInput = ({ onSend, isLoading, onStop }: ChatInputProps) => {
   const [text, setText] = useState("");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const { isDark } = useTheme();
@@ -47,18 +48,35 @@ const ChatInput = ({ onSend, isLoading }: ChatInputProps) => {
             ? "glass-input focus-within:border-primary/40 focus-within:shadow-[0_0_15px_rgba(112,200,255,0.1)]"
             : "bg-secondary/60 border border-border/50 focus-within:border-primary/50 focus-within:bg-secondary/80 focus-within:shadow-[0_0_0_3px_hsl(var(--primary)/0.1)]"
         }`}>
-          <Button
-            size="icon"
-            onClick={handleSubmit}
-            disabled={!text.trim() || isLoading}
-            className={`shrink-0 rounded-xl h-9 w-9 transition-all duration-200 disabled:opacity-30 ${
-              isDark
-                ? "bg-primary hover:bg-primary/80 text-primary-foreground glow-primary"
-                : "bg-primary hover:bg-primary/90 text-primary-foreground"
-            }`}
-          >
-            <ArrowUp className="w-4 h-4" />
-          </Button>
+          {isLoading && onStop ? (
+            <Button
+              size="icon"
+              onClick={onStop}
+              aria-label="إيقاف"
+              title="إيقاف"
+              className={`shrink-0 rounded-xl h-9 w-9 transition-all duration-200 ${
+                isDark
+                  ? "bg-primary hover:bg-primary/80 text-primary-foreground glow-primary"
+                  : "bg-primary hover:bg-primary/90 text-primary-foreground"
+              }`}
+            >
+              <Square className="w-3.5 h-3.5 fill-current" />
+            </Button>
+          ) : (
+            <Button
+              size="icon"
+              onClick={handleSubmit}
+              disabled={!text.trim() || isLoading}
+              aria-label="إرسال"
+              className={`shrink-0 rounded-xl h-9 w-9 transition-all duration-200 disabled:opacity-30 ${
+                isDark
+                  ? "bg-primary hover:bg-primary/80 text-primary-foreground glow-primary"
+                  : "bg-primary hover:bg-primary/90 text-primary-foreground"
+              }`}
+            >
+              <ArrowUp className="w-4 h-4" />
+            </Button>
+          )}
           <textarea
             ref={textareaRef}
             value={text}
