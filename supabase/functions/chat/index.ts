@@ -362,23 +362,35 @@ serve(async (req) => {
         variants.map(v => supabase.rpc("search_knowledge_hybrid", { ...rpcParamsBase, query_text: v }))
       );
 
+      // Score each variant: prioritise (1) more results, (2) higher top rank,
+      // (3) higher cumulative rank. Variants after the first (normalized / corrected
+      // / rewritten) get a tiny tie-breaker so they win when the original ties.
       let chunks: any[] | null = null;
       let rpcError: any = null;
       let bestVariant = variants[0];
-      let bestTopRank = -1;
+      let bestScore = -Infinity;
+      const variantScores: { v: string; n: number; top: number; sum: number; score: number }[] = [];
+
       results.forEach((r, i) => {
         if (r.error && !rpcError) rpcError = r.error;
-        const top = (r.data && r.data.length > 0) ? (r.data[0].rank as number) : 0;
-        if (top > bestTopRank) {
-          bestTopRank = top;
-          chunks = r.data;
+        const data = r.data || [];
+        const n = data.length;
+        const top = n > 0 ? (data[0].rank as number) : 0;
+        const sum = data.reduce((acc: number, c: any) => acc + (c.rank as number), 0);
+        const tieBreak = i === 0 ? 0 : 0.0001 * i;
+        const score = n * 0.6 + top * 1.0 + sum * 0.2 + tieBreak;
+        variantScores.push({ v: variants[i], n, top, sum, score });
+        if (score > bestScore) {
+          bestScore = score;
+          chunks = data;
           bestVariant = variants[i];
         }
       });
 
       if (debugRag) {
         console.log(`[chat] variants tried: ${variants.map(v => `"${v}"`).join(" | ")}`);
-        console.log(`[chat] best variant: "${bestVariant}" topRank=${bestTopRank.toFixed(3)}`);
+        console.log(`[chat] variant scores: ${variantScores.map(s => `"${s.v}" n=${s.n} top=${s.top.toFixed(3)} sum=${s.sum.toFixed(3)} score=${s.score.toFixed(3)}`).join(" | ")}`);
+        console.log(`[chat] best variant: "${bestVariant}"`);
       }
 
       if (rpcError) console.error("[chat] hybrid search error:", rpcError);
