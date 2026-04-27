@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
+import { generateQueryVariants } from "../_shared/arabic-normalize.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -341,25 +342,43 @@ serve(async (req) => {
     let maxRank = 0;
 
     try {
-      const rpcParams: any = {
-        query_text: rewrittenQuery, // use rewritten if enabled, else original
+      const rpcParamsBase: any = {
         max_results: initialCount,
         weight_text: weightText,
         weight_semantic: weightSemantic,
       };
       if (queryEmbedding) {
-        rpcParams.query_embedding = JSON.stringify(queryEmbedding);
+        rpcParamsBase.query_embedding = JSON.stringify(queryEmbedding);
       }
 
-      let { data: chunks, error: rpcError } = await supabase.rpc("search_knowledge_hybrid", rpcParams);
+      // Build query variants: original + arabic-normalized + fuzzy-corrected (+ rewritten)
+      const variants = generateQueryVariants(lastUserMessage);
+      if (enableRewrite && rewrittenQuery && !variants.some(v => v.toLowerCase() === rewrittenQuery.toLowerCase())) {
+        variants.push(rewrittenQuery);
+      }
 
-      // If the rewritten search returned nothing and we used a rewrite, retry with original
-      if (enableRewrite && rewrittenQuery !== lastUserMessage && (!chunks || chunks.length === 0)) {
-        console.log("[chat] Rewrite returned 0 results, retrying with original question");
-        const fallbackParams = { ...rpcParams, query_text: lastUserMessage };
-        const retry = await supabase.rpc("search_knowledge_hybrid", fallbackParams);
-        chunks = retry.data;
-        rpcError = retry.error;
+      // Run all variant searches in parallel and pick the one with the best top rank
+      const results = await Promise.all(
+        variants.map(v => supabase.rpc("search_knowledge_hybrid", { ...rpcParamsBase, query_text: v }))
+      );
+
+      let chunks: any[] | null = null;
+      let rpcError: any = null;
+      let bestVariant = variants[0];
+      let bestTopRank = -1;
+      results.forEach((r, i) => {
+        if (r.error && !rpcError) rpcError = r.error;
+        const top = (r.data && r.data.length > 0) ? (r.data[0].rank as number) : 0;
+        if (top > bestTopRank) {
+          bestTopRank = top;
+          chunks = r.data;
+          bestVariant = variants[i];
+        }
+      });
+
+      if (debugRag) {
+        console.log(`[chat] variants tried: ${variants.map(v => `"${v}"`).join(" | ")}`);
+        console.log(`[chat] best variant: "${bestVariant}" topRank=${bestTopRank.toFixed(3)}`);
       }
 
       if (rpcError) console.error("[chat] hybrid search error:", rpcError);
