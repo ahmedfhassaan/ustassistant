@@ -585,6 +585,13 @@ ${toneInstruction}
         // Extract used sources from full content
         let finalSources: string[] = sourceNames;
         const markerMatch = fullContent.match(/<!--\s*USED_SOURCES:\s*([\s\S]*?)-->/i);
+        const cleanForCheck = fullContent.replace(/<!--[\s\S]*?-->/g, "").trim();
+        const fallbackMsg = (settings.fallback_message || "").trim();
+        const lowConfMsg = (settings.low_confidence_message || "").trim();
+        const isFallbackAnswer =
+          (fallbackMsg && cleanForCheck.includes(fallbackMsg.slice(0, 30))) ||
+          (lowConfMsg && cleanForCheck.includes(lowConfMsg.slice(0, 30)));
+
         if (markerMatch) {
           const raw = markerMatch[1].trim();
           if (raw && raw !== "-") {
@@ -592,13 +599,17 @@ ${toneInstruction}
             const intersect = declared.filter(d =>
               sourceNames.some(s => s === d || s.includes(d) || d.includes(s))
             );
-            finalSources = intersect.length > 0 ? [...new Set(intersect)] : [];
+            // If model declared sources but none matched, keep top retrieved as fallback
+            finalSources = intersect.length > 0
+              ? [...new Set(intersect)]
+              : (isFallbackAnswer ? [] : sourceNames.slice(0, 1));
           } else {
-            finalSources = [];
+            // Empty marker: only suppress if it's truly a fallback answer
+            finalSources = isFallbackAnswer ? [] : sourceNames.slice(0, 1);
           }
         }
-        // Suppress sources entirely if confidence is below threshold
-        if (confidencePercent < confidenceThreshold) {
+        // Suppress sources only if it's a fallback answer or confidence is far below threshold
+        if (isFallbackAnswer || confidencePercent < confidenceThreshold * 0.5) {
           finalSources = [];
         }
 
