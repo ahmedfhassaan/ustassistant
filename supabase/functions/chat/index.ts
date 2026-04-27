@@ -309,26 +309,43 @@ ${strictInstruction}
       },
     };
 
-    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:streamGenerateContent?alt=sse&key=${GOOGLE_AI_API_KEY}`;
+    // Try primary model, then fallback to a stable model on 503/429/5xx
+    const FALLBACK_MODEL = "gemini-2.5-flash";
+    const modelsToTry = modelName === FALLBACK_MODEL ? [modelName] : [modelName, FALLBACK_MODEL];
 
-    const response = await fetch(geminiUrl, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(geminiBody),
-    });
+    let response: Response | null = null;
+    let lastStatus = 0;
+    let lastErrText = "";
 
-    if (!response.ok) {
-      if (response.status === 429) {
-        return new Response(
-          JSON.stringify({ error: "تم تجاوز حد الطلبات. حاول مرة أخرى بعد قليل." }),
-          { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+    for (const m of modelsToTry) {
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${m}:streamGenerateContent?alt=sse&key=${GOOGLE_AI_API_KEY}`;
+      const r = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(geminiBody),
+      });
+      if (r.ok) {
+        response = r;
+        if (m !== modelName) console.log(`[chat] Primary model "${modelName}" failed, succeeded with fallback "${m}"`);
+        break;
       }
-      const t = await response.text();
-      console.error("Google AI error:", response.status, t);
+      lastStatus = r.status;
+      lastErrText = await r.text().catch(() => "");
+      console.error(`[chat] Model "${m}" returned ${r.status}: ${lastErrText.slice(0, 200)}`);
+      // Only retry on transient errors
+      if (![429, 500, 502, 503, 504].includes(r.status)) break;
+    }
+
+    if (!response) {
+      // Friendly fallback — return 200 with structured error so the frontend doesn't crash
+      const friendly = lastStatus === 429
+        ? "⚠️ تم تجاوز حد الطلبات. يرجى المحاولة بعد دقيقة."
+        : (lastStatus === 503 || lastStatus >= 500)
+          ? "⚠️ النموذج الذكي مشغول حالياً بسبب الضغط. يرجى المحاولة بعد قليل."
+          : "حدث خطأ في المساعد الذكي. حاول مرة أخرى.";
       return new Response(
-        JSON.stringify({ error: "حدث خطأ في المساعد الذكي" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({ error: friendly, fallback: true, status: lastStatus }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
