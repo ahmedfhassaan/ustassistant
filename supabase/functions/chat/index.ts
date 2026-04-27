@@ -300,6 +300,7 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({
           cached: true,
+          semantic_cache: semanticCacheHit,
           content: cached.answer,
           sources: settings.show_sources === "true" ? cached.sources : null,
         }),
