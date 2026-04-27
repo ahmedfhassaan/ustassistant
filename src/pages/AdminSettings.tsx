@@ -399,6 +399,74 @@ const AdminSettings = () => {
             </div>
           </div>
         </TabsContent>
+
+        {/* RAG Tab */}
+        <TabsContent value="rag" className="space-y-4">
+          <div className={cardBase}>
+            <h2 className={sectionTitle}>
+              <Search className="w-5 h-5 text-primary" /> إعدادات نظام الاسترجاع (RAG)
+            </h2>
+            <div className="space-y-5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>حجم الجزء (chunk_size) — كلمات</Label>
+                  <Input type="number" value={form.chunk_size} onChange={(e) => update("chunk_size", e.target.value)} min={80} max={800} />
+                  <p className="text-xs text-muted-foreground">يُطبَّق عند رفع مستندات جديدة فقط</p>
+                </div>
+                <div className="space-y-2">
+                  <Label>التداخل بين الأجزاء (overlap)</Label>
+                  <Input type="number" value={form.chunk_overlap} onChange={(e) => update("chunk_overlap", e.target.value)} min={0} max={200} />
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between">
+                <div>
+                  <Label>إعادة صياغة السؤال (Query Rewriting)</Label>
+                  <p className="text-xs text-muted-foreground mt-1">يحوّل السؤال إلى كلمات مفتاحية بحثية قبل البحث</p>
+                </div>
+                <Switch checked={form.enable_query_rewriting === "true"} onCheckedChange={(v) => update("enable_query_rewriting", v ? "true" : "false")} />
+              </div>
+
+              <div className="flex items-center justify-between">
+                <div>
+                  <Label>إعادة الترتيب (Reranking)</Label>
+                  <p className="text-xs text-muted-foreground mt-1">يجلب نتائج إضافية ثم يختار الأفضل</p>
+                </div>
+                <Switch checked={form.enable_reranking === "true"} onCheckedChange={(v) => update("enable_reranking", v ? "true" : "false")} />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>عدد النتائج الأولية</Label>
+                  <Input type="number" value={form.initial_results_count} onChange={(e) => update("initial_results_count", e.target.value)} min={5} max={30} />
+                </div>
+                <div className="space-y-2">
+                  <Label>عدد النتائج النهائية</Label>
+                  <Input type="number" value={form.final_results_count} onChange={(e) => update("final_results_count", e.target.value)} min={1} max={15} />
+                </div>
+              </div>
+
+              <div className="border-t border-foreground/10 pt-4 space-y-4">
+                <h3 className="text-sm font-semibold text-foreground">أوزان البحث الهجين</h3>
+
+                <div className="space-y-2">
+                  <Label>افتراضي — نص: {form.weight_text_default} / دلالي: {(1 - parseFloat(form.weight_text_default || "0.4")).toFixed(2)}</Label>
+                  <Slider value={[parseFloat(form.weight_text_default) * 100]} onValueChange={([v]) => { const t = (v / 100).toFixed(2); update("weight_text_default", t); update("weight_semantic_default", (1 - parseFloat(t)).toFixed(2)); }} min={0} max={100} step={5} />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>أسئلة دقيقة (أرقام/رموز) — نص: {form.weight_text_exact}</Label>
+                  <Slider value={[parseFloat(form.weight_text_exact) * 100]} onValueChange={([v]) => update("weight_text_exact", (v / 100).toFixed(2))} min={0} max={100} step={5} />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>أسئلة عامة (دلالية) — نص: {form.weight_text_semantic_lean}</Label>
+                  <Slider value={[parseFloat(form.weight_text_semantic_lean) * 100]} onValueChange={([v]) => update("weight_text_semantic_lean", (v / 100).toFixed(2))} min={0} max={100} step={5} />
+                </div>
+              </div>
+            </div>
+          </div>
+        </TabsContent>
       </Tabs>
     </div>
   );
