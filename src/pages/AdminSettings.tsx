@@ -128,7 +128,21 @@ const AdminSettings = () => {
       <Tabs defaultValue="personality" className="space-y-4">
         <TabsList className="grid grid-cols-3 sm:grid-cols-5 w-full h-auto">
           <TabsTrigger value="personality" className="text-[11px] sm:text-sm gap-1 py-2">
-
+            <User className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> الشخصية
+          </TabsTrigger>
+          <TabsTrigger value="responses" className="text-[11px] sm:text-sm gap-1 py-2">
+            <MessageSquare className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> الردود
+          </TabsTrigger>
+          <TabsTrigger value="cache" className="text-[11px] sm:text-sm gap-1 py-2">
+            <Database className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> الكاش
+          </TabsTrigger>
+          <TabsTrigger value="security" className="text-[11px] sm:text-sm gap-1 py-2">
+            <Shield className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> الأمان
+          </TabsTrigger>
+          <TabsTrigger value="ai" className="text-[11px] sm:text-sm gap-1 py-2">
+            <Cpu className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> الذكاء
+          </TabsTrigger>
+        </TabsList>
 
         {/* Personality Tab */}
         <TabsContent value="personality" className="space-y-4">
