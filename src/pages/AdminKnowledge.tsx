@@ -212,24 +212,29 @@ const AdminKnowledge = () => {
   };
 
   const handleReprocessAll = async () => {
-    const processed = documents.filter(d => d.status === "processed" || d.status === "error");
-    if (processed.length === 0) return;
-    if (!confirm(`سيتم إعادة معالجة ${processed.length} مستنداً بإعدادات التقسيم الجديدة. متابعة؟`)) return;
+    const targets = documents.filter(d => d.status === "processed" || d.status === "error");
+    if (targets.length === 0) return;
+    if (!confirm(`سيتم إعادة معالجة ${targets.length} مستنداً بإعدادات التقسيم الجديدة. متابعة؟`)) return;
     setReprocessing(true);
     let ok = 0, fail = 0;
     try {
-      for (const doc of processed) {
+      for (const doc of targets) {
         try {
-          if (!doc.file_path) { fail++; continue; }
-          const { data: blob, error: dlErr } = await supabase.storage.from("knowledge").download(doc.file_path);
-          if (dlErr || !blob) { fail++; continue; }
-          const contentText = await blob.text();
+          let contentText = "";
+          // Try downloading original file first if available
+          if (doc.file_path) {
+            const { data: blob } = await supabase.storage.from("knowledge").download(doc.file_path);
+            if (blob) contentText = await blob.text();
+          }
           await supabase.from("knowledge_documents").update({ status: "processing" }).eq("id", doc.id);
-          const { error: fnErr } = await supabase.functions.invoke("process-document", {
-            body: { document_id: doc.id, content_text: contentText },
-          });
-          if (fnErr) { fail++; } else { ok++; }
-        } catch { fail++; }
+          const body: any = { document_id: doc.id };
+          if (contentText) body.content_text = contentText;
+          else body.from_existing_chunks = true; // fallback: rebuild from current chunks
+
+          const { error: fnErr } = await supabase.functions.invoke("process-document", { body });
+          if (fnErr) { console.error("reprocess failed", doc.name, fnErr); fail++; }
+          else { ok++; }
+        } catch (e) { console.error("reprocess exception", doc.name, e); fail++; }
       }
       toast({
         title: "اكتملت إعادة المعالجة",
