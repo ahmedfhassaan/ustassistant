@@ -32,6 +32,7 @@ export interface AssistantSettings {
   weight_semantic_default: string;
   weight_text_exact: string;
   weight_text_semantic_lean: string;
+  semantic_cache_threshold: string;
   [key: string]: string;
 }
 
@@ -66,6 +67,7 @@ const DEFAULTS: AssistantSettings = {
   weight_semantic_default: "0.6",
   weight_text_exact: "0.65",
   weight_text_semantic_lean: "0.3",
+  semantic_cache_threshold: "0.92",
 };
 
 export function useSettings() {

@@ -127,6 +127,92 @@ export type Database = {
         }
         Relationships: []
       }
+      evaluation_runs: {
+        Row: {
+          confidence: number | null
+          created_at: string
+          error_message: string | null
+          generated_answer: string | null
+          generated_sources: string | null
+          id: string
+          keyword_match_score: number | null
+          latency_ms: number | null
+          passed: boolean | null
+          question_id: string
+          question_text: string
+          run_id: string
+          source_match_score: number | null
+        }
+        Insert: {
+          confidence?: number | null
+          created_at?: string
+          error_message?: string | null
+          generated_answer?: string | null
+          generated_sources?: string | null
+          id?: string
+          keyword_match_score?: number | null
+          latency_ms?: number | null
+          passed?: boolean | null
+          question_id: string
+          question_text: string
+          run_id: string
+          source_match_score?: number | null
+        }
+        Update: {
+          confidence?: number | null
+          created_at?: string
+          error_message?: string | null
+          generated_answer?: string | null
+          generated_sources?: string | null
+          id?: string
+          keyword_match_score?: number | null
+          latency_ms?: number | null
+          passed?: boolean | null
+          question_id?: string
+          question_text?: string
+          run_id?: string
+          source_match_score?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "evaluation_runs_question_id_fkey"
+            columns: ["question_id"]
+            isOneToOne: false
+            referencedRelation: "golden_questions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      golden_questions: {
+        Row: {
+          category: string | null
+          created_at: string
+          expected_keywords: string[]
+          expected_sources: string[]
+          id: string
+          notes: string | null
+          question: string
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string
+          expected_keywords?: string[]
+          expected_sources?: string[]
+          id?: string
+          notes?: string | null
+          question: string
+        }
+        Update: {
+          category?: string | null
+          created_at?: string
+          expected_keywords?: string[]
+          expected_sources?: string[]
+          id?: string
+          notes?: string | null
+          question?: string
+        }
+        Relationships: []
+      }
       knowledge_chunks: {
         Row: {
           chunk_index: number
@@ -238,6 +324,7 @@ export type Database = {
           expires_at: string
           id: string
           question: string
+          question_embedding: string | null
           question_hash: string
           sources: string | null
         }
@@ -247,6 +334,7 @@ export type Database = {
           expires_at?: string
           id?: string
           question: string
+          question_embedding?: string | null
           question_hash: string
           sources?: string | null
         }
@@ -256,6 +344,7 @@ export type Database = {
           expires_at?: string
           id?: string
           question?: string
+          question_embedding?: string | null
           question_hash?: string
           sources?: string | null
         }
@@ -316,6 +405,17 @@ export type Database = {
         Args: { p_id: string; p_name: string }
         Returns: Json
       }
+      find_cached_answer_semantic: {
+        Args: { query_embedding: string; similarity_threshold?: number }
+        Returns: {
+          answer: string
+          id: string
+          question: string
+          similarity: number
+          sources: string
+        }[]
+      }
+      get_advanced_metrics: { Args: never; Returns: Json }
       get_dashboard_stats: { Args: never; Returns: Json }
       get_question_stats: {
         Args: { limit_count?: number }

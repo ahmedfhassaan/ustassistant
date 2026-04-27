@@ -246,8 +246,9 @@ function buildHeadingPrefix(headings: string[]): string {
 }
 
 function splitMarkdownAware(markdown: string, targetWords: number, overlapWords: number): string[] {
-  const MIN_WORDS = 60;
+  const MIN_WORDS = 40;
   const MAX_HARD = Math.floor(targetWords * 1.6);
+  const SOFT_BREAK = Math.floor(targetWords * 0.7);
   const blocks = parseBlocks(markdown);
   const chunks: string[] = [];
 
@@ -323,6 +324,9 @@ function splitMarkdownAware(markdown: string, targetWords: number, overlapWords:
 
     // Paragraph
     if (bufferWords + blockWords > targetWords && bufferWords >= MIN_WORDS) {
+      flush();
+    } else if (bufferWords >= SOFT_BREAK && blockWords > targetWords * 0.5) {
+      // Soft break: paragraph would push us over comfortably and we already have a substantial chunk
       flush();
     }
 

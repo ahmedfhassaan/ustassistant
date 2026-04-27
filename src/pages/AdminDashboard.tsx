@@ -1,4 +1,4 @@
-import { MessageSquare, Users, FileText, TrendingUp, ThumbsDown } from "lucide-react";
+import { MessageSquare, Users, FileText, TrendingUp, ThumbsDown, Zap, AlertTriangle, Database, Brain } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useTheme } from "@/hooks/use-theme";
@@ -27,6 +27,15 @@ const AdminDashboard = () => {
       const { data, error } = await supabase.rpc("get_dashboard_stats");
       if (error) throw error;
       return data as unknown as DashboardStats;
+    },
+  });
+
+  const { data: advancedMetrics, isLoading: metricsLoading } = useQuery({
+    queryKey: ["advanced-metrics"],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("get_advanced_metrics");
+      if (error) throw error;
+      return data as any;
     },
   });
 
@@ -96,6 +105,47 @@ const AdminDashboard = () => {
           </Card>
         ))}
       </div>
+
+      {/* Advanced metrics */}
+      <Card
+        className={`transition-all duration-300 ease-out animate-fade-in-up rounded-2xl ${cardBase}`}
+        style={{ animationDelay: "0.35s", opacity: 0 }}
+      >
+        <CardHeader className="pb-3">
+          <CardTitle className={`text-xl font-bold flex items-center gap-2 ${isDark ? "text-primary glow-text" : "text-foreground"}`}>
+            <Brain className="w-5 h-5" />
+            مقاييس الأداء (آخر 24 ساعة)
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {metricsLoading ? (
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-20 rounded-xl" />)}
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              {[
+                { label: "طلبات (24س)", value: advancedMetrics?.requests_24h ?? 0, icon: MessageSquare, color: "text-primary" },
+                { label: "نسبة إصابة الكاش", value: `${advancedMetrics?.cache_hit_rate ?? 0}%`, icon: Zap, color: "text-emerald-400" },
+                { label: "نسبة عدم الإجابة", value: `${advancedMetrics?.fallback_rate ?? 0}%`, icon: AlertTriangle, color: "text-amber-400" },
+                { label: "متوسط أجزاء/مستند", value: advancedMetrics?.avg_chunks_per_doc ?? 0, icon: Database, color: "text-purple-400" },
+                { label: "أجزاء معرفة", value: advancedMetrics?.total_chunks ?? 0, icon: FileText, color: "text-primary" },
+                { label: "أجزاء مع embedding", value: advancedMetrics?.chunks_with_embedding ?? 0, icon: Brain, color: "text-emerald-400" },
+                { label: "كاش نشط", value: advancedMetrics?.cached_responses_total ?? 0, icon: Database, color: "text-purple-400" },
+                { label: "كاش بـ embedding", value: advancedMetrics?.cached_with_embedding ?? 0, icon: Zap, color: "text-amber-400" },
+              ].map((m, i) => (
+                <div key={i} className={`p-3 rounded-xl flex items-center gap-3 ${isDark ? "bg-white/5 border border-white/5" : "bg-secondary/30 border border-black/5"}`}>
+                  <m.icon className={`w-5 h-5 shrink-0 ${m.color}`} />
+                  <div className="min-w-0">
+                    <p className="text-lg font-bold text-foreground truncate">{m.value}</p>
+                    <p className="text-[11px] text-muted-foreground truncate">{m.label}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Recent popular questions */}
       <Card

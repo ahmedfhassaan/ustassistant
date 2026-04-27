@@ -265,6 +265,19 @@ const AdminSettings = () => {
                   onCheckedChange={(v) => update("auto_clear_cache", v ? "true" : "false")}
                 />
               </div>
+              <div className="space-y-2 border-t pt-4">
+                <Label>عتبة التطابق الدلالي للكاش — {(Number(form.semantic_cache_threshold) * 100).toFixed(0)}%</Label>
+                <Slider
+                  value={[Number(form.semantic_cache_threshold) * 100]}
+                  onValueChange={([v]) => update("semantic_cache_threshold", (v / 100).toFixed(2))}
+                  min={70}
+                  max={99}
+                  step={1}
+                />
+                <p className="text-xs text-muted-foreground">
+                  يستخدم الكاش الدلالي لإيجاد إجابات لأسئلة مشابهة (وليست مطابقة حرفياً). كلما ارتفعت العتبة قلّت المطابقات وزادت دقتها.
+                </p>
+              </div>
               <Button
                 variant="destructive"
                 onClick={handleClearCache}
