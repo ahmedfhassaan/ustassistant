@@ -68,6 +68,85 @@ const Chat = () => {
 
   const isWelcomeScreen = messages.length === 0;
 
+  const persistAssistantMessage = useCallback(
+    async (
+      finalMessages: Message[],
+      userMsg: Message,
+      assistantMsg: Message,
+      titleText: string,
+    ) => {
+      if (!activeConversationId) {
+        const title = titleText.slice(0, 40) + (titleText.length > 40 ? "..." : "");
+        const convId = await saveNewConversation(student.id, title, finalMessages);
+        if (convId) {
+          const newConv: Conversation = {
+            id: convId,
+            title,
+            messages: finalMessages,
+            createdAt: new Date(),
+          };
+          setConversations((prev) => [newConv, ...prev]);
+          setActiveConversationId(convId);
+        }
+      } else {
+        await addMessagesToConversation(activeConversationId, [userMsg, assistantMsg]);
+        setConversations((prev) =>
+          prev.map((c) =>
+            c.id === activeConversationId ? { ...c, messages: finalMessages } : c
+          )
+        );
+      }
+    },
+    [activeConversationId, student?.id]
+  );
+
+  // Holds in-flight streaming state so handleStop can persist what was generated
+  const streamStateRef = useRef<{
+    userMsg: Message;
+    assistantId: string;
+    text: string;
+    getContent: () => string;
+    newMessages: Message[];
+  } | null>(null);
+
+  const finalizeAssistant = (rawContent: string, metaSource?: string) => {
+    let source = metaSource;
+    let cleanContent = rawContent;
+    const sourceMatch = rawContent.match(/\[المصادر:\s*([^\]]+)\]\s*$/);
+    if (sourceMatch) {
+      source = sourceMatch[1].trim();
+      cleanContent = rawContent.replace(sourceMatch[0], "").trim();
+    }
+    return { cleanContent, source };
+  };
+
+  const handleStop = () => {
+    if (abortRef.current) {
+      abortRef.current.abort();
+      abortRef.current = null;
+    }
+    setIsLoading(false);
+
+    const state = streamStateRef.current;
+    streamStateRef.current = null;
+    if (!state) return;
+
+    const generated = state.getContent();
+    if (!generated.trim()) return;
+
+    const { cleanContent, source } = finalizeAssistant(generated);
+    const assistantMsg: Message = {
+      id: state.assistantId,
+      role: "assistant",
+      content: cleanContent,
+      source,
+      question: state.text,
+    };
+    const finalMessages: Message[] = [...state.newMessages, assistantMsg];
+    setMessages(finalMessages);
+    persistAssistantMessage(finalMessages, state.userMsg, assistantMsg, state.text);
+  };
+
   const handleSend = async (text: string) => {
     if (isLoading) return;
 
@@ -90,6 +169,13 @@ const Chat = () => {
     const assistantId = (Date.now() + 1).toString();
     const controller = new AbortController();
     abortRef.current = controller;
+    streamStateRef.current = {
+      userMsg,
+      assistantId,
+      text,
+      getContent: () => assistantContent,
+      newMessages,
+    };
 
     try {
       await streamChat({
@@ -114,15 +200,12 @@ const Chat = () => {
         onDone: async (meta) => {
           setIsLoading(false);
           abortRef.current = null;
+          streamStateRef.current = null;
 
-          let source = meta?.sources || undefined;
-          let cleanContent = assistantContent;
-
-          const sourceMatch = assistantContent.match(/\[المصادر:\s*([^\]]+)\]\s*$/);
-          if (sourceMatch) {
-            source = sourceMatch[1].trim();
-            cleanContent = assistantContent.replace(sourceMatch[0], "").trim();
-          }
+          const { cleanContent, source } = finalizeAssistant(
+            assistantContent,
+            meta?.sources || undefined
+          );
 
           const assistantMsg: Message = {
             id: assistantId,
@@ -134,36 +217,14 @@ const Chat = () => {
 
           const finalMessages: Message[] = [...newMessages, assistantMsg];
           setMessages(finalMessages);
-
-          // Save to database
-          if (!activeConversationId) {
-            const title = text.slice(0, 40) + (text.length > 40 ? "..." : "");
-            const convId = await saveNewConversation(student.id, title, finalMessages);
-            if (convId) {
-              const newConv: Conversation = {
-                id: convId,
-                title,
-                messages: finalMessages,
-                createdAt: new Date(),
-              };
-              setConversations((prev) => [newConv, ...prev]);
-              setActiveConversationId(convId);
-            }
-          } else {
-            // Add new messages (user + assistant) to existing conversation
-            await addMessagesToConversation(activeConversationId, [userMsg, assistantMsg]);
-            setConversations((prev) =>
-              prev.map((c) =>
-                c.id === activeConversationId ? { ...c, messages: finalMessages } : c
-              )
-            );
-          }
+          await persistAssistantMessage(finalMessages, userMsg, assistantMsg, text);
         },
       });
     } catch (error: any) {
       if (error.name === "AbortError") return;
       setIsLoading(false);
       abortRef.current = null;
+      streamStateRef.current = null;
       toast({
         title: "خطأ",
         description: error.message || "حدث خطأ غير متوقع",
