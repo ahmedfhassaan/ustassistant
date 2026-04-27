@@ -686,18 +686,34 @@ ${toneInstruction}
         }
 
         if (cleanContent && settings.cache_enabled === "true" && messages.length <= 1) {
-          try {
-            const sourcesStr = finalSources.length > 0 ? finalSources.join("، ") : null;
-            const ttlMinutes = parseInt(settings.cache_ttl_minutes) || 1440;
-            const expiresAt = new Date(Date.now() + ttlMinutes * 60 * 1000).toISOString();
-            const embStr = queryEmbedding ? `[${queryEmbedding.join(",")}]` : null;
-            await supabase.from("response_cache").upsert({
-              question_hash: questionHash, question: lastUserMessage,
-              answer: cleanContent, sources: sourcesStr, expires_at: expiresAt,
-              question_embedding: embStr,
-            }, { onConflict: "question_hash" });
-          } catch (e) {
-            console.error("Cache save error:", e);
+          // Skip caching low-confidence / fallback answers so future identical questions
+          // re-run the search pipeline (with normalization & fuzzy correction) instead
+          // of being permanently locked to a failed response.
+          const fallbackMsg = (settings.fallback_message || "").trim();
+          const lowConfMsg = (settings.low_confidence_message || "").trim();
+          const answerTrim = cleanContent.trim();
+          const isFailedAnswer =
+            finalSources.length === 0 ||
+            (fallbackMsg && answerTrim.includes(fallbackMsg)) ||
+            (lowConfMsg && answerTrim.includes(lowConfMsg)) ||
+            /لم\s*أجد\s*معلوم/i.test(answerTrim) ||
+            /لا\s*توجد\s*معلوم/i.test(answerTrim) ||
+            /^عذراً/.test(answerTrim);
+
+          if (!isFailedAnswer) {
+            try {
+              const sourcesStr = finalSources.length > 0 ? finalSources.join("، ") : null;
+              const ttlMinutes = parseInt(settings.cache_ttl_minutes) || 1440;
+              const expiresAt = new Date(Date.now() + ttlMinutes * 60 * 1000).toISOString();
+              const embStr = queryEmbedding ? `[${queryEmbedding.join(",")}]` : null;
+              await supabase.from("response_cache").upsert({
+                question_hash: questionHash, question: lastUserMessage,
+                answer: cleanContent, sources: sourcesStr, expires_at: expiresAt,
+                question_embedding: embStr,
+              }, { onConflict: "question_hash" });
+            } catch (e) {
+              console.error("Cache save error:", e);
+            }
           }
         }
       } catch (e) {
