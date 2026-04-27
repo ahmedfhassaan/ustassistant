@@ -337,19 +337,35 @@ export type Database = {
           rank: number
         }[]
       }
-      search_knowledge_hybrid: {
-        Args: {
-          max_results?: number
-          query_embedding?: string
-          query_text: string
-        }
-        Returns: {
-          chunk_id: string
-          content: string
-          document_name: string
-          rank: number
-        }[]
-      }
+      search_knowledge_hybrid:
+        | {
+            Args: {
+              max_results?: number
+              query_embedding?: string
+              query_text: string
+            }
+            Returns: {
+              chunk_id: string
+              content: string
+              document_name: string
+              rank: number
+            }[]
+          }
+        | {
+            Args: {
+              max_results?: number
+              query_embedding?: string
+              query_text: string
+              weight_semantic?: number
+              weight_text?: number
+            }
+            Returns: {
+              chunk_id: string
+              content: string
+              document_name: string
+              rank: number
+            }[]
+          }
       verify_student_login: {
         Args: { p_password: string; p_student_id: string }
         Returns: Json
