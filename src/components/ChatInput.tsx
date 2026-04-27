@@ -1,14 +1,15 @@
 import { useState, useRef } from "react";
-import { ArrowUp } from "lucide-react";
+import { ArrowUp, Square } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useTheme } from "@/hooks/use-theme";
 
 interface ChatInputProps {
   onSend: (text: string) => void;
   isLoading: boolean;
+  onStop?: () => void;
 }
 
-const ChatInput = ({ onSend, isLoading }: ChatInputProps) => {
+const ChatInput = ({ onSend, isLoading, onStop }: ChatInputProps) => {
   const [text, setText] = useState("");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const { isDark } = useTheme();
