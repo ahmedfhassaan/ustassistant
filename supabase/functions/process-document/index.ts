@@ -68,6 +68,14 @@ serve(async (req) => {
     const { size: chunkSize, overlap: chunkOverlap } = await loadChunkSettings(supabase);
     console.log(`[process-document] Using chunk_size=${chunkSize} overlap=${chunkOverlap}`);
 
+    // Idempotency: remove any old chunks for this document before re-inserting.
+    // This makes re-processing safe and prevents duplicates.
+    try {
+      await supabase.from("knowledge_chunks").delete().eq("document_id", document_id);
+    } catch (e) {
+      console.warn("[process-document] Failed to clear old chunks:", e);
+    }
+
     const chunks = splitMarkdownAware(text, chunkSize, chunkOverlap);
     console.log(`[process-document] Produced ${chunks.length} chunks`);
 
@@ -116,6 +124,13 @@ serve(async (req) => {
       .from("knowledge_documents")
       .update({ status: "processed" })
       .eq("id", document_id);
+
+    // Knowledge changed → invalidate response cache so users get fresh answers
+    try {
+      await supabase.from("response_cache").delete().gt("expires_at", new Date(0).toISOString());
+    } catch (e) {
+      console.warn("[process-document] Failed to clear response_cache:", e);
+    }
 
     return new Response(
       JSON.stringify({

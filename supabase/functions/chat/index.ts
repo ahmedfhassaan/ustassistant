@@ -304,7 +304,10 @@ serve(async (req) => {
       weightText = wTextLean;
       weightSemantic = Math.max(0, 1 - wTextLean);
     }
-    console.log(`[chat] queryKind=${queryKind} weights=text:${weightText} sem:${weightSemantic} rewrite=${enableRewrite}`);
+    const debugRag = Deno.env.get("DEBUG_RAG") === "true";
+    if (debugRag) {
+      console.log(`[chat] queryKind=${queryKind} weights=text:${weightText} sem:${weightSemantic} rewrite=${enableRewrite}`);
+    }
 
     // --- KNOWLEDGE SEARCH: hybrid with dynamic weights ---
     const enableRerank = settings.enable_reranking === "true";
@@ -346,7 +349,15 @@ serve(async (req) => {
         let finalChunks = chunks;
         if (enableRerank) {
           try {
+            if (debugRag) {
+              console.log("[chat] rerank BEFORE:", chunks.map((c: any, i: number) =>
+                `${i + 1}. ${c.document_name} (rank=${(c.rank as number).toFixed(3)})`).join(" | "));
+            }
             finalChunks = rerankChunks(chunks, lastUserMessage, finalCount);
+            if (debugRag) {
+              console.log("[chat] rerank AFTER:", finalChunks.map((c: any, i: number) =>
+                `${i + 1}. ${c.document_name} (score=${(c._rerankScore || 0).toFixed(3)})`).join(" | "));
+            }
           } catch (e) {
             console.warn("[chat] rerank failed, using hybrid order:", e);
             finalChunks = chunks.slice(0, finalCount);
