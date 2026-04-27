@@ -39,7 +39,7 @@ serve(async (req) => {
   }
 
   try {
-    const { document_id, content_text } = await req.json();
+    const { document_id, content_text, from_existing_chunks } = await req.json();
 
     if (!document_id) {
       return new Response(
@@ -52,7 +52,24 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    const text = content_text || "";
+    let text = content_text || "";
+
+    // Reprocess mode: rebuild text from existing chunks (when source file is missing)
+    if (from_existing_chunks === true && !text.trim()) {
+      const { data: existing, error: chErr } = await supabase
+        .from("knowledge_chunks")
+        .select("content, chunk_index")
+        .eq("document_id", document_id)
+        .order("chunk_index", { ascending: true });
+      if (chErr) {
+        return new Response(
+          JSON.stringify({ error: "فشل قراءة الأجزاء الحالية: " + chErr.message }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      text = (existing || []).map((c: any) => c.content).join("\n\n");
+      console.log(`[process-document] Reprocess mode: rebuilt ${text.length} chars from ${existing?.length || 0} existing chunks`);
+    }
 
     if (!text.trim()) {
       await supabase
