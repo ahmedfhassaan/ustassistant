@@ -340,6 +340,7 @@ serve(async (req) => {
     let knowledgeContext = "";
     let sourceNames: string[] = [];
     let maxRank = 0;
+    let resolvedQuestionForModel = lastUserMessage;
 
     try {
       const rpcParamsBase: any = {
@@ -387,10 +388,19 @@ serve(async (req) => {
         }
       });
 
+      const normalizedBestVariant = bestVariant.trim().replace(/\s+/g, " ");
+      const normalizedOriginalQuestion = lastUserMessage.trim().replace(/\s+/g, " ");
+      if (normalizedBestVariant) {
+        resolvedQuestionForModel = normalizedBestVariant;
+      }
+
       if (debugRag) {
         console.log(`[chat] variants tried: ${variants.map(v => `"${v}"`).join(" | ")}`);
         console.log(`[chat] variant scores: ${variantScores.map(s => `"${s.v}" n=${s.n} top=${s.top.toFixed(3)} sum=${s.sum.toFixed(3)} score=${s.score.toFixed(3)}`).join(" | ")}`);
         console.log(`[chat] best variant: "${bestVariant}"`);
+        if (normalizedBestVariant && normalizedBestVariant !== normalizedOriginalQuestion) {
+          console.log(`[chat] resolved question for model: "${resolvedQuestionForModel}"`);
+        }
       }
 
       if (rpcError) console.error("[chat] hybrid search error:", rpcError);
@@ -512,7 +522,17 @@ ${toneInstruction}
     if (modelName.startsWith("openai/")) modelName = "gemini-3-flash-preview";
 
     // Convert messages to Google Gemini format
-    const geminiContents = messages
+    const conversationForModel = messages.map((m: any, index: number) => {
+      if (m.role !== "user" && m.role !== "assistant") return m;
+      const isLatestUserMessage = m.role === "user" && index === messages.length - 1;
+      if (!isLatestUserMessage) return m;
+      return {
+        ...m,
+        content: resolvedQuestionForModel,
+      };
+    });
+
+    const geminiContents = conversationForModel
       .filter((m: any) => m.role === "user" || m.role === "assistant")
       .map((m: any) => ({
         role: m.role === "assistant" ? "model" : "user",
