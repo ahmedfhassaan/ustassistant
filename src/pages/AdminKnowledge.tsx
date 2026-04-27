@@ -36,6 +36,7 @@ const AdminKnowledge = () => {
   const [deleteConfirmEnabled, setDeleteConfirmEnabled] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [regenerating, setRegenerating] = useState(false);
+  const [reprocessing, setReprocessing] = useState(false);
   const { isDark } = useTheme();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -162,6 +163,13 @@ const AdminKnowledge = () => {
 
       if (error) throw error;
 
+      // Knowledge changed → invalidate cached responses
+      try {
+        await supabase.from("response_cache").delete().gt("expires_at", new Date(0).toISOString());
+      } catch (e) {
+        console.warn("Failed to clear cache after delete:", e);
+      }
+
       setDocuments((prev) => prev.filter((d) => d.id !== deleteTarget.id));
       toast({
         title: "تم حذف المستند بنجاح",
@@ -200,6 +208,37 @@ const AdminKnowledge = () => {
       toast({ title: "خطأ", description: err.message || "حدث خطأ أثناء إعادة التوليد", variant: "destructive" });
     } finally {
       setRegenerating(false);
+    }
+  };
+
+  const handleReprocessAll = async () => {
+    const processed = documents.filter(d => d.status === "processed" || d.status === "error");
+    if (processed.length === 0) return;
+    if (!confirm(`سيتم إعادة معالجة ${processed.length} مستنداً بإعدادات التقسيم الجديدة. متابعة؟`)) return;
+    setReprocessing(true);
+    let ok = 0, fail = 0;
+    try {
+      for (const doc of processed) {
+        try {
+          if (!doc.file_path) { fail++; continue; }
+          const { data: blob, error: dlErr } = await supabase.storage.from("knowledge").download(doc.file_path);
+          if (dlErr || !blob) { fail++; continue; }
+          const contentText = await blob.text();
+          await supabase.from("knowledge_documents").update({ status: "processing" }).eq("id", doc.id);
+          const { error: fnErr } = await supabase.functions.invoke("process-document", {
+            body: { document_id: doc.id, content_text: contentText },
+          });
+          if (fnErr) { fail++; } else { ok++; }
+        } catch { fail++; }
+      }
+      toast({
+        title: "اكتملت إعادة المعالجة",
+        description: `تم بنجاح: ${ok} | فشل: ${fail}`,
+        variant: fail > 0 ? "destructive" : "default",
+      });
+    } finally {
+      setReprocessing(false);
+      fetchDocuments();
     }
   };
 
