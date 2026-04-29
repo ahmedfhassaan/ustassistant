@@ -67,7 +67,10 @@ function buildHtml(opts: PdfOptions): string {
   @page {
     size: A4;
     margin: 14mm;
+    /* Remove browser-injected header/footer (URL, date, page numbers) */
+    marks: none;
   }
+  @page :first { margin-top: 14mm; }
   * {
     box-sizing: border-box;
     /* Critical for correct Arabic shaping */
