@@ -370,39 +370,3 @@ input:-webkit-autofill:focus {
   }
 }
 
-/* Print styles for admin reports */
-@media print {
-  body {
-    background: #fff !important;
-    color: #000 !important;
-  }
-  .no-print,
-  aside,
-  nav,
-  header.app-header,
-  [data-sidebar="sidebar"],
-  [data-sidebar],
-  button {
-    display: none !important;
-  }
-  #printable-area,
-  main {
-    margin: 0 !important;
-    padding: 0 !important;
-    max-width: 100% !important;
-    width: 100% !important;
-    box-shadow: none !important;
-  }
-  .glass-card,
-  .card {
-    background: #fff !important;
-    box-shadow: none !important;
-    border: 1px solid #e5e7eb !important;
-    break-inside: avoid;
-  }
-  * {
-    color: #000 !important;
-    text-shadow: none !important;
-    box-shadow: none !important;
-  }
-}
