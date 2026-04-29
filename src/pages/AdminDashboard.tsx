@@ -67,8 +67,46 @@ const AdminDashboard = () => {
     ? "bg-white/5 hover:bg-white/8 border border-white/5"
     : "bg-secondary/30 hover:bg-secondary/60 border border-black/5 hover:border-primary/20";
 
+  const buildExportPayload = (): ExportPayload | null => {
+    if (!dashStats) return null;
+    const today = new Date().toISOString().slice(0, 10);
+    return {
+      filename: `dashboard-${today}`,
+      documentTitle: "تقرير لوحة التحكم",
+      subtitle: "ملخص شامل لأداء المساعد الذكي",
+      sections: [
+        {
+          title: "الإحصائيات العامة",
+          headers: ["المؤشر", "القيمة"],
+          rows: [
+            ["إجمالي المحادثات", dashStats.total_questions ?? 0],
+            ["المستخدمون النشطون", dashStats.unique_users ?? 0],
+            ["المستندات المرفوعة", dashStats.total_documents ?? 0],
+            ["معدل الرضا", `${satisfactionRate}%`],
+            ["التقييمات السلبية", negativeFeedback],
+            ["أسئلة آخر 24 ساعة", dashStats.today_questions ?? 0],
+            ["إجابات من الذاكرة المؤقتة", dashStats.cached_responses ?? 0],
+          ],
+        },
+        {
+          title: "أكثر الأسئلة شيوعاً",
+          headers: ["السؤال", "عدد المرات"],
+          rows: (questionStats ?? []).map((q: any) => [q.question, q.count]),
+        },
+      ],
+    };
+  };
+
   return (
-    <div className="space-y-6 max-w-6xl mx-auto animate-fade-in">
+    <div className="space-y-6 max-w-6xl mx-auto animate-fade-in" id="printable-area">
+      {/* Header with export */}
+      <div className="flex items-center justify-between gap-3 no-print">
+        <h1 className={`text-2xl font-bold text-foreground ${isDark ? "glow-text" : ""}`}>
+          لوحة التحكم
+        </h1>
+        <ExportMenu payload={buildExportPayload} disabled={statsLoading} />
+      </div>
+
       {/* Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 sm:gap-5">
         {stats.map((stat, idx) => (
