@@ -1,5 +1,12 @@
-// PDF exporter that handles Arabic correctly by rendering an HTML container
-// to canvas (browser handles shaping + RTL) and embedding it in jsPDF.
+// PDF exporter for Arabic content.
+//
+// IMPORTANT: html2canvas (used by jsPDF.html and our previous approach) has
+// well-known bugs rendering complex scripts like Arabic — it frequently breaks
+// ligatures and letter joining, producing the "isolated/disconnected letters"
+// look. To avoid this entirely, we render the report into a hidden iframe
+// using the browser's native text engine and trigger the browser print dialog,
+// which lets the user save a perfect, selectable PDF (Arabic shaping correct,
+// fonts crisp, file size small).
 
 export interface PdfSection {
   title?: string;
@@ -48,153 +55,191 @@ function buildHtml(opts: PdfOptions): string {
     })
     .join("");
 
-  return `
-    <div dir="rtl" style="
-      font-family: 'Tajawal', 'Segoe UI', Tahoma, sans-serif;
-      width: 794px;
-      padding: 32px;
-      box-sizing: border-box;
-      background: #ffffff;
-      color: #0f172a;
-      line-height: 1.6;
-    ">
-      <div style="border-bottom: 3px solid #70C8FF; padding-bottom: 16px; margin-bottom: 24px;">
-        <h1 style="margin: 0; font-size: 24px; font-weight: 700; color: #0f172a;">
-          ${escapeHtml(opts.documentTitle)}
-        </h1>
-        ${
-          opts.subtitle
-            ? `<p style="margin: 6px 0 0; font-size: 13px; color: #64748b;">${escapeHtml(opts.subtitle)}</p>`
-            : ""
-        }
-        <p style="margin: 6px 0 0; font-size: 11px; color: #94a3b8;">
-          تم التوليد: ${new Date().toLocaleString("ar-SA")}
-        </p>
-      </div>
-      <style>
-        h2 {
-          font-size: 16px;
-          font-weight: 700;
-          margin: 20px 0 10px;
-          color: #0f172a;
-        }
-        table {
-          width: 100%;
-          border-collapse: collapse;
-          margin-bottom: 16px;
-          font-size: 11px;
-          table-layout: fixed;
-        }
-        th {
-          background: #70C8FF;
-          color: #ffffff;
-          padding: 8px 6px;
-          text-align: right;
-          font-weight: 700;
-          border: 1px solid #5bb5ec;
-          word-wrap: break-word;
-        }
-        td {
-          padding: 6px;
-          text-align: right;
-          border: 1px solid #e2e8f0;
-          color: #1e293b;
-          word-wrap: break-word;
-          vertical-align: top;
-        }
-        tbody tr:nth-child(even) td {
-          background: #f5faff;
-        }
-      </style>
-      ${sectionsHtml}
-    </div>
-  `;
-}
-
-const TAJAWAL_LINK_ID = "tajawal-pdf-font";
-
-async function ensureTajawalLoaded() {
-  if (!document.getElementById(TAJAWAL_LINK_ID)) {
-    const link = document.createElement("link");
-    link.id = TAJAWAL_LINK_ID;
-    link.rel = "stylesheet";
-    link.href =
-      "https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700&display=swap";
-    document.head.appendChild(link);
+  return `<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8" />
+<title>${escapeHtml(opts.documentTitle)}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  @page {
+    size: A4;
+    margin: 14mm;
   }
-  // Force the browser to actually load the weights we use
-  if ((document as any).fonts?.load) {
-    try {
-      await Promise.all([
-        (document as any).fonts.load('400 14px "Tajawal"', "اختبار"),
-        (document as any).fonts.load('700 24px "Tajawal"', "اختبار"),
-      ]);
-    } catch {
-      /* ignore */
-    }
+  * {
+    box-sizing: border-box;
+    /* Critical for correct Arabic shaping */
+    letter-spacing: 0 !important;
+    word-spacing: normal;
+    font-kerning: normal;
+    text-rendering: optimizeLegibility;
+    -webkit-font-feature-settings: "kern", "liga", "calt";
+            font-feature-settings: "kern", "liga", "calt";
   }
-  if ((document as any).fonts?.ready) {
-    try {
-      await (document as any).fonts.ready;
-    } catch {
-      /* ignore */
-    }
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: #ffffff;
+    color: #0f172a;
+    font-family: 'Tajawal', 'Segoe UI', Tahoma, Arial, sans-serif;
+    font-size: 12pt;
+    line-height: 1.7;
+    direction: rtl;
+    unicode-bidi: isolate;
   }
+  .header {
+    border-bottom: 3px solid #70C8FF;
+    padding-bottom: 12px;
+    margin-bottom: 18px;
+  }
+  h1 {
+    margin: 0;
+    font-size: 22pt;
+    font-weight: 700;
+    color: #0f172a;
+    line-height: 1.4;
+  }
+  .subtitle {
+    margin: 6px 0 0;
+    font-size: 11pt;
+    color: #64748b;
+  }
+  .meta {
+    margin: 4px 0 0;
+    font-size: 9pt;
+    color: #94a3b8;
+  }
+  h2 {
+    font-size: 14pt;
+    font-weight: 700;
+    margin: 18px 0 8px;
+    color: #0f172a;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 14px;
+    font-size: 10.5pt;
+    page-break-inside: auto;
+  }
+  thead { display: table-header-group; }
+  tr { page-break-inside: avoid; }
+  th {
+    background: #70C8FF;
+    color: #ffffff;
+    padding: 8px 6px;
+    text-align: right;
+    font-weight: 700;
+    border: 1px solid #5bb5ec;
+  }
+  td {
+    padding: 6px 8px;
+    text-align: right;
+    border: 1px solid #e2e8f0;
+    color: #1e293b;
+    vertical-align: top;
+    word-wrap: break-word;
+  }
+  tbody tr:nth-child(even) td {
+    background: #f5faff;
+  }
+  .footer-hint {
+    margin-top: 24px;
+    font-size: 8pt;
+    color: #94a3b8;
+    text-align: center;
+  }
+  @media print {
+    .footer-hint { display: none; }
+  }
+</style>
+</head>
+<body>
+  <div class="header">
+    <h1>${escapeHtml(opts.documentTitle)}</h1>
+    ${opts.subtitle ? `<p class="subtitle">${escapeHtml(opts.subtitle)}</p>` : ""}
+    <p class="meta">تم التوليد: ${new Date().toLocaleString("ar-SA")}</p>
+  </div>
+  ${sectionsHtml}
+  <p class="footer-hint">من نافذة الطباعة اختر "حفظ كـ PDF" لحفظ التقرير.</p>
+  <script>
+    (function () {
+      function ready() {
+        var fonts = (document).fonts;
+        if (fonts && fonts.ready && typeof fonts.ready.then === 'function') {
+          return fonts.ready;
+        }
+        return new Promise(function (r) { setTimeout(r, 400); });
+      }
+      window.addEventListener('load', function () {
+        ready().then(function () {
+          setTimeout(function () {
+            try { window.focus(); window.print(); } catch (e) {}
+          }, 150);
+        });
+      });
+    })();
+  </script>
+</body>
+</html>`;
 }
 
 export async function downloadPdf(opts: PdfOptions) {
-  const [{ default: jsPDF }, { default: html2canvas }] = await Promise.all([
-    import("jspdf"),
-    import("html2canvas"),
-  ]);
+  const html = buildHtml({ ...opts, filename: opts.filename });
 
-  await ensureTajawalLoaded();
+  // Try opening a new window first (gives the user a real Save-as-PDF dialog
+  // with native Arabic shaping). Fall back to a hidden iframe if popups are
+  // blocked.
+  const win = window.open("", "_blank", "noopener,noreferrer,width=900,height=1000");
 
-  // Create off-screen container
-  const container = document.createElement("div");
-  container.style.position = "fixed";
-  container.style.top = "0";
-  container.style.left = "-10000px";
-  container.style.zIndex = "-1";
-  container.innerHTML = buildHtml(opts);
-  document.body.appendChild(container);
-
-  // Wait two frames to ensure fonts/layout settle
-  await new Promise((r) => requestAnimationFrame(() => r(null)));
-  await new Promise((r) => requestAnimationFrame(() => r(null)));
-
-  try {
-    const target = container.firstElementChild as HTMLElement;
-    const canvas = await html2canvas(target, {
-      scale: 2,
-      useCORS: true,
-      backgroundColor: "#ffffff",
-      logging: false,
-    });
-
-    const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
-    const pageWidth = 210; // mm
-    const pageHeight = 297; // mm
-    const imgWidth = pageWidth;
-    const imgHeight = (canvas.height * imgWidth) / canvas.width;
-
-    const imgData = canvas.toDataURL("image/png");
-
-    let heightLeft = imgHeight;
-    let position = 0;
-
-    pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
-    heightLeft -= pageHeight;
-
-    while (heightLeft > 0) {
-      position = heightLeft - imgHeight; // negative offset to shift image up
-      pdf.addPage();
-      pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
-      heightLeft -= pageHeight;
+  if (win) {
+    win.document.open();
+    win.document.write(html);
+    win.document.close();
+    // Suggest the filename in the title; most browsers use this as the
+    // default file name in the print-to-PDF dialog.
+    try {
+      win.document.title = opts.filename.replace(/\.pdf$/i, "");
+    } catch {
+      /* ignore */
     }
-
-    pdf.save(opts.filename);
-  } finally {
-    document.body.removeChild(container);
+    return;
   }
+
+  // Fallback: hidden iframe + print
+  const iframe = document.createElement("iframe");
+  iframe.style.position = "fixed";
+  iframe.style.right = "0";
+  iframe.style.bottom = "0";
+  iframe.style.width = "0";
+  iframe.style.height = "0";
+  iframe.style.border = "0";
+  document.body.appendChild(iframe);
+
+  const doc = iframe.contentDocument;
+  if (!doc) {
+    document.body.removeChild(iframe);
+    throw new Error("تعذّر تجهيز نافذة الطباعة");
+  }
+  doc.open();
+  doc.write(html);
+  doc.close();
+
+  // Set title for default filename in print dialog.
+  try {
+    doc.title = opts.filename.replace(/\.pdf$/i, "");
+  } catch {
+    /* ignore */
+  }
+
+  // Cleanup after a delay so print dialog has time to spawn.
+  setTimeout(() => {
+    try {
+      document.body.removeChild(iframe);
+    } catch {
+      /* ignore */
+    }
+  }, 60_000);
 }
