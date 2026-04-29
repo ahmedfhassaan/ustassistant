@@ -7,6 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Skeleton } from "@/components/ui/skeleton";
 import EmptyState from "@/components/EmptyState";
 import ErrorState from "@/components/ErrorState";
+import ExportMenu, { type ExportPayload } from "@/components/ExportMenu";
 
 interface DashboardStats {
   total_questions: number;
