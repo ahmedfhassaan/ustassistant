@@ -1,10 +1,9 @@
-import { Download, FileSpreadsheet, FileText, Printer, Table as TableIcon } from "lucide-react";
+import { Download, FileSpreadsheet, FileText, Table as TableIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useTheme } from "@/hooks/use-theme";
@@ -49,10 +48,6 @@ const ExportMenu = ({ payload, disabled }: Props) => {
     } finally {
       setBusy(null);
     }
-  };
-
-  const onPrint = () => {
-    window.print();
   };
 
   const onCsv = () =>
@@ -127,11 +122,6 @@ const ExportMenu = ({ payload, disabled }: Props) => {
           <DropdownMenuItem onClick={onCsv} className="gap-2 cursor-pointer">
             <TableIcon className="w-4 h-4 text-blue-500" />
             تصدير CSV
-          </DropdownMenuItem>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem onClick={onPrint} className="gap-2 cursor-pointer">
-            <Printer className="w-4 h-4" />
-            طباعة
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
