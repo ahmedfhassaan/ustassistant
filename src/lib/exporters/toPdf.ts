@@ -1,12 +1,8 @@
 // PDF exporter for Arabic content.
 //
-// IMPORTANT: html2canvas (used by jsPDF.html and our previous approach) has
-// well-known bugs rendering complex scripts like Arabic — it frequently breaks
-// ligatures and letter joining, producing the "isolated/disconnected letters"
-// look. To avoid this entirely, we render the report into a hidden iframe
-// using the browser's native text engine and trigger the browser print dialog,
-// which lets the user save a perfect, selectable PDF (Arabic shaping correct,
-// fonts crisp, file size small).
+// Renders a styled HTML report into a new browser window/iframe and triggers
+// the native print dialog so the user can save a perfect, selectable PDF
+// with proper Arabic shaping (avoids html2canvas ligature bugs).
 
 export interface PdfSection {
   title?: string;
@@ -46,7 +42,7 @@ function buildHtml(opts: PdfOptions): string {
         )
         .join("");
       return `
-        ${section.title ? `<h2>${escapeHtml(section.title)}</h2>` : ""}
+        ${section.title ? `<h2><span class="bar"></span>${escapeHtml(section.title)}</h2>` : ""}
         <table>
           <thead><tr>${head}</tr></thead>
           <tbody>${body}</tbody>
@@ -62,18 +58,15 @@ function buildHtml(opts: PdfOptions): string {
 <title>${escapeHtml(opts.documentTitle)}</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
 <style>
   @page {
     size: A4;
     margin: 14mm;
-    /* Remove browser-injected header/footer (URL, date, page numbers) */
     marks: none;
   }
-  @page :first { margin-top: 14mm; }
   * {
     box-sizing: border-box;
-    /* Critical for correct Arabic shaping */
     letter-spacing: 0 !important;
     word-spacing: normal;
     font-kerning: normal;
@@ -85,77 +78,114 @@ function buildHtml(opts: PdfOptions): string {
     margin: 0;
     padding: 0;
     background: #ffffff;
-    color: #0f172a;
+    color: #1e293b;
     font-family: 'Tajawal', 'Segoe UI', Tahoma, Arial, sans-serif;
-    font-size: 12pt;
+    font-size: 11pt;
     line-height: 1.7;
     direction: rtl;
     unicode-bidi: isolate;
+    -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+  }
+  /* Numeric font styling — slightly tighter, tabular */
+  .num, td:lang(en), th:lang(en) {
+    font-variant-numeric: tabular-nums;
   }
   .header {
-    border-bottom: 3px solid #70C8FF;
-    padding-bottom: 12px;
-    margin-bottom: 18px;
+    background: linear-gradient(135deg, #70C8FF 0%, #5BB5EC 100%);
+    color: #ffffff;
+    padding: 18px 22px;
+    border-radius: 12px;
+    margin-bottom: 22px;
+    box-shadow: 0 4px 12px rgba(112, 200, 255, 0.25);
   }
-  h1 {
+  .header h1 {
     margin: 0;
     font-size: 22pt;
-    font-weight: 700;
-    color: #0f172a;
+    font-weight: 800;
+    color: #ffffff;
     line-height: 1.4;
   }
-  .subtitle {
+  .header .subtitle {
     margin: 6px 0 0;
     font-size: 11pt;
-    color: #64748b;
+    color: rgba(255, 255, 255, 0.92);
+    font-weight: 500;
   }
   .meta {
-    margin: 4px 0 0;
+    margin: 6px 0 18px;
     font-size: 9pt;
     color: #94a3b8;
+    text-align: left;
+    font-variant-numeric: tabular-nums;
   }
   h2 {
     font-size: 14pt;
     font-weight: 700;
-    margin: 18px 0 8px;
+    margin: 22px 0 10px;
     color: #0f172a;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  h2 .bar {
+    display: inline-block;
+    width: 4px;
+    height: 18px;
+    background: #70C8FF;
+    border-radius: 2px;
   }
   table {
     width: 100%;
-    border-collapse: collapse;
-    margin-bottom: 14px;
+    border-collapse: separate;
+    border-spacing: 0;
+    margin-bottom: 16px;
     font-size: 10.5pt;
     page-break-inside: auto;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
   }
   thead { display: table-header-group; }
   tr { page-break-inside: avoid; }
   th {
     background: #70C8FF;
     color: #ffffff;
-    padding: 8px 6px;
+    padding: 10px 8px;
     text-align: right;
     font-weight: 700;
-    border: 1px solid #5bb5ec;
+    font-size: 10.5pt;
+    border-bottom: 2px solid #5BB5EC;
   }
   td {
-    padding: 6px 8px;
+    padding: 8px 10px;
     text-align: right;
-    border: 1px solid #e2e8f0;
+    border-bottom: 1px solid #e2e8f0;
     color: #1e293b;
     vertical-align: top;
     word-wrap: break-word;
+    font-variant-numeric: tabular-nums;
   }
   tbody tr:nth-child(even) td {
     background: #f5faff;
   }
-  .footer-hint {
-    margin-top: 24px;
-    font-size: 8pt;
+  tbody tr:last-child td {
+    border-bottom: none;
+  }
+  .footer {
+    margin-top: 28px;
+    padding-top: 12px;
+    border-top: 1px solid #e2e8f0;
+    font-size: 8.5pt;
     color: #94a3b8;
     text-align: center;
   }
+  .footer strong {
+    color: #5BB5EC;
+    font-weight: 700;
+  }
   @media print {
-    .footer-hint { display: none; }
+    .no-print { display: none; }
   }
 </style>
 </head>
@@ -163,10 +193,12 @@ function buildHtml(opts: PdfOptions): string {
   <div class="header">
     <h1>${escapeHtml(opts.documentTitle)}</h1>
     ${opts.subtitle ? `<p class="subtitle">${escapeHtml(opts.subtitle)}</p>` : ""}
-    <p class="meta">تم التوليد: ${new Date().toLocaleString("ar-SA")}</p>
   </div>
+  <p class="meta">تم التوليد: ${new Date().toLocaleString("ar-SA")}</p>
   ${sectionsHtml}
-  <p class="footer-hint">من نافذة الطباعة اختر "حفظ كـ PDF" لحفظ التقرير.</p>
+  <div class="footer">
+    تقرير صادر من <strong>المساعد الذكي</strong>
+  </div>
   <script>
     (function () {
       function ready() {
@@ -180,7 +212,7 @@ function buildHtml(opts: PdfOptions): string {
         ready().then(function () {
           setTimeout(function () {
             try { window.focus(); window.print(); } catch (e) {}
-          }, 150);
+          }, 200);
         });
       });
     })();
@@ -190,19 +222,14 @@ function buildHtml(opts: PdfOptions): string {
 }
 
 export async function downloadPdf(opts: PdfOptions) {
-  const html = buildHtml({ ...opts, filename: opts.filename });
+  const html = buildHtml(opts);
 
-  // Try opening a new window first (gives the user a real Save-as-PDF dialog
-  // with native Arabic shaping). Fall back to a hidden iframe if popups are
-  // blocked.
   const win = window.open("", "_blank", "noopener,noreferrer,width=900,height=1000");
 
   if (win) {
     win.document.open();
     win.document.write(html);
     win.document.close();
-    // Suggest the filename in the title; most browsers use this as the
-    // default file name in the print-to-PDF dialog.
     try {
       win.document.title = opts.filename.replace(/\.pdf$/i, "");
     } catch {
@@ -230,14 +257,12 @@ export async function downloadPdf(opts: PdfOptions) {
   doc.write(html);
   doc.close();
 
-  // Set title for default filename in print dialog.
   try {
     doc.title = opts.filename.replace(/\.pdf$/i, "");
   } catch {
     /* ignore */
   }
 
-  // Cleanup after a delay so print dialog has time to spawn.
   setTimeout(() => {
     try {
       document.body.removeChild(iframe);
