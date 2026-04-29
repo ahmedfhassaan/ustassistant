@@ -111,11 +111,44 @@ function buildHtml(opts: PdfOptions): string {
   `;
 }
 
+const TAJAWAL_LINK_ID = "tajawal-pdf-font";
+
+async function ensureTajawalLoaded() {
+  if (!document.getElementById(TAJAWAL_LINK_ID)) {
+    const link = document.createElement("link");
+    link.id = TAJAWAL_LINK_ID;
+    link.rel = "stylesheet";
+    link.href =
+      "https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700&display=swap";
+    document.head.appendChild(link);
+  }
+  // Force the browser to actually load the weights we use
+  if ((document as any).fonts?.load) {
+    try {
+      await Promise.all([
+        (document as any).fonts.load('400 14px "Tajawal"', "اختبار"),
+        (document as any).fonts.load('700 24px "Tajawal"', "اختبار"),
+      ]);
+    } catch {
+      /* ignore */
+    }
+  }
+  if ((document as any).fonts?.ready) {
+    try {
+      await (document as any).fonts.ready;
+    } catch {
+      /* ignore */
+    }
+  }
+}
+
 export async function downloadPdf(opts: PdfOptions) {
   const [{ default: jsPDF }, { default: html2canvas }] = await Promise.all([
     import("jspdf"),
     import("html2canvas"),
   ]);
+
+  await ensureTajawalLoaded();
 
   // Create off-screen container
   const container = document.createElement("div");
@@ -126,16 +159,9 @@ export async function downloadPdf(opts: PdfOptions) {
   container.innerHTML = buildHtml(opts);
   document.body.appendChild(container);
 
-  // Wait one frame to ensure fonts/layout settle
+  // Wait two frames to ensure fonts/layout settle
   await new Promise((r) => requestAnimationFrame(() => r(null)));
-  // Allow Tajawal webfont to be ready if available
-  if ((document as any).fonts?.ready) {
-    try {
-      await (document as any).fonts.ready;
-    } catch {
-      /* ignore */
-    }
-  }
+  await new Promise((r) => requestAnimationFrame(() => r(null)));
 
   try {
     const target = container.firstElementChild as HTMLElement;
