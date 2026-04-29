@@ -52,8 +52,42 @@ const AdminFeedback = () => {
     ? "bg-white/5 hover:bg-white/8 border border-white/5"
     : "bg-secondary/30 hover:bg-secondary/60 border border-black/5";
 
+  const buildExportPayload = (): ExportPayload | null => {
+    if (!filtered || filtered.length === 0) return null;
+    const today = new Date().toISOString().slice(0, 10);
+    const suffix = filterReason === "all" ? "all" : filterReason;
+    return {
+      filename: `feedback-${suffix}-${today}`,
+      documentTitle: "تقرير التقييمات السلبية",
+      subtitle: filterReason === "all" ? "جميع الأسباب" : `السبب: ${filterReason}`,
+      sections: [
+        {
+          title: "التقييمات",
+          headers: ["التاريخ", "السبب", "السؤال", "الإجابة", "سبب آخر", "ملاحظات", "المصادر", "المستخدم"],
+          rows: filtered.map((f: any) => [
+            new Date(f.created_at).toLocaleString("ar-SA"),
+            f.reason || "غير محدد",
+            f.question_content || "",
+            f.message_content || "",
+            f.reason_other || "",
+            f.notes || "",
+            f.sources || "",
+            f.user_id || "",
+          ]),
+        },
+      ],
+    };
+  };
+
   return (
-    <div className="space-y-6 max-w-6xl mx-auto animate-fade-in">
+    <div className="space-y-6 max-w-6xl mx-auto animate-fade-in" id="printable-area">
+      {/* Header with export */}
+      <div className="flex items-center justify-between gap-3 no-print">
+        <h1 className={`text-2xl font-bold text-foreground ${isDark ? "glow-text" : ""}`}>
+          التقييمات السلبية
+        </h1>
+        <ExportMenu payload={buildExportPayload} disabled={isLoading || !filtered?.length} />
+      </div>
       {/* Summary */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
         <Card className={`rounded-2xl ${cardBase}`}>
