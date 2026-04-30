@@ -713,6 +713,7 @@ ${toneInstruction}
           const lowConfMsg = (settings.low_confidence_message || "").trim();
           const answerTrim = cleanContent.trim();
           const isFailedAnswer =
+            answerTrim.length < 80 ||
             finalSources.length === 0 ||
             (fallbackMsg && answerTrim.includes(fallbackMsg)) ||
             (lowConfMsg && answerTrim.includes(lowConfMsg)) ||
