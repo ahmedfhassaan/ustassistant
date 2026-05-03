@@ -130,7 +130,9 @@ const WebSourceCard = ({ onChanged }: { onChanged?: () => void }) => {
 
             <div className="flex items-center justify-between p-3 rounded-lg bg-secondary/30 border border-black/5 dark:bg-white/5 dark:border-white/5">
               <Label htmlFor="web-enabled" className="cursor-pointer">تفعيل مصدر الويب</Label>
-              <Switch id="web-enabled" checked={enabled} onCheckedChange={setEnabled} />
+              <span dir="ltr" className="inline-flex">
+                <Switch id="web-enabled" checked={enabled} onCheckedChange={setEnabled} />
+              </span>
             </div>
 
             <div className="space-y-2">
