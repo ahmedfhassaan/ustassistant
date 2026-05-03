@@ -250,30 +250,42 @@ export type Database = {
       }
       knowledge_documents: {
         Row: {
+          content_hash: string | null
           created_at: string
           file_path: string | null
           file_size: number | null
           file_type: string
           id: string
+          last_crawled_at: string | null
           name: string
+          source_type: string
+          source_url: string | null
           status: string
         }
         Insert: {
+          content_hash?: string | null
           created_at?: string
           file_path?: string | null
           file_size?: number | null
           file_type?: string
           id?: string
+          last_crawled_at?: string | null
           name: string
+          source_type?: string
+          source_url?: string | null
           status?: string
         }
         Update: {
+          content_hash?: string | null
           created_at?: string
           file_path?: string | null
           file_size?: number | null
           file_type?: string
           id?: string
+          last_crawled_at?: string | null
           name?: string
+          source_type?: string
+          source_url?: string | null
           status?: string
         }
         Relationships: []
