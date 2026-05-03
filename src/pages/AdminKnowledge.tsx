@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
-import { Upload, FileText, Trash2, Search, Loader2, CheckCircle, AlertCircle, AlertTriangle, RefreshCw } from "lucide-react";
+import { Upload, FileText, Trash2, Search, Loader2, CheckCircle, AlertCircle, AlertTriangle, RefreshCw, Globe } from "lucide-react";
 import EmptyState from "@/components/EmptyState";
+import WebSourceCard from "@/components/admin/WebSourceCard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -25,6 +26,8 @@ interface KnowledgeDoc {
   file_path: string | null;
   status: string;
   created_at: string;
+  source_type?: string | null;
+  source_url?: string | null;
 }
 
 const AdminKnowledge = () => {
@@ -252,6 +255,7 @@ const AdminKnowledge = () => {
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto animate-fade-in">
+      <WebSourceCard onChanged={fetchDocuments} />
       <Card className={`transition-all duration-300 ease-out animate-scale-in rounded-2xl ${isDark ? "glass-card border-0" : "bg-white border border-black/5 shadow-[0_4px_20px_rgba(0,0,0,0.08)]"}`}>
         <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 space-y-0 pb-4">
           <CardTitle className="text-lg">إدارة قاعدة المعرفة</CardTitle>
@@ -344,11 +348,29 @@ const AdminKnowledge = () => {
                     <div className={`p-2 rounded-lg transition-all ${
                       isDark ? "bg-primary/10 glow-highlight" : "bg-primary/10"
                     }`}>
-                      <FileText className={`w-5 h-5 text-primary ${isDark ? "glow-icon" : ""}`} />
+                      {doc.source_type === "web" ? (
+                        <Globe className={`w-5 h-5 text-primary ${isDark ? "glow-icon" : ""}`} />
+                      ) : (
+                        <FileText className={`w-5 h-5 text-primary ${isDark ? "glow-icon" : ""}`} />
+                      )}
                     </div>
                     <div className="min-w-0">
-                      <p className="text-sm font-medium text-foreground truncate">{doc.name}</p>
+                      {doc.source_url ? (
+                        <a
+                          href={doc.source_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-sm font-medium text-foreground truncate hover:underline block"
+                        >
+                          {doc.name}
+                        </a>
+                      ) : (
+                        <p className="text-sm font-medium text-foreground truncate">{doc.name}</p>
+                      )}
                       <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
+                        <span className={`px-1.5 py-0.5 rounded text-[10px] ${doc.source_type === "web" ? "bg-primary/15 text-primary" : "bg-muted"}`}>
+                          {doc.source_type === "web" ? "موقع" : "يدوي"}
+                        </span>
                         <span>{doc.file_type.toUpperCase()}</span>
                         <span className="opacity-50">·</span>
                         <span>{formatSize(doc.file_size)}</span>
