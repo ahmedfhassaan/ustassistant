@@ -1,77 +1,88 @@
-## المشكلة
+## Goal
+Add the university website (ust.edu) as a second knowledge source. Pages are crawled, converted to Markdown, embedded, and indexed in the same RAG pipeline used for uploaded documents — so answers and citations work identically for both sources.
 
-السؤال **"كيف أقدم طلب تأجيل امتحان؟"** يُرجع إجابة عن **"إجراءات القبول وشروط التسجيل للاختبارات"** — وهي إجابة لا علاقة لها بالسؤال.
+## Approach
+Reuse the existing `knowledge_documents` + `knowledge_chunks` pipeline. A web page becomes a `knowledge_document` with `file_type = 'web'` and a `source_url`. No parallel system, no live search at query time.
 
-### السبب الجذري
+## Architecture
 
-من فحص شبكة الطلبات وجدول `response_cache`:
-
-1. الاستجابة جاءت من الـ **Exact Cache** (`cached: true, semantic_cache: false`).
-2. صفّ موجود فعلياً في جدول `response_cache`:
-   - `question_hash = q_9ocgle`
-   - `question = كيف أقدم طلب تأجيل امتحان؟`
-   - `answer = ## 📋 إجراءات القبول وشروط التسجيل للاختبارات ...` (خاطئة تماماً)
-   - تنتهي صلاحيته في `2026-04-30 21:06`
-3. آلية الـ cache في `supabase/functions/chat/index.ts` تخزّن أول إجابة يولدها النموذج لأي سؤال جديد، وتُعيد استخدامها 24 ساعة (`cache_ttl_minutes = 1440`) بدون أي تحقق من جودتها. لذا أي إجابة سيئة تُولَّد لأول مرة "تتجمد" لمدة يوم كامل.
-
-السبب الذي جعل النموذج يجيب خطأً في المرة الأولى لا يهم كثيراً الآن (الأرجح: الـ RAG استرجع مقطعاً عن "اختبارات القبول" بدلاً من مقطع "تأجيل امتحان"، أو لم يكن هناك محتوى عن التأجيل في المعرفة فاختار أقرب موضوع). المهم أن الإجابة الخاطئة الآن محفوظة في الـ cache.
-
-## الخطة
-
-### 1. حذف الإجابة الخاطئة فوراً من الـ cache (Migration)
-
-تشغيل migration لحذف هذا الصف المحدد، وأي صفوف مشابهة قد تكون معطوبة:
-
-```sql
-DELETE FROM response_cache WHERE question_hash = 'q_9ocgle';
--- وأيضاً تنظيف أي إجابات سيئة معروفة عن التأجيل
-DELETE FROM response_cache 
-WHERE question ILIKE '%تأجيل%امتحان%' 
-  AND answer NOT ILIKE '%تأجيل%';
+```text
+Cron (weekly)  ──►  crawl-website Edge Function  ──►  Firecrawl /v2/crawl (ust.edu)
+                                │
+                                ▼
+                  For each page (markdown + url + title)
+                                │
+                                ▼
+              knowledge_documents (file_type='web', source_url=...)
+              knowledge_chunks   (600-word chunks + embeddings)
+                                │
+                                ▼
+                Existing chat function — search_knowledge_hybrid
+                Citations show: document name + clickable source_url
 ```
 
-### 2. ربط زر "غير مفيد" بإبطال الـ cache تلقائياً
+## Database changes (one migration)
 
-في `supabase/functions/chat/index.ts` نضيف نقطة معالجة جديدة (أو نوسّع الموجودة) بحيث عندما يُسجَّل feedback سلبي على رسالة، نحذف صفّ الـ cache المطابق لـ `question_hash` للسؤال نفسه. وإذا كان من الـ semantic cache، نحذف الصف الأقرب أيضاً.
+Add to `knowledge_documents`:
+- `source_url text` — the page URL (NULL for uploaded docs)
+- `source_type text default 'manual'` — `'manual'` | `'web'`
+- `last_crawled_at timestamptz`
+- `content_hash text` — to skip re-embedding unchanged pages
 
-التنفيذ الأبسط: إضافة Database Trigger على جدول `message_feedback` يحذف من `response_cache` تلقائياً عند `is_helpful = false`:
+Add to `assistant_settings` (rows, not columns):
+- `web_crawl_enabled = 'true'`
+- `web_crawl_root_url = 'https://www.ust.edu'`
+- `web_crawl_last_run_at` — timestamp of last successful crawl
+- `web_crawl_last_status` — `success` / `failed` / message
 
-```sql
-CREATE OR REPLACE FUNCTION invalidate_cache_on_negative_feedback()
-RETURNS TRIGGER AS $$
-BEGIN
-  IF NEW.is_helpful = false AND NEW.question_content IS NOT NULL THEN
-    DELETE FROM response_cache 
-    WHERE question = NEW.question_content
-       OR question ILIKE '%' || LEFT(NEW.question_content, 30) || '%';
-  END IF;
-  RETURN NEW;
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+## New Edge Function: `crawl-website`
+- Reads `web_crawl_root_url` from settings
+- Calls Firecrawl `/v2/crawl` with `formats: ['markdown']`, no page limit
+- Polls crawl status until completed
+- For each page:
+  1. Compute `content_hash` (sha256 of markdown)
+  2. If a `knowledge_document` with same `source_url` exists and same hash → skip
+  3. Otherwise: upsert document, delete old chunks, re-chunk (600 words), embed, insert
+- Updates `web_crawl_last_run_at` + status
+- Auth: requires admin header (same pattern as other admin functions)
 
-CREATE TRIGGER trg_invalidate_cache_on_feedback
-AFTER INSERT ON message_feedback
-FOR EACH ROW EXECUTE FUNCTION invalidate_cache_on_negative_feedback();
-```
+## Scheduled job
+Use `pg_cron` + `pg_net` to invoke `crawl-website` weekly (Sundays 03:00 UTC).
 
-### 3. تقصير مدة الـ cache الافتراضية
+## UI changes (`/admin/knowledge`)
 
-حالياً 1440 دقيقة (24 ساعة). نخفّضها إلى **240 دقيقة (4 ساعات)** كقيمة افتراضية في `app_settings` لتقليل أثر أي إجابة سيئة. (المدير يقدر يغيّرها من لوحة الإعدادات بأي وقت.)
+Add a compact "مصدر الويب" card above the documents list:
+- Toggle: enabled/disabled
+- Root URL input (defaults to `https://www.ust.edu`)
+- "آخر تحديث" timestamp + status badge
+- "تحديث الآن" button → invokes `crawl-website`
+- In the documents table, add a small badge: `يدوي` / `موقع` to distinguish source type, and make the row clickable to open `source_url` for web docs.
 
-### 4. إضافة زر "مسح الكاش" في لوحة المدير
+## Chat answer changes (minor)
+In `supabase/functions/chat/index.ts`, when building the source label for a chunk:
+- If document has `source_url` → label becomes `document_name` + URL appended (so the existing source line in `ChatMessage.tsx` can render it)
+- Pass `source_url` through the meta SSE event so the UI can render the source as a link
 
-في `src/pages/AdminSettings.tsx` نضيف زرّاً سريعاً يستدعي `DELETE FROM response_cache` لتمكين المدير من حلّ هذا النوع من المشاكل بنفسه دون انتظارنا.
+## Secrets
+Requires `FIRECRAWL_API_KEY`. I will use the **Firecrawl connector** (no manual secret) — the user picks their Firecrawl connection through the standard picker.
 
-### 5. (اختياري — لاحقاً) عدم تخزين الإجابات قصيرة/الفارغة
+## Files
 
-في الـ Edge Function نضيف شرطاً: لا نحفظ في الـ cache إذا كانت الإجابة < 100 حرف أو إذا احتوت على كلمات مثل "لا أعرف" / "لا تتوفر معلومات". هذا يمنع تخزين إجابات الـ fallback السيئة.
+**New**
+- `supabase/migrations/<ts>_web_source.sql` — schema additions + settings rows
+- `supabase/functions/crawl-website/index.ts`
+- `src/components/admin/WebSourceCard.tsx`
 
-## الملفات التي ستتغيّر
+**Modified**
+- `src/pages/AdminKnowledge.tsx` — render WebSourceCard, source badge in list
+- `supabase/functions/chat/index.ts` — include `source_url` in citations
+- `src/components/ChatMessage.tsx` — render source as link when URL present
+- `src/lib/chatApi.ts` — pass through `source_url` in meta
 
-- **Migration جديد** — حذف الصف الفاسد + إنشاء trigger + تحديث `cache_ttl_minutes` الافتراضي.
-- `supabase/functions/chat/index.ts` — إضافة شرط عدم تخزين الإجابات الضعيفة (الخطوة 5).
-- `src/pages/AdminSettings.tsx` — زر "مسح الكاش".
+## Out of scope (can add later)
+- Per-section crawl rules / exclude paths UI
+- Live search fallback for breaking news
+- PDF link extraction from web pages
 
-## بعد التنفيذ
-
-سيختفي الجواب الخاطئ فوراً، وأي ضغطة على "غير مفيد" مستقبلاً ستحذف الإجابة من الـ cache تلقائياً، فيُعاد توليد إجابة جديدة عند السؤال التالي.
+## Confirmation needed before I build
+I'll connect the **Firecrawl** connector during implementation — you'll get a one-click prompt to authorize it. Approve this plan and I'll proceed.
