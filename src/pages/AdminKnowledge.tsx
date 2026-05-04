@@ -484,6 +484,53 @@ const AdminKnowledge = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Document Viewer Dialog */}
+      <Dialog open={!!viewTarget} onOpenChange={(open) => { if (!open) { setViewTarget(null); setViewContent(""); setViewError(""); } }}>
+        <DialogContent dir="rtl" className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-right">
+              {viewTarget?.source_type === "web" ? (
+                <Globe className="w-5 h-5 text-primary shrink-0" />
+              ) : (
+                <FileText className="w-5 h-5 text-primary shrink-0" />
+              )}
+              <span className="truncate">{viewTarget?.name}</span>
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="max-h-[65vh] overflow-y-auto rounded-lg border border-border bg-muted/30 p-4">
+            {viewLoading ? (
+              <div className="flex justify-center py-8">
+                <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+              </div>
+            ) : viewError ? (
+              <div className="flex flex-col items-center gap-2 py-8 text-destructive text-sm">
+                <AlertCircle className="w-6 h-6" />
+                <span>{viewError}</span>
+              </div>
+            ) : (
+              <div className="prose-chat text-sm leading-relaxed">
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>{viewContent}</ReactMarkdown>
+              </div>
+            )}
+          </div>
+
+          <DialogFooter className="flex-row-reverse sm:flex-row-reverse gap-2">
+            <Button variant="outline" onClick={() => { setViewTarget(null); setViewContent(""); setViewError(""); }}>
+              إغلاق
+            </Button>
+            {viewTarget?.source_url && (
+              <Button asChild variant="secondary" className="gap-2">
+                <a href={viewTarget.source_url} target="_blank" rel="noopener noreferrer">
+                  <ExternalLink className="w-4 h-4" />
+                  فتح المصدر
+                </a>
+              </Button>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
