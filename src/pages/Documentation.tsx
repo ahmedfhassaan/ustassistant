@@ -288,25 +288,42 @@ const Documentation = () => {
               </TableHeader>
               <TableBody>
                 <TableRow>
-                  <TableCell className="font-medium">١. تحسين الاستعلام</TableCell>
-                  <TableCell>إعادة صياغة سؤال الطالب لتحسين دقة البحث.</TableCell>
+                  <TableCell className="font-medium">١. كاش هاش</TableCell>
+                  <TableCell>فحص الأسئلة المتطابقة حرفياً وإرجاع إجابة مخزّنة خلال ٢٤ ساعة.</TableCell>
                 </TableRow>
                 <TableRow>
-                  <TableCell className="font-medium">٢. البحث الهجين</TableCell>
-                  <TableCell>مزج FTS العربي مع البحث الدلالي عبر embeddings.</TableCell>
+                  <TableCell className="font-medium">٢. كاش دلالي</TableCell>
+                  <TableCell>مطابقة الأسئلة المتشابهة معنىً عبر متجهات (Vector Similarity).</TableCell>
                 </TableRow>
                 <TableRow>
-                  <TableCell className="font-medium">٣. تصفية بالنية</TableCell>
-                  <TableCell>تصنيف نوع السؤال (قبول/تسجيل/مقررات/مشاريع) لتوجيه النتائج.</TableCell>
+                  <TableCell className="font-medium">٣. إعادة صياغة الاستعلام</TableCell>
+                  <TableCell>تحسين السؤال (rewrite-query) لزيادة دقة الاسترجاع العربي.</TableCell>
                 </TableRow>
                 <TableRow>
-                  <TableCell className="font-medium">٤. التوليد المقيَّد</TableCell>
-                  <TableCell>صياغة الإجابة من المقاطع المسترجعة فقط.</TableCell>
+                  <TableCell className="font-medium">٤. البحث الهجين</TableCell>
+                  <TableCell>مزج FTS العربي (وزن ٠٫٤) مع البحث الدلالي (وزن ٠٫٦) عبر pgvector.</TableCell>
+                </TableRow>
+                <TableRow>
+                  <TableCell className="font-medium">٥. تصنيف النية</TableCell>
+                  <TableCell>تحديد نوع السؤال (قبول/تسجيل/مقررات/مشاريع/عام) لتوجيه التصفية.</TableCell>
+                </TableRow>
+                <TableRow>
+                  <TableCell className="font-medium">٦. عتبة الثقة</TableCell>
+                  <TableCell>منع الإجابة عند ضعف المصادر وعرض اعتذار بدلاً من التخمين.</TableCell>
+                </TableRow>
+                <TableRow>
+                  <TableCell className="font-medium">٧. التوليد المقيَّد</TableCell>
+                  <TableCell>صياغة الإجابة من المقاطع المسترجعة فقط بتعليمات صارمة للنموذج.</TableCell>
                 </TableRow>
               </TableBody>
             </Table>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <MiniCard title="حجم المقطع" body="≈ ٦٠٠ كلمة لكل Chunk لتحسين دقة الاسترجاع وتقليل الضجيج." />
+              <MiniCard title="أبعاد المتجه" body="٧٦٨ بُعداً عبر نموذج gemini-embedding-001." />
+              <MiniCard title="عمر الكاش" body="٢٤ ساعة افتراضياً، قابل للتعديل من إعدادات المشرف." />
+            </div>
             <Notice tone="success">
-              عتبة ثقة (Confidence Threshold) تمنع الإجابة عند ضعف المصادر وتوجّه للبحث المباشر بديلاً.
+              عتبة الثقة (Confidence Threshold) قابلة للضبط من لوحة المشرف لتحقيق التوازن بين الدقة والتغطية.
             </Notice>
           </CardContent>
         </Card>
