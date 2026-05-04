@@ -92,7 +92,7 @@ async function loadSettings(supabase: any): Promise<Record<string, string>> {
     max_messages_per_day: "100",
     abuse_protection: "true",
     // ---- New RAG settings ----
-    enable_query_rewriting: "false",
+    enable_query_rewriting: "true",
     enable_reranking: "false",
     initial_results_count: "15",
     final_results_count: "8",
@@ -125,7 +125,7 @@ function buildToneInstruction(tone: string): string {
 }
 
 // ----------------- Query rewriting (optional) -----------------
-async function tryRewriteQuery(supabaseUrl: string, supabaseKey: string, question: string): Promise<string> {
+async function tryRewriteQuery(supabaseUrl: string, supabaseKey: string, question: string): Promise<{ rewritten: string; variants: string[] }> {
   try {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 1800);
@@ -136,39 +136,78 @@ async function tryRewriteQuery(supabaseUrl: string, supabaseKey: string, questio
       signal: controller.signal,
     });
     clearTimeout(timer);
-    if (!r.ok) return question;
+    if (!r.ok) return { rewritten: question, variants: [] };
     const data = await r.json();
     const rewritten = (data?.rewritten || "").toString().trim();
-    return rewritten && rewritten.length >= 3 ? rewritten : question;
+    const variantsRaw: any[] = Array.isArray(data?.variants) ? data.variants : [];
+    const variants = variantsRaw
+      .map(v => String(v || "").trim())
+      .filter(v => v.length >= 3 && v.length <= 200);
+    return {
+      rewritten: rewritten && rewritten.length >= 3 ? rewritten : question,
+      variants,
+    };
   } catch (e) {
     console.warn("[chat] rewrite fallback:", e instanceof Error ? e.message : e);
-    return question;
+    return { rewritten: question, variants: [] };
   }
 }
 
-// ----------------- Branch/location expansion -----------------
-// Adds branch synonyms when the question is about specializations/faculties
-// so the search retrieves chunks about all branches, not just the most relevant text match.
-const BRANCH_TERMS = ["تعز", "صنعاء", "عدن", "الحديدة", "إب", "حضرموت", "المكلا", "فرع", "فروع"];
-const SPECIALIZATION_TERMS = [
-  "تخصص", "تخصصات", "قسم", "أقسام", "كلية", "كليات",
-  "حاسبات", "هندسة", "طب", "صيدلة", "إدارة", "علوم", "محاسبة", "تمريض"
-];
-
-function expandBranchVariant(question: string): string | null {
-  const lower = question.toLowerCase();
-  const hasSpec = SPECIALIZATION_TERMS.some(t => lower.includes(t));
-  const hasBranch = BRANCH_TERMS.some(t => lower.includes(t));
-  // Only expand when asking about specializations WITHOUT specifying a branch
-  if (!hasSpec || hasBranch) return null;
-  return `${question} فرع تعز صنعاء عدن كلية`;
-}
-
-// ----------------- Lightweight reranking (no extra network) -----------------
+// ----------------- Tokenization & MMR diversification -----------------
 function tokenize(s: string): string[] {
   return s.toLowerCase().split(/[\s،,.;:!\?\(\)\[\]\|\/\\"'«»]+/).filter(w => w.length >= 2);
 }
 
+function jaccardSimilarity(aTokens: Set<string>, bTokens: Set<string>): number {
+  if (aTokens.size === 0 || bTokens.size === 0) return 0;
+  let inter = 0;
+  for (const t of aTokens) if (bTokens.has(t)) inter++;
+  const union = aTokens.size + bTokens.size - inter;
+  return union > 0 ? inter / union : 0;
+}
+
+/**
+ * MMR (Maximal Marginal Relevance) selection.
+ * Picks `finalCount` diverse chunks. λ=0.7 → prefer relevance,
+ * (1-λ)=0.3 → penalize similarity to already-picked chunks.
+ * Always includes the top-ranked chunk first.
+ */
+function mmrSelect(chunks: any[], finalCount: number, lambda = 0.7): any[] {
+  if (!chunks || chunks.length === 0) return [];
+  if (chunks.length <= finalCount) return chunks;
+
+  const maxRank = Math.max(...chunks.map((c: any) => c.rank as number)) || 1;
+  const tokenSets = chunks.map((c: any) => new Set(tokenize(String(c.content || ""))));
+
+  const selected: number[] = [0]; // top-ranked first
+  const remaining = new Set<number>();
+  for (let i = 1; i < chunks.length; i++) remaining.add(i);
+
+  while (selected.length < finalCount && remaining.size > 0) {
+    let bestIdx = -1;
+    let bestScore = -Infinity;
+    for (const i of remaining) {
+      const relevance = (chunks[i].rank as number) / maxRank;
+      let maxSim = 0;
+      for (const j of selected) {
+        const sim = jaccardSimilarity(tokenSets[i], tokenSets[j]);
+        if (sim > maxSim) maxSim = sim;
+      }
+      const mmrScore = lambda * relevance - (1 - lambda) * maxSim;
+      if (mmrScore > bestScore) {
+        bestScore = mmrScore;
+        bestIdx = i;
+      }
+    }
+    if (bestIdx === -1) break;
+    selected.push(bestIdx);
+    remaining.delete(bestIdx);
+  }
+
+  return selected.map(i => chunks[i]);
+}
+
+// ----------------- Lightweight reranking (no extra network) -----------------
 function rerankChunks(
   chunks: any[],
   queryText: string,
@@ -185,7 +224,7 @@ function rerankChunks(
     let overlap = 0;
     for (const t of cTokens) if (qTokens.has(t)) overlap++;
     const overlapScore = qTokens.size > 0 ? Math.min(1, overlap / qTokens.size) : 0;
-    const positionBoost = 1 - (idx / chunks.length); // earlier = slightly higher
+    const positionBoost = 1 - (idx / chunks.length);
     const normalizedRank = (c.rank as number) / maxRank;
     const finalScore = 0.5 * normalizedRank + 0.35 * overlapScore + 0.15 * positionBoost;
     return { ...c, _rerankScore: finalScore };
@@ -281,13 +320,15 @@ serve(async (req) => {
     const settings = await settingsPromise;
 
     const enableRewrite = settings.enable_query_rewriting === "true";
-    const rewritePromise: Promise<string> = enableRewrite
+    const rewritePromise: Promise<{ rewritten: string; variants: string[] }> = enableRewrite
       ? tryRewriteQuery(supabaseUrl, supabaseKey, lastUserMessage)
-      : Promise.resolve(lastUserMessage);
+      : Promise.resolve({ rewritten: lastUserMessage, variants: [] });
 
-    const [rateResult, exactCached, queryEmbedding, rewrittenQuery] = await Promise.all([
+    const [rateResult, exactCached, queryEmbedding, rewriteResult] = await Promise.all([
       rateLimitPromise, cachePromise, embeddingPromise, rewritePromise,
     ]);
+    const rewrittenQuery = rewriteResult.rewritten;
+    const rewriteVariants = rewriteResult.variants;
 
     // --- Semantic cache lookup (only if no exact hit and we have an embedding) ---
     let cached: { answer: string; sources: string | null } | null = exactCached as any;
@@ -405,55 +446,63 @@ serve(async (req) => {
         rpcParamsBase.query_embedding = JSON.stringify(queryEmbedding);
       }
 
-      // Build query variants: original + arabic-normalized + fuzzy-corrected (+ rewritten)
+      // Build query variants: original + arabic-normalized + fuzzy-corrected + (rewritten variants from LLM)
       const variants = generateQueryVariants(lastUserMessage);
-      if (enableRewrite && rewrittenQuery && !variants.some(v => v.toLowerCase() === rewrittenQuery.toLowerCase())) {
-        variants.push(rewrittenQuery);
+      if (enableRewrite) {
+        for (const v of [rewrittenQuery, ...rewriteVariants]) {
+          if (v && v.length >= 3 && !variants.some(x => x.toLowerCase() === v.toLowerCase())) {
+            variants.push(v);
+          }
+        }
       }
-      const branchVariant = expandBranchVariant(lastUserMessage);
-      if (branchVariant && !variants.some(v => v.toLowerCase() === branchVariant.toLowerCase())) {
-        variants.push(branchVariant);
-      }
-      // Run all variant searches in parallel and pick the one with the best top rank
+
+      // Run all variant searches in parallel
       const results = await Promise.all(
         variants.map(v => supabase.rpc("search_knowledge_hybrid", { ...rpcParamsBase, query_text: v }))
       );
 
-      // Score each variant: prioritise (1) more results, (2) higher top rank,
-      // (3) higher cumulative rank. Variants after the first (normalized / corrected
-      // / rewritten) get a tiny tie-breaker so they win when the original ties.
-      let chunks: any[] | null = null;
+      // UNION strategy: merge all variants' results, dedupe by chunk_id, keep MAX rank per chunk.
+      // This ensures we don't lose contextual chunks (e.g. branch info) just because the
+      // top variant didn't match them.
+      const mergedById = new Map<string, any>();
       let rpcError: any = null;
-      let bestVariant = variants[0];
-      let bestScore = -Infinity;
-      const variantScores: { v: string; n: number; top: number; sum: number; score: number }[] = [];
+      const variantScores: { v: string; n: number; top: number }[] = [];
 
       results.forEach((r, i) => {
         if (r.error && !rpcError) rpcError = r.error;
         const data = r.data || [];
-        const n = data.length;
-        const top = n > 0 ? (data[0].rank as number) : 0;
-        const sum = data.reduce((acc: number, c: any) => acc + (c.rank as number), 0);
-        const tieBreak = i === 0 ? 0 : 0.0001 * i;
-        const score = n * 0.6 + top * 1.0 + sum * 0.2 + tieBreak;
-        variantScores.push({ v: variants[i], n, top, sum, score });
-        if (score > bestScore) {
-          bestScore = score;
-          chunks = data;
-          bestVariant = variants[i];
+        const top = data.length > 0 ? (data[0].rank as number) : 0;
+        variantScores.push({ v: variants[i], n: data.length, top });
+        for (const c of data) {
+          const existing = mergedById.get(c.chunk_id);
+          if (!existing || (c.rank as number) > (existing.rank as number)) {
+            mergedById.set(c.chunk_id, c);
+          }
         }
       });
 
+      // Pick the variant with the best top rank just for "resolved question" display
+      const bestVariantEntry = variantScores.reduce(
+        (best, cur) => (cur.top > best.top ? cur : best),
+        variantScores[0] || { v: variants[0], n: 0, top: 0 }
+      );
+      const bestVariant = bestVariantEntry.v;
       const normalizedBestVariant = bestVariant.trim().replace(/\s+/g, " ");
       const normalizedOriginalQuestion = lastUserMessage.trim().replace(/\s+/g, " ");
       if (normalizedBestVariant) {
         resolvedQuestionForModel = normalizedBestVariant;
       }
 
+      // Sort merged chunks by rank (descending) → input for downstream selection
+      let chunks: any[] | null = Array.from(mergedById.values()).sort(
+        (a: any, b: any) => (b.rank as number) - (a.rank as number)
+      );
+      if (chunks.length === 0) chunks = null;
+
       if (debugRag) {
         console.log(`[chat] variants tried: ${variants.map(v => `"${v}"`).join(" | ")}`);
-        console.log(`[chat] variant scores: ${variantScores.map(s => `"${s.v}" n=${s.n} top=${s.top.toFixed(3)} sum=${s.sum.toFixed(3)} score=${s.score.toFixed(3)}`).join(" | ")}`);
-        console.log(`[chat] best variant: "${bestVariant}"`);
+        console.log(`[chat] variant scores: ${variantScores.map(s => `"${s.v}" n=${s.n} top=${s.top.toFixed(3)}`).join(" | ")}`);
+        console.log(`[chat] merged unique chunks: ${chunks?.length || 0}`);
         if (normalizedBestVariant && normalizedBestVariant !== normalizedOriginalQuestion) {
           console.log(`[chat] resolved question for model: "${resolvedQuestionForModel}"`);
         }
@@ -469,25 +518,28 @@ serve(async (req) => {
       }
 
       if (chunks && chunks.length > 0) {
-        // Optional reranking
+        // Selection strategy: rerank → MMR diversification → top-K
         let finalChunks = chunks;
         if (enableRerank) {
           try {
+            // Rerank then diversify with MMR to avoid 8 near-duplicate chunks
+            const reranked = rerankChunks(chunks, lastUserMessage, Math.min(chunks.length, finalCount * 2));
+            finalChunks = mmrSelect(reranked, finalCount, 0.7);
             if (debugRag) {
-              console.log("[chat] rerank BEFORE:", chunks.map((c: any, i: number) =>
+              console.log("[chat] MMR-after-rerank:", finalChunks.map((c: any, i: number) =>
                 `${i + 1}. ${c.document_name} (rank=${(c.rank as number).toFixed(3)})`).join(" | "));
             }
-            finalChunks = rerankChunks(chunks, lastUserMessage, finalCount);
-            if (debugRag) {
-              console.log("[chat] rerank AFTER:", finalChunks.map((c: any, i: number) =>
-                `${i + 1}. ${c.document_name} (score=${(c._rerankScore || 0).toFixed(3)})`).join(" | "));
-            }
           } catch (e) {
-            console.warn("[chat] rerank failed, using hybrid order:", e);
-            finalChunks = chunks.slice(0, finalCount);
+            console.warn("[chat] rerank+mmr failed, using hybrid order:", e);
+            finalChunks = mmrSelect(chunks, finalCount, 0.7);
           }
         } else {
-          finalChunks = chunks.slice(0, finalCount);
+          // Even without rerank, apply MMR for diversity
+          finalChunks = mmrSelect(chunks, finalCount, 0.7);
+          if (debugRag) {
+            console.log("[chat] MMR selected:", finalChunks.map((c: any, i: number) =>
+              `${i + 1}. ${c.document_name} (rank=${(c.rank as number).toFixed(3)})`).join(" | "));
+          }
         }
 
         const docsMaxRank = Math.max(...finalChunks.map((c: any) => c.rank as number));
@@ -659,10 +711,16 @@ ${toneInstruction}
 8. **افصل بين الأقسام** بسطر فارغ.
 9. لا تفرط في الرموز التعبيرية — 1-3 رموز فقط ذات صلة.
 
-🏛️ **قاعدة الفروع الجامعية (مهمة جداً):**
-- إذا وجدت في السياق إشارة إلى أن تخصصاً أو كلية متوفرة في فرع معين (مثل **فرع تعز**، صنعاء، عدن، الحديدة، إب)، فاذكر ذلك صراحةً في إجابتك.
-- عند سؤال الطالب عن تخصصات أو أقسام أو كليات، اذكر **جميع الفروع** التي تتوفر فيها هذه التخصصات إن وردت في السياق.
-- لا تفترض أن التخصص متوفر في فرع واحد فقط؛ اعتمد على ما ورد فعلياً في "معلومات قاعدة المعرفة الجامعية".${knowledgeContext}${settings.custom_instruction?.trim() ? `\n\nتعليمات إضافية:\n${settings.custom_instruction}` : ""}`;
+🧭 **قاعدة السياق الشامل (مهمة جداً — لكل سؤال):**
+استعرض **كل** المقاطع المرفقة في "معلومات قاعدة المعرفة الجامعية" قبل صياغة الإجابة. إن وجدت في أي مقطع معلومات إضافية مرتبطة بموضوع السؤال، **اذكرها بإيجاز** ضمن إجابتك حتى لو لم يطلبها الطالب صراحةً، خاصةً:
+- **المكان/الفرع**: في أي فرع/مدينة تتوفر هذه الخدمة أو التخصص (تعز، صنعاء، عدن، …).
+- **الزمان/الموعد**: التواريخ، المواعيد، الفترات الزمنية، آخر موعد للتقديم.
+- **الشروط والمتطلبات**: شروط التقديم، المتطلبات السابقة، المستندات المطلوبة.
+- **الاستثناءات والبدائل**: الحالات الخاصة، البدائل المتاحة، الإعفاءات.
+- **الرسوم والخصومات**: التكاليف المرتبطة، الخصومات، طرق الدفع.
+- **جهة الاتصال أو المرجع**: القسم/المكتب المسؤول عند توفره في السياق.
+
+لا تخترع هذه المعلومات؛ اذكرها فقط إن وردت فعلياً في السياق المرفق.${knowledgeContext}${settings.custom_instruction?.trim() ? `\n\nتعليمات إضافية:\n${settings.custom_instruction}` : ""}`;
 
     // Convert model name
     let modelName = settings.ai_model || "gemini-3-flash-preview";
