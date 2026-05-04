@@ -347,7 +347,7 @@ const Documentation = () => {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               <MiniCard title="وثائق رسمية" body="لوائح، خطط دراسية، إرشادات قبول وتسجيل، رسوم وخدمات. تُرفع كملفات Markdown." />
               <MiniCard title="مشاريع تخرج سابقة" body="مرجع للطلاب الباحثين عن أمثلة. تُستبعد تلقائياً من أسئلة القبول/التسجيل/المقررات." />
-              <MiniCard title="مصادر ويب" body="صفحات يحدّدها المشرف ويتم زحفها (crawl-website) ومعالجتها كقاعدة معرفة." />
+              <MiniCard title="بحث مباشر (Google Grounding)" body="عند الحاجة، يبحث المساعد لحظياً في موقع الجامعة عبر Google Grounding ويُرفق المصادر — بدون زحف مسبق." />
             </div>
             <ul className="space-y-2">
               <Bullet>تقسيم آلي إلى مقاطع (Chunks) بطول ≈ ٦٠٠ كلمة لتحسين الاسترجاع.</Bullet>
@@ -367,7 +367,7 @@ const Documentation = () => {
           <CardContent className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <MiniCard title="ملفات Markdown" body="رفع داخلي عبر لوحة المشرف لملفات .md نصية فقط — يضمن الجودة ويتجنّب فقدان البنية." />
-              <MiniCard title="مصادر ويب (URL)" body="تزويد المشرف بروابط ليتم زحفها (crawl-website)، استخراج النص، ودمجها في قاعدة المعرفة." />
+              <MiniCard title="بحث ويب لحظي" body="بدلاً من زحف مسبق، يستخدم المساعد Google Grounding للوصول للمعلومات الحديثة من موقع الجامعة عند الحاجة." />
               <MiniCard title="مسار المعالجة" body="قراءة → تطبيع عربي → تقسيم (~٦٠٠ كلمة) → توليد متجهات → تخزين → جاهز للبحث." />
               <MiniCard title="إعادة المعالجة" body="استبدال أو حذف أي وثيقة، أو تشغيل backfill-embeddings لإكمال المتجهات الناقصة." />
               <MiniCard title="تصدير سجلات الدردشة" body="تصدير المحادثات والتقييمات بصيغ CSV / XLSX / PDF لأغراض المراجعة." />
@@ -537,7 +537,7 @@ const Documentation = () => {
                 <TableRow><TableCell className="font-medium">rewrite-query</TableCell><TableCell>إعادة صياغة سؤال الطالب لتحسين دقة البحث.</TableCell></TableRow>
                 <TableRow><TableCell className="font-medium">generate-embedding</TableCell><TableCell>توليد متجه دلالي لاستعلام أو مقطع.</TableCell></TableRow>
                 <TableRow><TableCell className="font-medium">process-document</TableCell><TableCell>تقسيم وثيقة Markdown وتوليد متجهاتها.</TableCell></TableRow>
-                <TableRow><TableCell className="font-medium">crawl-website</TableCell><TableCell>زحف صفحات ويب واستخراج نصها لقاعدة المعرفة.</TableCell></TableRow>
+                
                 <TableRow><TableCell className="font-medium">backfill-embeddings</TableCell><TableCell>توليد المتجهات الناقصة لمقاطع موجودة سابقاً.</TableCell></TableRow>
               </TableBody>
             </Table>

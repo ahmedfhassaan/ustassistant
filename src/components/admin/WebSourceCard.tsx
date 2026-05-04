@@ -85,7 +85,7 @@ const WebSourceCard = ({ onChanged: _onChanged }: { onChanged?: () => void }) =>
       <CardHeader className="pb-3">
         <CardTitle className="text-lg flex items-center gap-2">
           <Globe className="w-5 h-5 text-primary" />
-          مصدر الويب — البحث المباشر
+          البحث المباشر في الويب (Google Grounding)
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -95,9 +95,9 @@ const WebSourceCard = ({ onChanged: _onChanged }: { onChanged?: () => void }) =>
           </div>
         ) : (
           <>
-            {/* رابط الموقع — يحدّد نطاق البحث */}
+            {/* النطاق المستهدف للبحث في Google */}
             <div className="space-y-2">
-              <Label htmlFor="web-url">رابط الموقع</Label>
+              <Label htmlFor="web-url">النطاق المستهدف</Label>
               <Input
                 id="web-url"
                 dir="ltr"
@@ -106,6 +106,9 @@ const WebSourceCard = ({ onChanged: _onChanged }: { onChanged?: () => void }) =>
                 placeholder="https://www.ust.edu"
                 className={isDark ? "glass-input" : ""}
               />
+              <p className="text-xs text-muted-foreground">
+                يُستخدم لتقييد بحث Google Grounding ضمن هذا النطاق فقط.
+              </p>
             </div>
 
             {/* قسم وضع البحث المباشر */}
@@ -113,14 +116,14 @@ const WebSourceCard = ({ onChanged: _onChanged }: { onChanged?: () => void }) =>
               <div className="flex items-center justify-between">
                 <Label htmlFor="live-enabled" className="cursor-pointer flex items-center gap-2 font-semibold">
                   <Zap className="w-4 h-4 text-primary" />
-                  وضع البحث المباشر (Live Search)
+                  تفعيل البحث المباشر (Google Grounding)
                 </Label>
                 <span dir="ltr" className="inline-flex">
                   <Switch id="live-enabled" checked={liveEnabled} onCheckedChange={setLiveEnabled} />
                 </span>
               </div>
               <p className="text-xs text-muted-foreground">
-                عند التفعيل، إذا لم تكفِ المستندات المرفوعة للإجابة، يبحث المساعد لحظياً في موقع الجامعة لاستكمال المعلومات.
+                عند التفعيل، إذا لم تكفِ المستندات المرفوعة للإجابة، يبحث المساعد لحظياً في موقع الجامعة عبر Google Grounding ويُرفق المصادر تلقائياً.
               </p>
 
               {liveEnabled && (
