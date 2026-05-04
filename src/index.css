@@ -140,6 +140,30 @@ input:-webkit-autofill:focus {
     direction: rtl;
   }
 
+  /* Unified custom scrollbar (same in light & dark) */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--primary) / 0.25) transparent;
+  }
+  *::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  *::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  *::-webkit-scrollbar-thumb {
+    background: hsl(var(--primary) / 0.25);
+    border-radius: 8px;
+    transition: background 0.2s ease;
+  }
+  *::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--primary) / 0.4);
+  }
+  *::-webkit-scrollbar-corner {
+    background: transparent;
+  }
+
   /* Dark mode gradient background */
   .dark body {
     background: linear-gradient(160deg, #0B1A2B 0%, #0F2A44 45%, #1C4E63 100%);
