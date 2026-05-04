@@ -334,11 +334,20 @@ const Documentation = () => {
             <SectionHeader index={3} title="قاعدة المعرفة" subtitle="مصدر الحقيقة الوحيد للمساعد" Icon={FileText} />
           </CardHeader>
           <CardContent className="space-y-4">
+            <p className="text-sm md:text-base leading-relaxed">
+              قاعدة المعرفة هي <strong>مصدر الحقيقة الوحيد</strong>. المساعد لا يجيب من معرفة النموذج العامة،
+              ويصنّف الوثائق إلى ثلاثة أنواع رئيسية:
+            </p>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <MiniCard title="وثائق رسمية" body="لوائح، خطط دراسية، إرشادات قبول وتسجيل، رسوم وخدمات. تُرفع كملفات Markdown." />
+              <MiniCard title="مشاريع تخرج سابقة" body="مرجع للطلاب الباحثين عن أمثلة. تُستبعد تلقائياً من أسئلة القبول/التسجيل/المقررات." />
+              <MiniCard title="مصادر ويب" body="صفحات يحدّدها المشرف ويتم زحفها (crawl-website) ومعالجتها كقاعدة معرفة." />
+            </div>
             <ul className="space-y-2">
-              <Bullet>تُخزَّن الوثائق نصوصاً (Markdown) منظَّمة موضوعياً.</Bullet>
-              <Bullet>تقسيم آلي إلى مقاطع (Chunks) بطول ~٦٠٠ كلمة لتحسين الاسترجاع.</Bullet>
+              <Bullet>تقسيم آلي إلى مقاطع (Chunks) بطول ≈ ٦٠٠ كلمة لتحسين الاسترجاع.</Bullet>
               <Bullet>توليد متجهات (Embeddings) بحجم ٧٦٨ بُعداً عبر gemini-embedding-001.</Bullet>
-              <Bullet>دعم ملفات إضافية: لوائح، خطط دراسية، رسوم، مشاريع تخرج سابقة.</Bullet>
+              <Bullet>تطبيع النص العربي (تشكيل، همزات، تاء مربوطة) عبر مكتبة مشتركة.</Bullet>
+              <Bullet>إعادة معالجة المقاطع وتوليد المتجهات الناقصة عبر backfill-embeddings.</Bullet>
               <Bullet icon="⚠️">المساعد لا يخترع معلومات: غياب المصدر = الاعتذار عن الإجابة.</Bullet>
             </ul>
           </CardContent>
