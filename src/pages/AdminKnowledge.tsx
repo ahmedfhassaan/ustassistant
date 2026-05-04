@@ -1,5 +1,5 @@
-import { useState, useEffect, useRef } from "react";
-import { Upload, FileText, Trash2, Search, Loader2, CheckCircle, AlertCircle, AlertTriangle, RefreshCw, Globe, ExternalLink } from "lucide-react";
+import { useState, useEffect, useRef, useMemo } from "react";
+import { Upload, FileText, Trash2, Search, Loader2, CheckCircle, AlertCircle, AlertTriangle, RefreshCw, Globe, ExternalLink, Tag } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import EmptyState from "@/components/EmptyState";
@@ -26,6 +26,32 @@ import {
   AlertDialogFooter,
   AlertDialogCancel,
 } from "@/components/ui/alert-dialog";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
+
+const CATEGORIES = [
+  "قبول وتسجيل",
+  "رسوم ومالية",
+  "مقررات وخطط دراسية",
+  "جداول وامتحانات",
+  "مرافق وخدمات طلابية",
+  "مشاريع تخرّج",
+] as const;
+
+const WEB_CATEGORY = "موقع الجامعة";
+const UNCATEGORIZED = "بدون تصنيف";
 
 interface KnowledgeDoc {
   id: string;
@@ -37,7 +63,9 @@ interface KnowledgeDoc {
   created_at: string;
   source_type?: string | null;
   source_url?: string | null;
+  category?: string | null;
 }
+
 
 const AdminKnowledge = () => {
   const [documents, setDocuments] = useState<KnowledgeDoc[]>([]);
