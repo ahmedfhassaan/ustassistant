@@ -135,7 +135,124 @@ const AdminKnowledge = () => {
 
   useEffect(() => {
     fetchDocuments();
+    fetchCategories();
   }, []);
+
+  const fetchCategories = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("assistant_settings")
+        .select("value")
+        .eq("key", CATEGORIES_SETTING_KEY)
+        .maybeSingle();
+      if (error) throw error;
+      if (data?.value) {
+        const parsed = JSON.parse(data.value);
+        if (Array.isArray(parsed) && parsed.every((x) => typeof x === "string")) {
+          setCategories(parsed);
+        }
+      }
+    } catch (e) {
+      console.warn("fetchCategories failed, using defaults", e);
+    }
+  };
+
+  const persistCategories = async (next: string[]) => {
+    setSavingCategories(true);
+    try {
+      const { data: existing } = await supabase
+        .from("assistant_settings")
+        .select("id")
+        .eq("key", CATEGORIES_SETTING_KEY)
+        .maybeSingle();
+      const value = JSON.stringify(next);
+      if (existing?.id) {
+        const { error } = await supabase
+          .from("assistant_settings")
+          .update({ value, updated_at: new Date().toISOString() })
+          .eq("id", existing.id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from("assistant_settings")
+          .insert({ key: CATEGORIES_SETTING_KEY, value });
+        if (error) throw error;
+      }
+      setCategories(next);
+    } catch (e: any) {
+      toast({ title: "تعذّر حفظ التصنيفات", description: e?.message, variant: "destructive" });
+      throw e;
+    } finally {
+      setSavingCategories(false);
+    }
+  };
+
+  const handleAddCategory = async () => {
+    const name = newCategoryName.trim();
+    if (!name) return;
+    if (categories.includes(name)) {
+      toast({ title: "التصنيف موجود مسبقاً", variant: "destructive" });
+      return;
+    }
+    try {
+      await persistCategories([...categories, name]);
+      setNewCategoryName("");
+      toast({ title: "تمت إضافة التصنيف", description: name });
+    } catch {}
+  };
+
+  const handleStartEdit = (idx: number) => {
+    setEditingIndex(idx);
+    setEditingValue(categories[idx]);
+  };
+
+  const handleSaveEdit = async () => {
+    if (editingIndex === null) return;
+    const name = editingValue.trim();
+    const oldName = categories[editingIndex];
+    if (!name || name === oldName) {
+      setEditingIndex(null);
+      return;
+    }
+    if (categories.includes(name)) {
+      toast({ title: "التصنيف موجود مسبقاً", variant: "destructive" });
+      return;
+    }
+    try {
+      const next = [...categories];
+      next[editingIndex] = name;
+      await persistCategories(next);
+      // Migrate existing docs to the new name
+      const { error } = await supabase
+        .from("knowledge_documents")
+        .update({ category: name })
+        .eq("category", oldName);
+      if (!error) {
+        setDocuments((prev) => prev.map((d) => (d.category === oldName ? { ...d, category: name } : d)));
+      }
+      setEditingIndex(null);
+      toast({ title: "تم تعديل التصنيف", description: `${oldName} → ${name}` });
+    } catch {}
+  };
+
+  const handleDeleteCategory = async (idx: number) => {
+    const name = categories[idx];
+    const usedCount = documents.filter((d) => d.category === name).length;
+    const msg = usedCount > 0
+      ? `سيتم إزالة التصنيف "${name}" من ${usedCount} مستنداً (سيصبحون بدون تصنيف). متابعة؟`
+      : `حذف التصنيف "${name}"؟`;
+    if (!confirm(msg)) return;
+    try {
+      const next = categories.filter((_, i) => i !== idx);
+      await persistCategories(next);
+      if (usedCount > 0) {
+        await supabase.from("knowledge_documents").update({ category: null }).eq("category", name);
+        setDocuments((prev) => prev.map((d) => (d.category === name ? { ...d, category: null } : d)));
+      }
+      toast({ title: "تم حذف التصنيف", description: name });
+    } catch {}
+  };
+
 
   const fetchDocuments = async () => {
     setLoading(true);
