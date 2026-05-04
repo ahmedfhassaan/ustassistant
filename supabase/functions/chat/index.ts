@@ -556,7 +556,9 @@ serve(async (req) => {
     }
 
     // Build final context: documents first, then live web results
-    knowledgeContext = (docsContext || "") + (liveContext || "");
+    knowledgeContext = explicitWeb && liveContext
+      ? (liveContext + (docsContext || ""))
+      : ((docsContext || "") + (liveContext || ""));
 
     // --- Confidence check ---
     const confidenceThreshold = parseInt(settings.confidence_threshold) || 30;
