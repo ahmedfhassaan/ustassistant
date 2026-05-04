@@ -494,6 +494,13 @@ serve(async (req) => {
       if (rpcError) console.error("[chat] hybrid search error:", rpcError);
 
       if (chunks && chunks.length > 0) {
+        // Filter out web-crawled chunks when live search is active
+        if (excludedWebDocNames && excludedWebDocNames.size > 0) {
+          chunks = (chunks as any[]).filter((c: any) => !excludedWebDocNames!.has(c.document_name));
+        }
+      }
+
+      if (chunks && chunks.length > 0) {
         // Optional reranking
         let finalChunks = chunks;
         if (enableRerank) {
@@ -515,16 +522,19 @@ serve(async (req) => {
           finalChunks = chunks.slice(0, finalCount);
         }
 
-        maxRank = Math.max(...finalChunks.map((c: any) => c.rank as number));
+        const docsMaxRank = Math.max(...finalChunks.map((c: any) => c.rank as number));
+        maxRank = Math.max(maxRank, docsMaxRank);
         // Filter sources: only chunks with rank >= half of confidence threshold count as "real" sources
         const minSourceRank = (parseInt(settings.confidence_threshold) || 30) / 100 * 0.5;
         const relevantChunks = finalChunks.filter((c: any) => (c.rank as number) >= minSourceRank);
-        sourceNames = [...new Set(relevantChunks.map((c: any) => c.document_name as string))];
-        knowledgeContext = "\n\n--- معلومات من قاعدة المعرفة الجامعية ---\n" +
+        const docSourceNames = [...new Set(relevantChunks.map((c: any) => c.document_name as string))];
+        sourceNames = [...new Set([...sourceNames, ...docSourceNames])];
+        const docsContext = "\n\n--- معلومات من قاعدة المعرفة الجامعية ---\n" +
           finalChunks.map((c: any) =>
             `[مصدر: ${c.document_name} | درجة الصلة: ${((c.rank as number) * 100).toFixed(0)}%]\n${c.content}`
           ).join("\n\n") +
           "\n--- نهاية المعلومات ---";
+        knowledgeContext = liveSearchUsed ? knowledgeContext + docsContext : docsContext;
       }
     } catch (e) {
       console.error("Knowledge search error:", e);
