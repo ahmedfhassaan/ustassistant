@@ -543,6 +543,20 @@ serve(async (req) => {
         if (excludedWebDocNames && excludedWebDocNames.size > 0) {
           chunks = (chunks as any[]).filter((c: any) => !excludedWebDocNames!.has(c.document_name));
         }
+
+        // Intent-based filter: exclude graduation project docs for admission/curriculum questions
+        if (isAdmissionOrCurriculumQuestion(lastUserMessage)) {
+          const before = chunks.length;
+          const filtered = (chunks as any[]).filter((c: any) => !isGraduationProjectDoc(c.document_name));
+          // Only apply filter if it doesn't wipe out all results (let live search take over otherwise)
+          if (filtered.length > 0) {
+            chunks = filtered;
+            console.log(`[chat] intent=admission_or_curriculum: filtered ${before - filtered.length} project chunks, kept ${filtered.length}`);
+          } else {
+            console.log(`[chat] intent=admission_or_curriculum: all ${before} chunks were projects → keeping none, will trigger live search`);
+            chunks = null;
+          }
+        }
       }
 
       if (chunks && chunks.length > 0) {
