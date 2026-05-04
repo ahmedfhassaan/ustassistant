@@ -504,6 +504,14 @@ const AdminKnowledge = () => {
           <CardTitle className="text-lg">إدارة قاعدة المعرفة</CardTitle>
           <div className="flex flex-wrap items-center gap-2">
             <Button
+              onClick={() => setCategoriesDialogOpen(true)}
+              variant="outline"
+              className="gap-2 flex-1 sm:flex-none"
+            >
+              <Settings2 className="w-4 h-4" />
+              <span className="truncate">إدارة التصنيفات</span>
+            </Button>
+            <Button
               onClick={handleReprocessAll}
               disabled={reprocessing || documents.length === 0}
               variant="outline"
