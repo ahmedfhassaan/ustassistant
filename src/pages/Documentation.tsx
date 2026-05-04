@@ -288,25 +288,42 @@ const Documentation = () => {
               </TableHeader>
               <TableBody>
                 <TableRow>
-                  <TableCell className="font-medium">١. تحسين الاستعلام</TableCell>
-                  <TableCell>إعادة صياغة سؤال الطالب لتحسين دقة البحث.</TableCell>
+                  <TableCell className="font-medium">١. كاش هاش</TableCell>
+                  <TableCell>فحص الأسئلة المتطابقة حرفياً وإرجاع إجابة مخزّنة خلال ٢٤ ساعة.</TableCell>
                 </TableRow>
                 <TableRow>
-                  <TableCell className="font-medium">٢. البحث الهجين</TableCell>
-                  <TableCell>مزج FTS العربي مع البحث الدلالي عبر embeddings.</TableCell>
+                  <TableCell className="font-medium">٢. كاش دلالي</TableCell>
+                  <TableCell>مطابقة الأسئلة المتشابهة معنىً عبر متجهات (Vector Similarity).</TableCell>
                 </TableRow>
                 <TableRow>
-                  <TableCell className="font-medium">٣. تصفية بالنية</TableCell>
-                  <TableCell>تصنيف نوع السؤال (قبول/تسجيل/مقررات/مشاريع) لتوجيه النتائج.</TableCell>
+                  <TableCell className="font-medium">٣. إعادة صياغة الاستعلام</TableCell>
+                  <TableCell>تحسين السؤال (rewrite-query) لزيادة دقة الاسترجاع العربي.</TableCell>
                 </TableRow>
                 <TableRow>
-                  <TableCell className="font-medium">٤. التوليد المقيَّد</TableCell>
-                  <TableCell>صياغة الإجابة من المقاطع المسترجعة فقط.</TableCell>
+                  <TableCell className="font-medium">٤. البحث الهجين</TableCell>
+                  <TableCell>مزج FTS العربي (وزن ٠٫٤) مع البحث الدلالي (وزن ٠٫٦) عبر pgvector.</TableCell>
+                </TableRow>
+                <TableRow>
+                  <TableCell className="font-medium">٥. تصنيف النية</TableCell>
+                  <TableCell>تحديد نوع السؤال (قبول/تسجيل/مقررات/مشاريع/عام) لتوجيه التصفية.</TableCell>
+                </TableRow>
+                <TableRow>
+                  <TableCell className="font-medium">٦. عتبة الثقة</TableCell>
+                  <TableCell>منع الإجابة عند ضعف المصادر وعرض اعتذار بدلاً من التخمين.</TableCell>
+                </TableRow>
+                <TableRow>
+                  <TableCell className="font-medium">٧. التوليد المقيَّد</TableCell>
+                  <TableCell>صياغة الإجابة من المقاطع المسترجعة فقط بتعليمات صارمة للنموذج.</TableCell>
                 </TableRow>
               </TableBody>
             </Table>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <MiniCard title="حجم المقطع" body="≈ ٦٠٠ كلمة لكل Chunk لتحسين دقة الاسترجاع وتقليل الضجيج." />
+              <MiniCard title="أبعاد المتجه" body="٧٦٨ بُعداً عبر نموذج gemini-embedding-001." />
+              <MiniCard title="عمر الكاش" body="٢٤ ساعة افتراضياً، قابل للتعديل من إعدادات المشرف." />
+            </div>
             <Notice tone="success">
-              عتبة ثقة (Confidence Threshold) تمنع الإجابة عند ضعف المصادر وتوجّه للبحث المباشر بديلاً.
+              عتبة الثقة (Confidence Threshold) قابلة للضبط من لوحة المشرف لتحقيق التوازن بين الدقة والتغطية.
             </Notice>
           </CardContent>
         </Card>
@@ -317,11 +334,20 @@ const Documentation = () => {
             <SectionHeader index={3} title="قاعدة المعرفة" subtitle="مصدر الحقيقة الوحيد للمساعد" Icon={FileText} />
           </CardHeader>
           <CardContent className="space-y-4">
+            <p className="text-sm md:text-base leading-relaxed">
+              قاعدة المعرفة هي <strong>مصدر الحقيقة الوحيد</strong>. المساعد لا يجيب من معرفة النموذج العامة،
+              ويصنّف الوثائق إلى ثلاثة أنواع رئيسية:
+            </p>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <MiniCard title="وثائق رسمية" body="لوائح، خطط دراسية، إرشادات قبول وتسجيل، رسوم وخدمات. تُرفع كملفات Markdown." />
+              <MiniCard title="مشاريع تخرج سابقة" body="مرجع للطلاب الباحثين عن أمثلة. تُستبعد تلقائياً من أسئلة القبول/التسجيل/المقررات." />
+              <MiniCard title="مصادر ويب" body="صفحات يحدّدها المشرف ويتم زحفها (crawl-website) ومعالجتها كقاعدة معرفة." />
+            </div>
             <ul className="space-y-2">
-              <Bullet>تُخزَّن الوثائق نصوصاً (Markdown) منظَّمة موضوعياً.</Bullet>
-              <Bullet>تقسيم آلي إلى مقاطع (Chunks) بطول ~٦٠٠ كلمة لتحسين الاسترجاع.</Bullet>
+              <Bullet>تقسيم آلي إلى مقاطع (Chunks) بطول ≈ ٦٠٠ كلمة لتحسين الاسترجاع.</Bullet>
               <Bullet>توليد متجهات (Embeddings) بحجم ٧٦٨ بُعداً عبر gemini-embedding-001.</Bullet>
-              <Bullet>دعم ملفات إضافية: لوائح، خطط دراسية، رسوم، مشاريع تخرج سابقة.</Bullet>
+              <Bullet>تطبيع النص العربي (تشكيل، همزات، تاء مربوطة) عبر مكتبة مشتركة.</Bullet>
+              <Bullet>إعادة معالجة المقاطع وتوليد المتجهات الناقصة عبر backfill-embeddings.</Bullet>
               <Bullet icon="⚠️">المساعد لا يخترع معلومات: غياب المصدر = الاعتذار عن الإجابة.</Bullet>
             </ul>
           </CardContent>
@@ -334,11 +360,16 @@ const Documentation = () => {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <MiniCard title="الصيغ المدعومة" body="ملفات Markdown نصية فقط (.md) لضمان الجودة وتجنّب فقدان البنية." />
-              <MiniCard title="مسار المعالجة" body="قراءة → تقسيم → توليد متجهات → تخزين → جاهز للبحث الفوري." />
-              <MiniCard title="التحديث" body="يمكن للمشرف استبدال أو حذف أي وثيقة، وإعادة معالجتها بضغطة." />
-              <MiniCard title="الأمان" body="رفع داخلي عبر لوحة المشرف فقط، بدون رفع سحابي مفتوح." />
+              <MiniCard title="ملفات Markdown" body="رفع داخلي عبر لوحة المشرف لملفات .md نصية فقط — يضمن الجودة ويتجنّب فقدان البنية." />
+              <MiniCard title="مصادر ويب (URL)" body="تزويد المشرف بروابط ليتم زحفها (crawl-website)، استخراج النص، ودمجها في قاعدة المعرفة." />
+              <MiniCard title="مسار المعالجة" body="قراءة → تطبيع عربي → تقسيم (~٦٠٠ كلمة) → توليد متجهات → تخزين → جاهز للبحث." />
+              <MiniCard title="إعادة المعالجة" body="استبدال أو حذف أي وثيقة، أو تشغيل backfill-embeddings لإكمال المتجهات الناقصة." />
+              <MiniCard title="تصدير سجلات الدردشة" body="تصدير المحادثات والتقييمات بصيغ CSV / XLSX / PDF لأغراض المراجعة." />
+              <MiniCard title="الأمان" body="رفع داخلي حصري عبر حساب المشرف — لا رفع سحابي مفتوح ولا روابط عامة." />
             </div>
+            <Notice tone="info">
+              ملفات الإعداد الحساسة (config.toml، .env، integrations/supabase/*) محميَّة ولا تُعدَّل من الواجهة.
+            </Notice>
           </CardContent>
         </Card>
 
@@ -349,13 +380,25 @@ const Documentation = () => {
           </CardHeader>
           <CardContent className="space-y-4">
             <p className="text-sm md:text-base leading-relaxed">
-              عند توفّر مصادر للإجابة، تُعرض أسفل الرسالة كقائمة قابلة للنقر تحوي اسم الوثيقة ورقم المقطع
-              المرجعي، ليتمكن الطالب من التحقق بنفسه.
+              تُعرض المصادر أسفل كل إجابة بشكل منظَّم، ليتمكن الطالب من التحقق بنفسه قبل الاعتماد على المعلومة.
             </p>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="text-right">نوع المصدر</TableHead>
+                  <TableHead className="text-right">طريقة العرض</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                <TableRow><TableCell className="font-medium">وثيقة Markdown</TableCell><TableCell>اسم الملف + رقم المقطع المرجعي.</TableCell></TableRow>
+                <TableRow><TableCell className="font-medium">مصدر ويب</TableCell><TableCell>عنوان الصفحة + رابط مباشر للمصدر الأصلي.</TableCell></TableRow>
+                <TableRow><TableCell className="font-medium">مشروع تخرج</TableCell><TableCell>عنوان المشروع + سنة التخرج إن وُجدت.</TableCell></TableRow>
+              </TableBody>
+            </Table>
             <ul className="space-y-2">
-              <Bullet>عرض اسم الوثيقة الأصلية بوضوح.</Bullet>
-              <Bullet>إخفاء قسم المصادر تلقائياً عند عدم وجودها.</Bullet>
-              <Bullet>إمكانية تقييم الإجابة (👍 / 👎) مع ربطها بالمصادر للتدقيق.</Bullet>
+              <Bullet>إخفاء قسم المصادر تلقائياً عند عدم توفّرها.</Bullet>
+              <Bullet>تقييم الإجابة (👍 / 👎) مع نموذج تفصيلي للسلبية يربطها بالمصادر للتدقيق لاحقاً.</Bullet>
+              <Bullet>كل تقييم سلبي يصل لوحة "التقييمات" في لوحة المشرف لتحليله.</Bullet>
             </ul>
           </CardContent>
         </Card>
@@ -370,17 +413,22 @@ const Documentation = () => {
               <TableHeader>
                 <TableRow>
                   <TableHead className="text-right">الصفحة</TableHead>
+                  <TableHead className="text-right">المسار</TableHead>
                   <TableHead className="text-right">الوظيفة</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                <TableRow><TableCell className="font-medium">الرئيسية</TableCell><TableCell>إحصاءات الاستخدام ومعدّل الرضا.</TableCell></TableRow>
-                <TableRow><TableCell className="font-medium">قاعدة المعرفة</TableCell><TableCell>إضافة/حذف/تحديث الوثائق وإعادة المعالجة.</TableCell></TableRow>
-                <TableRow><TableCell className="font-medium">الطلاب</TableCell><TableCell>إدارة حسابات الطلاب (CRUD).</TableCell></TableRow>
-                <TableRow><TableCell className="font-medium">التقييمات</TableCell><TableCell>مراجعة الردود السلبية لتحسين الأداء.</TableCell></TableRow>
-                <TableRow><TableCell className="font-medium">الإعدادات</TableCell><TableCell>تخصيص سلوك المساعد، الحدود، والتعليمات.</TableCell></TableRow>
+                <TableRow><TableCell className="font-medium">الرئيسية</TableCell><TableCell><code>/admin</code></TableCell><TableCell>إحصاءات الاستخدام، عدد الأسئلة، معدّل الرضا (نسبة 👍).</TableCell></TableRow>
+                <TableRow><TableCell className="font-medium">قاعدة المعرفة</TableCell><TableCell><code>/admin/knowledge</code></TableCell><TableCell>رفع/حذف الوثائق، إضافة مصادر ويب، إعادة معالجة المتجهات.</TableCell></TableRow>
+                <TableRow><TableCell className="font-medium">الأسئلة الشائعة</TableCell><TableCell><code>/admin/faq</code></TableCell><TableCell>إدارة قائمة الأسئلة الجاهزة التي تظهر للطلاب.</TableCell></TableRow>
+                <TableRow><TableCell className="font-medium">الطلاب</TableCell><TableCell><code>/admin/students</code></TableCell><TableCell>إنشاء/تعديل/حذف حسابات الطلاب وكلمات السر.</TableCell></TableRow>
+                <TableRow><TableCell className="font-medium">التقييمات</TableCell><TableCell><code>/admin/feedback</code></TableCell><TableCell>تحليل التقييمات السلبية مع المصادر المرتبطة.</TableCell></TableRow>
+                <TableRow><TableCell className="font-medium">الإعدادات</TableCell><TableCell><code>/admin/settings</code></TableCell><TableCell>تخصيص تعليمات النظام، عتبات الثقة، حدود الكاش، نموذج Gemini.</TableCell></TableRow>
               </TableBody>
             </Table>
+            <Notice tone="info">
+              تتيح صفحة الإعدادات حقن <strong>تعليمات نظام مخصّصة (System Instructions)</strong> لتشكيل سلوك المساعد دون تعديل الكود.
+            </Notice>
           </CardContent>
         </Card>
 
@@ -391,11 +439,29 @@ const Documentation = () => {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <MiniCard title="الطالب" body="رقم جامعي + كلمة سر مشفّرة (bcrypt). يصل للمحادثة فقط." />
-              <MiniCard title="المشرف" body="رقم خاص (20260000) مع صلاحية كاملة على لوحة التحكم." />
+              <MiniCard title="الطالب" body="رقم جامعي + كلمة سر مشفّرة (bcrypt). يصل للمحادثة وحفظ السجل فقط." />
+              <MiniCard title="المشرف" body="رقم خاص (20260000) مع صلاحية كاملة على لوحة التحكم وقاعدة المعرفة." />
             </div>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="text-right">الصلاحية</TableHead>
+                  <TableHead className="text-right">طالب</TableHead>
+                  <TableHead className="text-right">مشرف</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                <TableRow><TableCell>المحادثة مع المساعد</TableCell><TableCell>✅</TableCell><TableCell>✅</TableCell></TableRow>
+                <TableRow><TableCell>تقييم الإجابات</TableCell><TableCell>✅</TableCell><TableCell>✅</TableCell></TableRow>
+                <TableRow><TableCell>عرض سجل المحادثات الشخصية</TableCell><TableCell>✅</TableCell><TableCell>✅</TableCell></TableRow>
+                <TableRow><TableCell>إدارة قاعدة المعرفة</TableCell><TableCell>❌</TableCell><TableCell>✅</TableCell></TableRow>
+                <TableRow><TableCell>إدارة حسابات الطلاب</TableCell><TableCell>❌</TableCell><TableCell>✅</TableCell></TableRow>
+                <TableRow><TableCell>تعديل إعدادات المساعد</TableCell><TableCell>❌</TableCell><TableCell>✅</TableCell></TableRow>
+                <TableRow><TableCell>مراجعة التقييمات السلبية</TableCell><TableCell>❌</TableCell><TableCell>✅</TableCell></TableRow>
+              </TableBody>
+            </Table>
             <Notice tone="warn">
-              لا يوجد وصول للأكاديميين/الموظفين. التصميم متعمَّد لتقليل الأدوار وتبسيط الصلاحيات.
+              لا يوجد وصول للأكاديميين أو الموظفين. التصميم متعمَّد لتقليل الأدوار وتبسيط الصلاحيات.
             </Notice>
           </CardContent>
         </Card>
@@ -407,12 +473,17 @@ const Documentation = () => {
           </CardHeader>
           <CardContent className="space-y-4">
             <ul className="space-y-2">
-              <Bullet>سياسات RLS مُفعَّلة على جميع الجداول الحساسة.</Bullet>
-              <Bullet>المفاتيح السرية تُقرأ داخل Edge Functions فقط، ولا تظهر في الواجهة.</Bullet>
-              <Bullet>تشفير كلمات السر بـ bcrypt ولا تُخزَّن نصاً صريحاً.</Bullet>
-              <Bullet>الاستعلامات تمرّ عبر طبقة خدمات رقيقة، لا استدعاءات DB من المكوّنات.</Bullet>
-              <Bullet icon="⚠️">عدم تخزين أي معلومات شخصية حساسة خارج النطاق الضروري.</Bullet>
+              <Bullet>سياسات RLS مُفعَّلة على جميع الجداول الحساسة (الطلاب، السجلات، التقييمات).</Bullet>
+              <Bullet>المفاتيح السرية (Gemini API) تُقرأ داخل Edge Functions فقط، ولا تظهر في الواجهة أبداً.</Bullet>
+              <Bullet>تشفير كلمات سر الطلاب بـ <code>bcrypt</code> ولا تُخزَّن نصاً صريحاً مطلقاً.</Bullet>
+              <Bullet>قفل حساب المشرف على معرّف رقمي ثابت (20260000) بدون إمكانية إنشاء مشرفين إضافيين من الواجهة.</Bullet>
+              <Bullet>الاستعلامات تمرّ عبر طبقة خدمات رقيقة (lib/) — لا استدعاءات DB مباشرة من المكوّنات.</Bullet>
+              <Bullet>تطهير المدخلات (trim) في صفحة الدخول لمنع الأخطاء والثغرات الأساسية.</Bullet>
+              <Bullet icon="⚠️">لا تخزَّن أي معلومات شخصية حساسة خارج النطاق الضروري للخدمة.</Bullet>
             </ul>
+            <Notice tone="info">
+              المراجعة الدورية لقاعدة البيانات والصلاحيات جزء من قواعد <code>/docs/AI_WORKFLOW_RULES.md</code>.
+            </Notice>
           </CardContent>
         </Card>
 
@@ -423,11 +494,29 @@ const Documentation = () => {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <MiniCard title="كاش هاش" body="حفظ الإجابات للأسئلة المتطابقة لمدة ٢٤ ساعة." />
-              <MiniCard title="كاش دلالي" body="مطابقة الأسئلة المتشابهة بالمتجهات لتفادي التكرار." />
-              <MiniCard title="فحوصات متوازية" body="استدعاءات Promise.all مع مهل صارمة." />
-              <MiniCard title="استضافة عالمية" body="نشر ثابت على Cloudflare Pages مع SPA Routing." />
+              <MiniCard title="كاش هاش" body="حفظ الإجابات للأسئلة المتطابقة لمدة ٢٤ ساعة (TTL قابل للتعديل)." />
+              <MiniCard title="كاش دلالي" body="مطابقة الأسئلة المتشابهة بالمتجهات لتفادي إعادة التوليد المكلف." />
+              <MiniCard title="فحوصات متوازية" body="استدعاءات Promise.all مع مهل (Timeouts) صارمة لتفادي التعليق." />
+              <MiniCard title="بث الإجابة" body="Server-Sent Events لتجربة فورية بدون انتظار اكتمال الإجابة." />
+              <MiniCard title="تجزئة الحزم" body="manualChunks في Vite لفصل المكتبات عن كود التطبيق وتسريع التحميل." />
+              <MiniCard title="استضافة عالمية" body="نشر ثابت على Cloudflare Pages مع SPA Routing عبر _redirects." />
             </div>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="text-right">Edge Function</TableHead>
+                  <TableHead className="text-right">الدور</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                <TableRow><TableCell className="font-medium">chat</TableCell><TableCell>قلب RAG: استرجاع، تصنيف، توليد، بث، وتسجيل.</TableCell></TableRow>
+                <TableRow><TableCell className="font-medium">rewrite-query</TableCell><TableCell>إعادة صياغة سؤال الطالب لتحسين دقة البحث.</TableCell></TableRow>
+                <TableRow><TableCell className="font-medium">generate-embedding</TableCell><TableCell>توليد متجه دلالي لاستعلام أو مقطع.</TableCell></TableRow>
+                <TableRow><TableCell className="font-medium">process-document</TableCell><TableCell>تقسيم وثيقة Markdown وتوليد متجهاتها.</TableCell></TableRow>
+                <TableRow><TableCell className="font-medium">crawl-website</TableCell><TableCell>زحف صفحات ويب واستخراج نصها لقاعدة المعرفة.</TableCell></TableRow>
+                <TableRow><TableCell className="font-medium">backfill-embeddings</TableCell><TableCell>توليد المتجهات الناقصة لمقاطع موجودة سابقاً.</TableCell></TableRow>
+              </TableBody>
+            </Table>
           </CardContent>
         </Card>
 
@@ -439,9 +528,11 @@ const Documentation = () => {
           <CardContent className="space-y-4">
             <ul className="space-y-2">
               <Bullet icon="⚠️">لا يجيب من معرفة النموذج العامة عند غياب مصدر داخلي.</Bullet>
-              <Bullet icon="⚠️">لا يقدّم استشارات قانونية أو طبية.</Bullet>
-              <Bullet icon="⚠️">لا يصدر قرارات قبول أو تخرّج — وظيفته إعلامية بحتة.</Bullet>
-              <Bullet icon="⚠️">قد تتأخر الإجابات عن المستجدات حتى يحدّث المشرف الوثائق.</Bullet>
+              <Bullet icon="⚠️">لا يقدّم استشارات قانونية أو طبية أو مالية.</Bullet>
+              <Bullet icon="⚠️">لا يصدر قرارات قبول أو تخرّج أو شهادات رسمية — وظيفته إعلامية بحتة.</Bullet>
+              <Bullet icon="⚠️">قد تتأخر الإجابات عن المستجدات حتى يحدّث المشرف الوثائق المرجعية.</Bullet>
+              <Bullet icon="⚠️">لا يخدم طلاباً من خارج قاعدة الحسابات المسجَّلة في النظام.</Bullet>
+              <Bullet icon="⚠️">لا يدعم رفع الصور أو الصوت — تجربة نصية بحتة عمداً.</Bullet>
             </ul>
             <Notice tone="warn">
               عند عدم توفّر معلومة موثّقة، سيعتذر المساعد ويُحيل الطالب للجهة المختصة بدلاً من التخمين.
@@ -466,14 +557,36 @@ const Documentation = () => {
                 <TableRow><TableCell className="font-medium">الواجهة</TableCell><TableCell>React 18 + Vite + TypeScript + Tailwind</TableCell></TableRow>
                 <TableRow><TableCell className="font-medium">المكوّنات</TableCell><TableCell>shadcn/ui + Tajawal + Glassmorphism</TableCell></TableRow>
                 <TableRow><TableCell className="font-medium">الخادم</TableCell><TableCell>Supabase (DB + Auth + Edge Functions)</TableCell></TableRow>
-                <TableRow><TableCell className="font-medium">الذكاء الاصطناعي</TableCell><TableCell>Gemini مباشرة عبر Edge Functions</TableCell></TableRow>
-                <TableRow><TableCell className="font-medium">البحث</TableCell><TableCell>pgvector + Arabic FTS (Hybrid)</TableCell></TableRow>
-                <TableRow><TableCell className="font-medium">النشر</TableCell><TableCell>Cloudflare Pages (Static + SPA)</TableCell></TableRow>
+                <TableRow><TableCell className="font-medium">الذكاء الاصطناعي</TableCell><TableCell>Gemini مباشرة (gemini-3-flash-preview + gemini-embedding-001)</TableCell></TableRow>
+                <TableRow><TableCell className="font-medium">البحث</TableCell><TableCell>pgvector + Arabic FTS (Hybrid 0.4 / 0.6)</TableCell></TableRow>
+                <TableRow><TableCell className="font-medium">إدارة الحالة</TableCell><TableCell>React Query (5.62) + Context للثيم</TableCell></TableRow>
+                <TableRow><TableCell className="font-medium">النشر</TableCell><TableCell>Cloudflare Pages (Static + SPA via _redirects)</TableCell></TableRow>
               </TableBody>
             </Table>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="text-right">المسار</TableHead>
+                  <TableHead className="text-right">الوصف</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                <TableRow><TableCell className="font-medium"><code>/</code></TableCell><TableCell>الصفحة التعريفية / إعادة توجيه للدخول.</TableCell></TableRow>
+                <TableRow><TableCell className="font-medium"><code>/login</code></TableCell><TableCell>دخول مزدوج (طالب/مشرف) مع Split-screen على الديسكتوب.</TableCell></TableRow>
+                <TableRow><TableCell className="font-medium"><code>/chat</code></TableCell><TableCell>واجهة المحادثة الرئيسية للطلاب.</TableCell></TableRow>
+                <TableRow><TableCell className="font-medium"><code>/admin/*</code></TableCell><TableCell>لوحة المشرف وصفحاتها الفرعية.</TableCell></TableRow>
+                <TableRow><TableCell className="font-medium"><code>/docs</code></TableCell><TableCell>هذه الصفحة (مرادف <code>/documentation</code>).</TableCell></TableRow>
+              </TableBody>
+            </Table>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <MiniCard title="docs/PROJECT_STRUCTURE.md" body="تنظيم المجلدات وفصل المسؤوليات (UI / Services / Edge)." />
+              <MiniCard title="docs/CODING_CONVENTIONS.md" body="قواعد التسمية، التعديل أولاً، منع تكرار الملفات." />
+              <MiniCard title="docs/DECISIONS.md" body="القرارات المعمارية الكبرى ومبرراتها." />
+              <MiniCard title="docs/AI_WORKFLOW_RULES.md" body="قواعد عمل وكيل الذكاء الاصطناعي ضمن المشروع." />
+            </div>
             <Notice tone="success">
               <CheckCircle2 className="inline w-4 h-4 ml-1" />
-              راجع ملفات <code>/docs</code> داخل المستودع للقواعد المعمارية الكاملة.
+              راجع ملفات <code>/docs</code> داخل المستودع للقواعد المعمارية الكاملة قبل أي تعديل جوهري.
             </Notice>
             <div className="flex flex-wrap gap-2 pt-2">
               <Link to="/chat">
