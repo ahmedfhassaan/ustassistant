@@ -42,6 +42,18 @@ const EXACT_KEYWORDS = [
   "لائحة", "مادة", "رمز", "كود", "نسبة", "رسوم", "موعد", "تاريخ",
 ];
 
+function userExplicitlyWantsWeb(text: string): boolean {
+  const t = text.toLowerCase();
+  const triggers = [
+    "من موقع", "من الموقع", "موقع الجامعة", "الموقع الرسمي",
+    "ابحث في الموقع", "ابحث على الإنترنت", "ابحث في الانترنت",
+    "ابحث في الإنترنت", "ابحث بالموقع", "ابحث بالانترنت",
+    "بحث مباشر", "البحث المباشر", "من الويب", "من الانترنت", "من الإنترنت",
+    "آخر تحديث", "أحدث المعلومات", "محدّث", "محدث",
+  ];
+  return triggers.some(k => t.includes(k));
+}
+
 function classifyQueryKind(text: string): QueryKind {
   const t = text.trim();
   if (!t) return "default";
@@ -292,7 +304,8 @@ serve(async (req) => {
     }
 
     // --- Cache hit ---
-    if (cached && settings.cache_enabled === "true") {
+    const explicitWeb = userExplicitlyWantsWeb(lastUserMessage);
+    if (cached && settings.cache_enabled === "true" && !explicitWeb) {
       try {
         await supabase.from("chat_logs").insert({
           question: lastUserMessage,
@@ -477,7 +490,7 @@ serve(async (req) => {
     const confThresholdFraction = (parseInt(settings.confidence_threshold) || 30) / 100;
     const docsInsufficient = maxRank < confThresholdFraction;
     let liveContext = "";
-    if (liveSearchEnabled && docsInsufficient) {
+    if (liveSearchEnabled && (docsInsufficient || explicitWeb)) {
       const FIRECRAWL_KEY = Deno.env.get("FIRECRAWL_API_KEY");
       if (!FIRECRAWL_KEY) {
         console.error("[chat] live_search_enabled but FIRECRAWL_API_KEY missing");
@@ -543,7 +556,9 @@ serve(async (req) => {
     }
 
     // Build final context: documents first, then live web results
-    knowledgeContext = (docsContext || "") + (liveContext || "");
+    knowledgeContext = explicitWeb && liveContext
+      ? (liveContext + (docsContext || ""))
+      : ((docsContext || "") + (liveContext || ""));
 
     // --- Confidence check ---
     const confidenceThreshold = parseInt(settings.confidence_threshold) || 30;
@@ -584,9 +599,13 @@ serve(async (req) => {
 - إذا لم تكن متأكداً، اذكر ذلك بوضوح وانصح الطالب بالتواصل مع الجهة المختصة.
 - لا تخترع أرقاماً أو تواريخ أو رموز مقررات غير موجودة في السياق.`;
 
+    const webPriorityBlock = explicitWeb && liveContext
+      ? `\n\n🌐 **أولوية المصدر:** الطالب طلب صراحةً معلومات من موقع الجامعة. اعتمد **أولاً وبشكل رئيسي** على "معلومات مباشرة من موقع الجامعة (بحث لحظي)" أدناه، واذكر روابط المصادر إن أمكن. استخدم المستندات المحلية فقط كمكمّل عند الحاجة.`
+      : "";
+
     const systemPrompt = `أنت ${settings.assistant_name}، مساعد ذكاء اصطناعي متخصص في مساعدة طلاب الجامعة.
 
-${strictBlock}
+${strictBlock}${webPriorityBlock}
 
 مهامك:
 - الإجابة على أسئلة الطلاب المتعلقة بالجامعة والدراسة
