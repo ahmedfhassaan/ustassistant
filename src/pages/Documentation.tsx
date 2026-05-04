@@ -446,7 +446,7 @@ const Documentation = () => {
           <CardContent className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <MiniCard title="الطالب" body="رقم جامعي + كلمة سر مشفّرة (bcrypt). يصل للمحادثة وحفظ السجل فقط." />
-              <MiniCard title="المشرف" body="رقم خاص (20260000) مع صلاحية كاملة على لوحة التحكم وقاعدة المعرفة." />
+              <MiniCard title="المشرف" body="مستخدم Seed برقم 20260000 يُنشأ في جدول user_roles بدور admin. لا فحص مرمَّز في الكود." />
             </div>
             <Table>
               <TableHeader>
@@ -467,7 +467,7 @@ const Documentation = () => {
               </TableBody>
             </Table>
             <Notice tone="warn">
-              لا يوجد وصول للأكاديميين أو الموظفين. التصميم متعمَّد لتقليل الأدوار وتبسيط الصلاحيات.
+              لا يوجد وصول للأكاديميين أو الموظفين. ترقية أي مستخدم لاحقاً تتم عبر <code>migration</code> على جدول <code>user_roles</code> فقط، وليس من واجهة الإدارة.
             </Notice>
           </CardContent>
         </Card>
