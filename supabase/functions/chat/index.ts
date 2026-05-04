@@ -320,13 +320,15 @@ serve(async (req) => {
     const settings = await settingsPromise;
 
     const enableRewrite = settings.enable_query_rewriting === "true";
-    const rewritePromise: Promise<string> = enableRewrite
+    const rewritePromise: Promise<{ rewritten: string; variants: string[] }> = enableRewrite
       ? tryRewriteQuery(supabaseUrl, supabaseKey, lastUserMessage)
-      : Promise.resolve(lastUserMessage);
+      : Promise.resolve({ rewritten: lastUserMessage, variants: [] });
 
-    const [rateResult, exactCached, queryEmbedding, rewrittenQuery] = await Promise.all([
+    const [rateResult, exactCached, queryEmbedding, rewriteResult] = await Promise.all([
       rateLimitPromise, cachePromise, embeddingPromise, rewritePromise,
     ]);
+    const rewrittenQuery = rewriteResult.rewritten;
+    const rewriteVariants = rewriteResult.variants;
 
     // --- Semantic cache lookup (only if no exact hit and we have an embedding) ---
     let cached: { answer: string; sources: string | null } | null = exactCached as any;
