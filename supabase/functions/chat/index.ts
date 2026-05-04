@@ -304,7 +304,8 @@ serve(async (req) => {
     }
 
     // --- Cache hit ---
-    if (cached && settings.cache_enabled === "true") {
+    const explicitWeb = userExplicitlyWantsWeb(lastUserMessage);
+    if (cached && settings.cache_enabled === "true" && !explicitWeb) {
       try {
         await supabase.from("chat_logs").insert({
           question: lastUserMessage,
