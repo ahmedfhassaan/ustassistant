@@ -250,6 +250,7 @@ export type Database = {
       }
       knowledge_documents: {
         Row: {
+          category: string | null
           content_hash: string | null
           created_at: string
           file_path: string | null
@@ -263,6 +264,7 @@ export type Database = {
           status: string
         }
         Insert: {
+          category?: string | null
           content_hash?: string | null
           created_at?: string
           file_path?: string | null
@@ -276,6 +278,7 @@ export type Database = {
           status?: string
         }
         Update: {
+          category?: string | null
           content_hash?: string | null
           created_at?: string
           file_path?: string | null
