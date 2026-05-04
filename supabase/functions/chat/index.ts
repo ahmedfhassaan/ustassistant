@@ -477,8 +477,10 @@ serve(async (req) => {
     const confThresholdFraction = (parseInt(settings.confidence_threshold) || 30) / 100;
     const docsInsufficient = maxRank < confThresholdFraction;
     let liveContext = "";
+    console.log(`[chat][live] enabled=${liveSearchEnabled} maxRank=${maxRank.toFixed(3)} threshold=${confThresholdFraction.toFixed(3)} docsInsufficient=${docsInsufficient}`);
     if (liveSearchEnabled && docsInsufficient) {
       const FIRECRAWL_KEY = Deno.env.get("FIRECRAWL_API_KEY");
+      console.log(`[chat][live] FIRECRAWL_API_KEY present=${!!FIRECRAWL_KEY}`);
       if (!FIRECRAWL_KEY) {
         console.error("[chat] live_search_enabled but FIRECRAWL_API_KEY missing");
       } else {
