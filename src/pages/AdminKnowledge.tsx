@@ -149,6 +149,50 @@ const AdminKnowledge = () => {
     d.name.includes(searchQuery)
   );
 
+  const docCategory = (d: KnowledgeDoc): string => {
+    if (d.source_type === "web") return WEB_CATEGORY;
+    return d.category && d.category.trim() ? d.category : UNCATEGORIZED;
+  };
+
+  const groupedDocs = useMemo(() => {
+    const groups = new Map<string, KnowledgeDoc[]>();
+    for (const d of filteredDocs) {
+      const cat = docCategory(d);
+      if (!groups.has(cat)) groups.set(cat, []);
+      groups.get(cat)!.push(d);
+    }
+    const order = [...CATEGORIES, WEB_CATEGORY, UNCATEGORIZED];
+    const sorted: { category: string; docs: KnowledgeDoc[] }[] = [];
+    for (const cat of order) {
+      if (groups.has(cat)) {
+        sorted.push({ category: cat, docs: groups.get(cat)! });
+        groups.delete(cat);
+      }
+    }
+    for (const [cat, docs] of groups) sorted.push({ category: cat, docs });
+    return sorted;
+  }, [filteredDocs]);
+
+  const defaultOpenSections = useMemo(
+    () => (searchQuery ? groupedDocs.map((g) => g.category) : groupedDocs.slice(0, 1).map((g) => g.category)),
+    [groupedDocs, searchQuery]
+  );
+
+  const handleChangeCategory = async (doc: KnowledgeDoc, newCategory: string | null) => {
+    const value = newCategory === UNCATEGORIZED ? null : newCategory;
+    try {
+      const { error } = await supabase
+        .from("knowledge_documents")
+        .update({ category: value })
+        .eq("id", doc.id);
+      if (error) throw error;
+      setDocuments((prev) => prev.map((d) => (d.id === doc.id ? { ...d, category: value } : d)));
+      toast({ title: "تم تحديث التصنيف", description: `${doc.name} → ${newCategory || UNCATEGORIZED}` });
+    } catch (e: any) {
+      toast({ title: "تعذّر تحديث التصنيف", description: e?.message, variant: "destructive" });
+    }
+  };
+
   const handleFileSelect = () => {
     fileInputRef.current?.click();
   };
