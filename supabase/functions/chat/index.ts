@@ -125,7 +125,7 @@ function buildToneInstruction(tone: string): string {
 }
 
 // ----------------- Query rewriting (optional) -----------------
-async function tryRewriteQuery(supabaseUrl: string, supabaseKey: string, question: string): Promise<string> {
+async function tryRewriteQuery(supabaseUrl: string, supabaseKey: string, question: string): Promise<{ rewritten: string; variants: string[] }> {
   try {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 1800);
@@ -136,39 +136,78 @@ async function tryRewriteQuery(supabaseUrl: string, supabaseKey: string, questio
       signal: controller.signal,
     });
     clearTimeout(timer);
-    if (!r.ok) return question;
+    if (!r.ok) return { rewritten: question, variants: [] };
     const data = await r.json();
     const rewritten = (data?.rewritten || "").toString().trim();
-    return rewritten && rewritten.length >= 3 ? rewritten : question;
+    const variantsRaw: any[] = Array.isArray(data?.variants) ? data.variants : [];
+    const variants = variantsRaw
+      .map(v => String(v || "").trim())
+      .filter(v => v.length >= 3 && v.length <= 200);
+    return {
+      rewritten: rewritten && rewritten.length >= 3 ? rewritten : question,
+      variants,
+    };
   } catch (e) {
     console.warn("[chat] rewrite fallback:", e instanceof Error ? e.message : e);
-    return question;
+    return { rewritten: question, variants: [] };
   }
 }
 
-// ----------------- Branch/location expansion -----------------
-// Adds branch synonyms when the question is about specializations/faculties
-// so the search retrieves chunks about all branches, not just the most relevant text match.
-const BRANCH_TERMS = ["تعز", "صنعاء", "عدن", "الحديدة", "إب", "حضرموت", "المكلا", "فرع", "فروع"];
-const SPECIALIZATION_TERMS = [
-  "تخصص", "تخصصات", "قسم", "أقسام", "كلية", "كليات",
-  "حاسبات", "هندسة", "طب", "صيدلة", "إدارة", "علوم", "محاسبة", "تمريض"
-];
-
-function expandBranchVariant(question: string): string | null {
-  const lower = question.toLowerCase();
-  const hasSpec = SPECIALIZATION_TERMS.some(t => lower.includes(t));
-  const hasBranch = BRANCH_TERMS.some(t => lower.includes(t));
-  // Only expand when asking about specializations WITHOUT specifying a branch
-  if (!hasSpec || hasBranch) return null;
-  return `${question} فرع تعز صنعاء عدن كلية`;
-}
-
-// ----------------- Lightweight reranking (no extra network) -----------------
+// ----------------- Tokenization & MMR diversification -----------------
 function tokenize(s: string): string[] {
   return s.toLowerCase().split(/[\s،,.;:!\?\(\)\[\]\|\/\\"'«»]+/).filter(w => w.length >= 2);
 }
 
+function jaccardSimilarity(aTokens: Set<string>, bTokens: Set<string>): number {
+  if (aTokens.size === 0 || bTokens.size === 0) return 0;
+  let inter = 0;
+  for (const t of aTokens) if (bTokens.has(t)) inter++;
+  const union = aTokens.size + bTokens.size - inter;
+  return union > 0 ? inter / union : 0;
+}
+
+/**
+ * MMR (Maximal Marginal Relevance) selection.
+ * Picks `finalCount` diverse chunks. λ=0.7 → prefer relevance,
+ * (1-λ)=0.3 → penalize similarity to already-picked chunks.
+ * Always includes the top-ranked chunk first.
+ */
+function mmrSelect(chunks: any[], finalCount: number, lambda = 0.7): any[] {
+  if (!chunks || chunks.length === 0) return [];
+  if (chunks.length <= finalCount) return chunks;
+
+  const maxRank = Math.max(...chunks.map((c: any) => c.rank as number)) || 1;
+  const tokenSets = chunks.map((c: any) => new Set(tokenize(String(c.content || ""))));
+
+  const selected: number[] = [0]; // top-ranked first
+  const remaining = new Set<number>();
+  for (let i = 1; i < chunks.length; i++) remaining.add(i);
+
+  while (selected.length < finalCount && remaining.size > 0) {
+    let bestIdx = -1;
+    let bestScore = -Infinity;
+    for (const i of remaining) {
+      const relevance = (chunks[i].rank as number) / maxRank;
+      let maxSim = 0;
+      for (const j of selected) {
+        const sim = jaccardSimilarity(tokenSets[i], tokenSets[j]);
+        if (sim > maxSim) maxSim = sim;
+      }
+      const mmrScore = lambda * relevance - (1 - lambda) * maxSim;
+      if (mmrScore > bestScore) {
+        bestScore = mmrScore;
+        bestIdx = i;
+      }
+    }
+    if (bestIdx === -1) break;
+    selected.push(bestIdx);
+    remaining.delete(bestIdx);
+  }
+
+  return selected.map(i => chunks[i]);
+}
+
+// ----------------- Lightweight reranking (no extra network) -----------------
 function rerankChunks(
   chunks: any[],
   queryText: string,
@@ -185,7 +224,7 @@ function rerankChunks(
     let overlap = 0;
     for (const t of cTokens) if (qTokens.has(t)) overlap++;
     const overlapScore = qTokens.size > 0 ? Math.min(1, overlap / qTokens.size) : 0;
-    const positionBoost = 1 - (idx / chunks.length); // earlier = slightly higher
+    const positionBoost = 1 - (idx / chunks.length);
     const normalizedRank = (c.rank as number) / maxRank;
     const finalScore = 0.5 * normalizedRank + 0.35 * overlapScore + 0.15 * positionBoost;
     return { ...c, _rerankScore: finalScore };
