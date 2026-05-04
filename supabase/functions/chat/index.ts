@@ -94,8 +94,8 @@ async function loadSettings(supabase: any): Promise<Record<string, string>> {
     // ---- New RAG settings ----
     enable_query_rewriting: "false",
     enable_reranking: "false",
-    initial_results_count: "10",
-    final_results_count: "5",
+    initial_results_count: "15",
+    final_results_count: "8",
     weight_text_default: "0.4",
     weight_semantic_default: "0.6",
     weight_text_exact: "0.65",
@@ -144,6 +144,24 @@ async function tryRewriteQuery(supabaseUrl: string, supabaseKey: string, questio
     console.warn("[chat] rewrite fallback:", e instanceof Error ? e.message : e);
     return question;
   }
+}
+
+// ----------------- Branch/location expansion -----------------
+// Adds branch synonyms when the question is about specializations/faculties
+// so the search retrieves chunks about all branches, not just the most relevant text match.
+const BRANCH_TERMS = ["تعز", "صنعاء", "عدن", "الحديدة", "إب", "حضرموت", "المكلا", "فرع", "فروع"];
+const SPECIALIZATION_TERMS = [
+  "تخصص", "تخصصات", "قسم", "أقسام", "كلية", "كليات",
+  "حاسبات", "هندسة", "طب", "صيدلة", "إدارة", "علوم", "محاسبة", "تمريض"
+];
+
+function expandBranchVariant(question: string): string | null {
+  const lower = question.toLowerCase();
+  const hasSpec = SPECIALIZATION_TERMS.some(t => lower.includes(t));
+  const hasBranch = BRANCH_TERMS.some(t => lower.includes(t));
+  // Only expand when asking about specializations WITHOUT specifying a branch
+  if (!hasSpec || hasBranch) return null;
+  return `${question} فرع تعز صنعاء عدن كلية`;
 }
 
 // ----------------- Lightweight reranking (no extra network) -----------------
@@ -392,7 +410,10 @@ serve(async (req) => {
       if (enableRewrite && rewrittenQuery && !variants.some(v => v.toLowerCase() === rewrittenQuery.toLowerCase())) {
         variants.push(rewrittenQuery);
       }
-
+      const branchVariant = expandBranchVariant(lastUserMessage);
+      if (branchVariant && !variants.some(v => v.toLowerCase() === branchVariant.toLowerCase())) {
+        variants.push(branchVariant);
+      }
       // Run all variant searches in parallel and pick the one with the best top rank
       const results = await Promise.all(
         variants.map(v => supabase.rpc("search_knowledge_hybrid", { ...rpcParamsBase, query_text: v }))
@@ -636,7 +657,12 @@ ${toneInstruction}
 6. استخدم **الأكواد المضمّنة** \`\\\`code\\\`\` للأرقام والرموز (مثل \`CS101\`).
 7. استخدم **الاقتباسات** \`>\` للملاحظات والتنبيهات.
 8. **افصل بين الأقسام** بسطر فارغ.
-9. لا تفرط في الرموز التعبيرية — 1-3 رموز فقط ذات صلة.${knowledgeContext}${settings.custom_instruction?.trim() ? `\n\nتعليمات إضافية:\n${settings.custom_instruction}` : ""}`;
+9. لا تفرط في الرموز التعبيرية — 1-3 رموز فقط ذات صلة.
+
+🏛️ **قاعدة الفروع الجامعية (مهمة جداً):**
+- إذا وجدت في السياق إشارة إلى أن تخصصاً أو كلية متوفرة في فرع معين (مثل **فرع تعز**، صنعاء، عدن، الحديدة، إب)، فاذكر ذلك صراحةً في إجابتك.
+- عند سؤال الطالب عن تخصصات أو أقسام أو كليات، اذكر **جميع الفروع** التي تتوفر فيها هذه التخصصات إن وردت في السياق.
+- لا تفترض أن التخصص متوفر في فرع واحد فقط؛ اعتمد على ما ورد فعلياً في "معلومات قاعدة المعرفة الجامعية".${knowledgeContext}${settings.custom_instruction?.trim() ? `\n\nتعليمات إضافية:\n${settings.custom_instruction}` : ""}`;
 
     // Convert model name
     let modelName = settings.ai_model || "gemini-3-flash-preview";

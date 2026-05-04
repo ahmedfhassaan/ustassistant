@@ -7,8 +7,8 @@ const corsHeaders = {
 };
 
 async function loadChunkSettings(supabase: any): Promise<{ size: number; overlap: number }> {
-  let size = 280;
-  let overlap = 50;
+  let size = 400;
+  let overlap = 80;
   try {
     const { data } = await supabase
       .from("assistant_settings")
