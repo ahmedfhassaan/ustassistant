@@ -1,18 +1,25 @@
 import { useState } from "react";
 import { useNavigate, useLocation, Outlet } from "react-router-dom";
-import { LayoutDashboard, BookOpen, HelpCircle, Settings, LogOut, Menu, Moon, Sun, Users, ThumbsDown } from "lucide-react";
+import { LayoutDashboard, BookOpen, HelpCircle, Settings, LogOut, Menu, Moon, Sun, Users, ThumbsDown, FileText } from "lucide-react";
 import { useTheme } from "@/hooks/use-theme";
 import { Button } from "@/components/ui/button";
 import universityLogo from "@/assets/university-logo.png";
 import universityLogoDark from "@/assets/university-logo-dark.jpeg";
 
-const navItems = [
+type NavItem = {
+  path: string;
+  label: string;
+  icon: typeof LayoutDashboard;
+  external?: boolean;
+};
+
+const navItems: NavItem[] = [
   { path: "/admin", label: "لوحة التحكم", icon: LayoutDashboard },
   { path: "/admin/students", label: "إدارة الطلاب", icon: Users },
   { path: "/admin/knowledge", label: "قاعدة المعرفة", icon: BookOpen },
   { path: "/admin/faq", label: "الأسئلة الشائعة", icon: HelpCircle },
   { path: "/admin/feedback", label: "التقييمات", icon: ThumbsDown },
-  
+  { path: "/documentation", label: "دليل النظام", icon: FileText, external: true },
   { path: "/admin/settings", label: "الإعدادات", icon: Settings },
 ];
 
@@ -54,12 +61,16 @@ const AdminLayout = () => {
 
         <nav className="flex-1 p-3 space-y-1">
           {navItems.map((item) => {
-            const isActive = location.pathname === item.path;
+            const isActive = !item.external && location.pathname === item.path;
             return (
               <button
                 key={item.path}
                 onClick={() => {
-                  navigate(item.path);
+                  if (item.external) {
+                    window.open(item.path, "_blank", "noopener,noreferrer");
+                  } else {
+                    navigate(item.path);
+                  }
                   setSidebarOpen(false);
                 }}
                 className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 ${
