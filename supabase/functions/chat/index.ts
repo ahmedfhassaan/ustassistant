@@ -34,6 +34,34 @@ function classifyQuestion(text: string): string {
   return "عام";
 }
 
+// Detect questions about admission/registration or curriculum/study plans
+// → these should NOT be answered from graduation project files
+function isAdmissionOrCurriculumQuestion(text: string): boolean {
+  const t = text.toLowerCase();
+  const keywords = [
+    // القبول والتسجيل
+    "قبول", "تسجيل", "تقديم", "التحاق", "شروط القبول", "أوراق القبول",
+    "رسوم القبول", "مواعيد التسجيل", "كيف اسجل", "كيف أسجل", "كيف اقدم", "كيف أقدم",
+    // المقررات والخطط الدراسية
+    "خطة دراسية", "الخطة الدراسية", "خطه دراسيه", "مقرر", "مقررات",
+    "مادة", "مواد", "ساعة معتمدة", "ساعات معتمدة", "جدول دراسي",
+    "تخصص", "التخصص", "رمز مقرر", "رمز المادة", "كود المادة",
+    "خطة الدراسة", "البرنامج الدراسي", "متطلبات التخرج",
+  ];
+  return keywords.some(k => t.includes(k));
+}
+
+// Detect graduation project documents by name pattern
+function isGraduationProjectDoc(name: string): boolean {
+  if (!name) return false;
+  const n = name.trim();
+  const projectPrefixes = ["مشروع", "نظام", "تطبيق", "منصة", "موقع", "بوابة"];
+  const officialKeywords = ["دليل", "خطة", "خطه", "لائحة", "لائحه", "سياسة", "سياسه", "رسوم", "نظام الجامعة", "اللائحة"];
+  const startsWithProject = projectPrefixes.some(p => n.startsWith(p));
+  const isOfficial = officialKeywords.some(k => n.includes(k));
+  return startsWithProject && !isOfficial;
+}
+
 // ----------------- Query type classifier (for dynamic weights) -----------------
 type QueryKind = "exact" | "semantic" | "default";
 
