@@ -294,38 +294,39 @@ const Documentation = () => {
               <TableBody>
                 <TableRow>
                   <TableCell className="font-medium">١. كاش هاش</TableCell>
-                  <TableCell>فحص الأسئلة المتطابقة حرفياً وإرجاع إجابة مخزّنة خلال ٢٤ ساعة.</TableCell>
+                  <TableCell>تطابق حرفي للسؤال (بعد التطبيع). TTL افتراضي ٢٤ ساعة، نطاق آمن <code>1h–72h</code>. يُخزَّن <code>source_set_hash</code> لإبطال الكاش عند تغيُّر الوثائق.</TableCell>
                 </TableRow>
                 <TableRow>
                   <TableCell className="font-medium">٢. كاش دلالي</TableCell>
-                  <TableCell>مطابقة الأسئلة المتشابهة معنىً عبر متجهات (Vector Similarity).</TableCell>
+                  <TableCell>مطابقة بمتجهات بعتبة افتراضية <code>cosine ≥ 0.92</code>. يُعاد الإجابة المخزَّنة مع علامة <code>cache_hit: 'semantic'</code> للشفافية.</TableCell>
                 </TableRow>
                 <TableRow>
                   <TableCell className="font-medium">٣. إعادة صياغة الاستعلام</TableCell>
-                  <TableCell>تحسين السؤال (rewrite-query) لزيادة دقة الاسترجاع العربي.</TableCell>
+                  <TableCell>تحسين السؤال (<code>rewrite-query</code>) بمهلة <code>3s</code> صارمة، مع fallback للسؤال الأصلي عند الفشل أو التجاوز.</TableCell>
                 </TableRow>
                 <TableRow>
                   <TableCell className="font-medium">٤. البحث الهجين</TableCell>
-                  <TableCell>مزج FTS العربي (وزن ٠٫٤) مع البحث الدلالي (وزن ٠٫٦) عبر pgvector.</TableCell>
+                  <TableCell>دمج <code>0.4·FTS + 0.6·Semantic</code> بعد تطبيع <code>min-max</code> على نفس السلَّم <code>[0,1]</code>. عند غياب المتجه: fallback إلى FTS وحده.</TableCell>
                 </TableRow>
                 <TableRow>
                   <TableCell className="font-medium">٥. تصنيف النية</TableCell>
-                  <TableCell>تحديد نوع السؤال (قبول/تسجيل/مقررات/مشاريع/عام) لتوجيه التصفية.</TableCell>
+                  <TableCell>تحديد نوع السؤال (قبول/تسجيل/مقررات/مشاريع/عام) لتوجيه التصفية واستبعاد مصادر غير ملائمة.</TableCell>
                 </TableRow>
                 <TableRow>
                   <TableCell className="font-medium">٦. عتبة الثقة</TableCell>
-                  <TableCell>منع الإجابة عند ضعف المصادر وعرض اعتذار بدلاً من التخمين.</TableCell>
+                  <TableCell>افتراضي <code>0.62</code> ضمن نطاق آمن <code>[0.5, 0.8]</code>. أقل من ذلك ⇒ اعتذار صريح بدل التخمين.</TableCell>
                 </TableRow>
                 <TableRow>
                   <TableCell className="font-medium">٧. التوليد المقيَّد</TableCell>
-                  <TableCell>صياغة الإجابة من المقاطع المسترجعة فقط بتعليمات صارمة للنموذج.</TableCell>
+                  <TableCell>Gemini SSE بمهلة <code>25s</code>، ضمن ميزانية إجمالية للطلب <code>30s</code>. تنتهي بإجابة جزئية أو اعتذار.</TableCell>
                 </TableRow>
               </TableBody>
             </Table>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-              <MiniCard title="حجم المقطع" body="≈ ٦٠٠ كلمة لكل Chunk لتحسين دقة الاسترجاع وتقليل الضجيج." />
-              <MiniCard title="أبعاد المتجه" body="٧٦٨ بُعداً عبر نموذج gemini-embedding-001." />
-              <MiniCard title="عمر الكاش" body="٢٤ ساعة افتراضياً، قابل للتعديل من إعدادات المشرف." />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <MiniCard title="حجم المقطع" body="600 token لكل Chunk مع تداخل 80 token لتحسين الاسترجاع." />
+              <MiniCard title="أبعاد المتجه" body="768 عبر outputDimensionality (الافتراضي للنموذج 3072)." />
+              <MiniCard title="ميزانية الطلب" body="p50 ≤ 1.2s (كاش) / p95 ≤ 6s (RAG كامل)." />
+              <MiniCard title="منع الهلوسة" body="غياب مصادر بثقة < 0.62 ⇒ اعتذار بدلاً من التوليد." />
             </div>
             <Notice tone="success">
               عتبة الثقة (Confidence Threshold) قابلة للضبط من لوحة المشرف لتحقيق التوازن بين الدقة والتغطية.
