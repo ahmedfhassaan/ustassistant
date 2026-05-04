@@ -128,6 +128,11 @@ const Documentation = () => {
   const { isDark, toggle } = useTheme();
   const navigate = useNavigate();
 
+  // نفس أسلوب إبراز بطاقة تسجيل الدخول
+  const cardElevated = isDark
+    ? "bg-[hsl(222_40%_14%)] border-primary/25 shadow-[0_0_40px_rgba(112,200,255,0.08),0_20px_60px_rgba(0,0,0,0.4)] ring-1 ring-white/5 rounded-3xl"
+    : "bg-background border-border/40 ring-1 ring-primary/5 shadow-[0_20px_60px_rgba(0,0,0,0.08)] rounded-3xl";
+
   return (
     <div dir="rtl" className="min-h-screen bg-background text-foreground">
       {/* Header مبسّط */}
@@ -206,7 +211,7 @@ const Documentation = () => {
         </section>
 
         {/* فهرس المحتويات */}
-        <Card>
+        <Card className={cardElevated}>
           <CardHeader>
             <CardTitle className="text-lg">فهرس المحتويات</CardTitle>
           </CardHeader>
@@ -229,7 +234,7 @@ const Documentation = () => {
         </Card>
 
         {/* 1. نظرة عامة */}
-        <Card id="overview">
+        <Card id="overview" className={cardElevated}>
           <CardHeader>
             <SectionHeader index={0} title="نظرة عامة على النظام" subtitle="ما هو النظام، ولمن، وما الذي يحلّه" Icon={Sparkles} />
           </CardHeader>
@@ -249,7 +254,7 @@ const Documentation = () => {
         </Card>
 
         {/* 2. واجهة الدردشة */}
-        <Card id="chat">
+        <Card id="chat" className={cardElevated}>
           <CardHeader>
             <SectionHeader index={1} title="واجهة الدردشة" subtitle="تجربة محادثة عربية RTL مع Markdown" Icon={MessageSquare} />
           </CardHeader>
@@ -269,7 +274,7 @@ const Documentation = () => {
         </Card>
 
         {/* 3. RAG */}
-        <Card id="rag">
+        <Card id="rag" className={cardElevated}>
           <CardHeader>
             <SectionHeader index={2} title="نظام RAG" subtitle="استرجاع المعلومات قبل توليد الإجابة" Icon={Database} />
           </CardHeader>
@@ -329,7 +334,7 @@ const Documentation = () => {
         </Card>
 
         {/* 4. قاعدة المعرفة */}
-        <Card id="knowledge">
+        <Card id="knowledge" className={cardElevated}>
           <CardHeader>
             <SectionHeader index={3} title="قاعدة المعرفة" subtitle="مصدر الحقيقة الوحيد للمساعد" Icon={FileText} />
           </CardHeader>
@@ -354,7 +359,7 @@ const Documentation = () => {
         </Card>
 
         {/* 5. رفع الملفات */}
-        <Card id="uploads">
+        <Card id="uploads" className={cardElevated}>
           <CardHeader>
             <SectionHeader index={4} title="رفع الملفات" subtitle="إدخال آمن ومنضبط للمحتوى" Icon={Upload} />
           </CardHeader>
@@ -374,7 +379,7 @@ const Documentation = () => {
         </Card>
 
         {/* 6. عرض المصادر */}
-        <Card id="sources">
+        <Card id="sources" className={cardElevated}>
           <CardHeader>
             <SectionHeader index={5} title="عرض المصادر" subtitle="شفافية كاملة في كل إجابة" Icon={Link2} />
           </CardHeader>
@@ -404,7 +409,7 @@ const Documentation = () => {
         </Card>
 
         {/* 7. لوحة المشرف */}
-        <Card id="admin">
+        <Card id="admin" className={cardElevated}>
           <CardHeader>
             <SectionHeader index={6} title="لوحة المشرف" subtitle="تحكم كامل بالمحتوى والإعدادات" Icon={LayoutDashboard} />
           </CardHeader>
@@ -433,7 +438,7 @@ const Documentation = () => {
         </Card>
 
         {/* 8. تسجيل الدخول والصلاحيات */}
-        <Card id="auth">
+        <Card id="auth" className={cardElevated}>
           <CardHeader>
             <SectionHeader index={7} title="تسجيل الدخول والصلاحيات" subtitle="مساران واضحان: طالب ومشرف" Icon={KeyRound} />
           </CardHeader>
@@ -467,7 +472,7 @@ const Documentation = () => {
         </Card>
 
         {/* 9. الأمان والخصوصية */}
-        <Card id="security">
+        <Card id="security" className={cardElevated}>
           <CardHeader>
             <SectionHeader index={8} title="الأمان والخصوصية" subtitle="حماية البيانات والمفاتيح والاستعلامات" Icon={ShieldCheck} />
           </CardHeader>
@@ -488,7 +493,7 @@ const Documentation = () => {
         </Card>
 
         {/* 10. الأداء والتوسّع */}
-        <Card id="performance">
+        <Card id="performance" className={cardElevated}>
           <CardHeader>
             <SectionHeader index={9} title="الأداء والتوسّع" subtitle="استجابة سريعة وكلفة منخفضة" Icon={Gauge} />
           </CardHeader>
@@ -521,7 +526,7 @@ const Documentation = () => {
         </Card>
 
         {/* 11. حدود النظام */}
-        <Card id="limits">
+        <Card id="limits" className={cardElevated}>
           <CardHeader>
             <SectionHeader index={10} title="حدود النظام" subtitle="ما لا يفعله المساعد عن قصد" Icon={AlertTriangle} />
           </CardHeader>
@@ -541,7 +546,7 @@ const Documentation = () => {
         </Card>
 
         {/* 12. ملاحظات المطورين */}
-        <Card id="developers">
+        <Card id="developers" className={cardElevated}>
           <CardHeader>
             <SectionHeader index={11} title="ملاحظات المطورين" subtitle="بنية وأدوات وقواعد عمل" Icon={Wrench} />
           </CardHeader>
