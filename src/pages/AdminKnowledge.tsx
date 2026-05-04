@@ -798,6 +798,80 @@ const AdminKnowledge = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      </Dialog>
+
+      {/* Manage Categories Dialog */}
+      <Dialog open={categoriesDialogOpen} onOpenChange={setCategoriesDialogOpen}>
+        <DialogContent dir="rtl" className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>إدارة التصنيفات</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
+              {categories.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-4">لا توجد تصنيفات بعد</p>
+              ) : (
+                categories.map((cat, idx) => (
+                  <div key={cat + idx} className="flex items-center gap-2 p-2 rounded-lg border border-border bg-secondary/20">
+                    {editingIndex === idx ? (
+                      <>
+                        <Input
+                          value={editingValue}
+                          onChange={(e) => setEditingValue(e.target.value)}
+                          onKeyDown={(e) => { if (e.key === "Enter") handleSaveEdit(); }}
+                          className="flex-1 text-right"
+                          dir="rtl"
+                          autoFocus
+                        />
+                        <Button size="sm" onClick={handleSaveEdit} disabled={savingCategories}>حفظ</Button>
+                        <Button size="sm" variant="ghost" onClick={() => setEditingIndex(null)}>إلغاء</Button>
+                      </>
+                    ) : (
+                      <>
+                        <Tag className="w-4 h-4 text-primary shrink-0" />
+                        <span className="flex-1 text-sm">{cat}</span>
+                        <span className="text-xs text-muted-foreground">
+                          {documents.filter((d) => d.category === cat).length}
+                        </span>
+                        <Button size="icon" variant="ghost" onClick={() => handleStartEdit(idx)} title="تعديل">
+                          <Pencil className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          onClick={() => handleDeleteCategory(idx)}
+                          disabled={savingCategories}
+                          title="حذف"
+                          className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </>
+                    )}
+                  </div>
+                ))
+              )}
+            </div>
+            <div className="flex items-center gap-2 pt-2 border-t border-border">
+              <Input
+                value={newCategoryName}
+                onChange={(e) => setNewCategoryName(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") handleAddCategory(); }}
+                placeholder="اسم تصنيف جديد"
+                className="flex-1 text-right"
+                dir="rtl"
+              />
+              <Button onClick={handleAddCategory} disabled={savingCategories || !newCategoryName.trim()} className="gap-2">
+                <Plus className="w-4 h-4" />
+                إضافة
+              </Button>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCategoriesDialogOpen(false)}>إغلاق</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
