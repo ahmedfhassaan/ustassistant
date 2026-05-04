@@ -439,11 +439,29 @@ const Documentation = () => {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <MiniCard title="الطالب" body="رقم جامعي + كلمة سر مشفّرة (bcrypt). يصل للمحادثة فقط." />
-              <MiniCard title="المشرف" body="رقم خاص (20260000) مع صلاحية كاملة على لوحة التحكم." />
+              <MiniCard title="الطالب" body="رقم جامعي + كلمة سر مشفّرة (bcrypt). يصل للمحادثة وحفظ السجل فقط." />
+              <MiniCard title="المشرف" body="رقم خاص (20260000) مع صلاحية كاملة على لوحة التحكم وقاعدة المعرفة." />
             </div>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="text-right">الصلاحية</TableHead>
+                  <TableHead className="text-right">طالب</TableHead>
+                  <TableHead className="text-right">مشرف</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                <TableRow><TableCell>المحادثة مع المساعد</TableCell><TableCell>✅</TableCell><TableCell>✅</TableCell></TableRow>
+                <TableRow><TableCell>تقييم الإجابات</TableCell><TableCell>✅</TableCell><TableCell>✅</TableCell></TableRow>
+                <TableRow><TableCell>عرض سجل المحادثات الشخصية</TableCell><TableCell>✅</TableCell><TableCell>✅</TableCell></TableRow>
+                <TableRow><TableCell>إدارة قاعدة المعرفة</TableCell><TableCell>❌</TableCell><TableCell>✅</TableCell></TableRow>
+                <TableRow><TableCell>إدارة حسابات الطلاب</TableCell><TableCell>❌</TableCell><TableCell>✅</TableCell></TableRow>
+                <TableRow><TableCell>تعديل إعدادات المساعد</TableCell><TableCell>❌</TableCell><TableCell>✅</TableCell></TableRow>
+                <TableRow><TableCell>مراجعة التقييمات السلبية</TableCell><TableCell>❌</TableCell><TableCell>✅</TableCell></TableRow>
+              </TableBody>
+            </Table>
             <Notice tone="warn">
-              لا يوجد وصول للأكاديميين/الموظفين. التصميم متعمَّد لتقليل الأدوار وتبسيط الصلاحيات.
+              لا يوجد وصول للأكاديميين أو الموظفين. التصميم متعمَّد لتقليل الأدوار وتبسيط الصلاحيات.
             </Notice>
           </CardContent>
         </Card>
