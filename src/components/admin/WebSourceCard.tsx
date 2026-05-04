@@ -116,14 +116,14 @@ const WebSourceCard = ({ onChanged: _onChanged }: { onChanged?: () => void }) =>
               <div className="flex items-center justify-between">
                 <Label htmlFor="live-enabled" className="cursor-pointer flex items-center gap-2 font-semibold">
                   <Zap className="w-4 h-4 text-primary" />
-                  وضع البحث المباشر (Live Search)
+                  تفعيل البحث المباشر (Google Grounding)
                 </Label>
                 <span dir="ltr" className="inline-flex">
                   <Switch id="live-enabled" checked={liveEnabled} onCheckedChange={setLiveEnabled} />
                 </span>
               </div>
               <p className="text-xs text-muted-foreground">
-                عند التفعيل، إذا لم تكفِ المستندات المرفوعة للإجابة، يبحث المساعد لحظياً في موقع الجامعة لاستكمال المعلومات.
+                عند التفعيل، إذا لم تكفِ المستندات المرفوعة للإجابة، يبحث المساعد لحظياً في موقع الجامعة عبر Google Grounding ويُرفق المصادر تلقائياً.
               </p>
 
               {liveEnabled && (
