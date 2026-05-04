@@ -42,6 +42,18 @@ const EXACT_KEYWORDS = [
   "لائحة", "مادة", "رمز", "كود", "نسبة", "رسوم", "موعد", "تاريخ",
 ];
 
+function userExplicitlyWantsWeb(text: string): boolean {
+  const t = text.toLowerCase();
+  const triggers = [
+    "من موقع", "من الموقع", "موقع الجامعة", "الموقع الرسمي",
+    "ابحث في الموقع", "ابحث على الإنترنت", "ابحث في الانترنت",
+    "ابحث في الإنترنت", "ابحث بالموقع", "ابحث بالانترنت",
+    "بحث مباشر", "البحث المباشر", "من الويب", "من الانترنت", "من الإنترنت",
+    "آخر تحديث", "أحدث المعلومات", "محدّث", "محدث",
+  ];
+  return triggers.some(k => t.includes(k));
+}
+
 function classifyQueryKind(text: string): QueryKind {
   const t = text.trim();
   if (!t) return "default";
