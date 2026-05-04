@@ -463,16 +463,87 @@ serve(async (req) => {
         const relevantChunks = finalChunks.filter((c: any) => (c.rank as number) >= minSourceRank);
         const docSourceNames = [...new Set(relevantChunks.map((c: any) => c.document_name as string))];
         sourceNames = [...new Set([...sourceNames, ...docSourceNames])];
-        const docsContext = "\n\n--- معلومات من قاعدة المعرفة الجامعية ---\n" +
+        docsContext = "\n\n--- معلومات من قاعدة المعرفة الجامعية ---\n" +
           finalChunks.map((c: any) =>
             `[مصدر: ${c.document_name} | درجة الصلة: ${((c.rank as number) * 100).toFixed(0)}%]\n${c.content}`
           ).join("\n\n") +
           "\n--- نهاية المعلومات ---";
-        knowledgeContext = liveSearchUsed ? knowledgeContext + docsContext : docsContext;
       }
     } catch (e) {
       console.error("Knowledge search error:", e);
     }
+
+    // ---- LIVE SEARCH (fallback/complement): only if docs are insufficient ----
+    const confThresholdFraction = (parseInt(settings.confidence_threshold) || 30) / 100;
+    const docsInsufficient = maxRank < confThresholdFraction;
+    let liveContext = "";
+    if (liveSearchEnabled && docsInsufficient) {
+      const FIRECRAWL_KEY = Deno.env.get("FIRECRAWL_API_KEY");
+      if (!FIRECRAWL_KEY) {
+        console.error("[chat] live_search_enabled but FIRECRAWL_API_KEY missing");
+      } else {
+        try {
+          const rootUrl = settings.web_crawl_root_url || "https://www.ust.edu";
+          let domain = "";
+          try { domain = new URL(rootUrl).hostname.replace(/^www\./, ""); } catch { domain = "ust.edu"; }
+          const limit = Math.min(Math.max(parseInt(settings.live_search_max_results) || 4, 1), 8);
+          const timeoutMs = Math.min(Math.max(parseInt(settings.live_search_timeout_ms) || 12000, 3000), 30000);
+
+          if (debugRag) console.log(`[chat] LIVE SEARCH (fallback) on site:${domain} q="${lastUserMessage}" docsRank=${maxRank.toFixed(3)} limit=${limit}`);
+
+          const liveRes = await fetch("https://api.firecrawl.dev/v2/search", {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${FIRECRAWL_KEY}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              query: `site:${domain} ${lastUserMessage}`,
+              limit,
+              scrapeOptions: { formats: ["markdown"], onlyMainContent: true },
+            }),
+            signal: AbortSignal.timeout(timeoutMs),
+          });
+
+          if (liveRes.ok) {
+            const liveData = await liveRes.json();
+            const items: any[] = Array.isArray(liveData?.data?.web)
+              ? liveData.data.web
+              : Array.isArray(liveData?.data) ? liveData.data : [];
+            const goodItems = items.filter((it: any) => (it?.markdown || it?.description) && it?.url);
+            if (goodItems.length > 0) {
+              liveSearchUsed = true;
+              maxRank = Math.max(maxRank, 1);
+              const ctxParts: string[] = [];
+              const liveSourceNames: string[] = [];
+              for (const it of goodItems.slice(0, limit)) {
+                const title = (it.title || it.url || "").toString().slice(0, 120);
+                const url = it.url as string;
+                let body = (it.markdown || it.description || "").toString();
+                if (body.length > 1800) body = body.slice(0, 1800) + "…";
+                ctxParts.push(`[مصدر مباشر: ${title} | ${url}]\n${body}`);
+                liveSourceNames.push(title || url);
+              }
+              sourceNames = [...new Set([...sourceNames, ...liveSourceNames])];
+              liveContext = "\n\n--- معلومات مباشرة من موقع الجامعة (بحث لحظي) ---\n" +
+                ctxParts.join("\n\n") +
+                "\n--- نهاية المعلومات المباشرة ---";
+              if (debugRag) console.log(`[chat] LIVE SEARCH got ${goodItems.length} results`);
+            } else {
+              console.warn("[chat] LIVE SEARCH returned 0 items");
+            }
+          } else {
+            const errTxt = await liveRes.text().catch(() => "");
+            console.error(`[chat] LIVE SEARCH HTTP ${liveRes.status}: ${errTxt.slice(0, 200)}`);
+          }
+        } catch (e) {
+          console.error("[chat] LIVE SEARCH error:", e instanceof Error ? e.message : e);
+        }
+      }
+    }
+
+    // Build final context: documents first, then live web results
+    knowledgeContext = (docsContext || "") + (liveContext || "");
 
     // --- Confidence check ---
     const confidenceThreshold = parseInt(settings.confidence_threshold) || 30;
