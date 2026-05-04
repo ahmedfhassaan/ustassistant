@@ -563,6 +563,7 @@ serve(async (req) => {
     const confThresholdFraction = (parseInt(settings.confidence_threshold) || 30) / 100;
     const docsInsufficient = maxRank < confThresholdFraction;
     let liveContext = "";
+    console.log(`[chat] LIVE SEARCH gate: enabled=${liveSearchEnabled} docsInsufficient=${docsInsufficient} explicitWeb=${explicitWeb} maxRank=${maxRank.toFixed(3)} threshold=${confThresholdFraction}`);
     if (liveSearchEnabled && (docsInsufficient || explicitWeb)) {
       try {
         const rootUrl = settings.web_crawl_root_url || "https://www.ust.edu";
@@ -570,7 +571,7 @@ serve(async (req) => {
         try { domain = new URL(rootUrl).hostname.replace(/^www\./, ""); } catch { domain = "ust.edu"; }
         const timeoutMs = Math.min(Math.max(parseInt(settings.live_search_timeout_ms) || 12000, 3000), 30000);
 
-        if (debugRag) console.log(`[chat] GOOGLE GROUNDING site:${domain} q="${lastUserMessage}" docsRank=${maxRank.toFixed(3)}`);
+        console.log(`[chat] GOOGLE GROUNDING start site:${domain} q="${lastUserMessage.slice(0,80)}"`);
 
         const groundingPrompt = `ابحث في موقع جامعة العلوم والتكنولوجيا (${domain}) عن إجابة دقيقة ومختصرة للسؤال التالي. اذكر الحقائق فقط من المصادر الرسمية:\n\n${lastUserMessage}`;
 
