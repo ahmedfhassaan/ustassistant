@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef } from "react";
-import { Upload, FileText, Trash2, Search, Loader2, CheckCircle, AlertCircle, AlertTriangle, RefreshCw, Globe } from "lucide-react";
+import { Upload, FileText, Trash2, Search, Loader2, CheckCircle, AlertCircle, AlertTriangle, RefreshCw, Globe, ExternalLink } from "lucide-react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import EmptyState from "@/components/EmptyState";
 import WebSourceCard from "@/components/admin/WebSourceCard";
 import { Button } from "@/components/ui/button";
@@ -8,6 +10,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useTheme } from "@/hooks/use-theme";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import {
   AlertDialog,
   AlertDialogContent,
@@ -39,6 +48,10 @@ const AdminKnowledge = () => {
   const [deleteConfirmEnabled, setDeleteConfirmEnabled] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [reprocessing, setReprocessing] = useState(false);
+  const [viewTarget, setViewTarget] = useState<KnowledgeDoc | null>(null);
+  const [viewContent, setViewContent] = useState<string>("");
+  const [viewLoading, setViewLoading] = useState(false);
+  const [viewError, setViewError] = useState<string>("");
   const { isDark } = useTheme();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -50,6 +63,40 @@ const AdminKnowledge = () => {
       return () => clearTimeout(timer);
     }
   }, [deleteTarget]);
+
+  const openViewer = async (doc: KnowledgeDoc) => {
+    setViewTarget(doc);
+    setViewContent("");
+    setViewError("");
+    setViewLoading(true);
+    try {
+      let text = "";
+      if (doc.file_path) {
+        const { data: blob, error } = await supabase.storage.from("knowledge").download(doc.file_path);
+        if (error) throw error;
+        if (blob) text = await blob.text();
+      }
+      if (!text) {
+        const { data: chunks, error: chunksErr } = await supabase
+          .from("knowledge_chunks")
+          .select("content,chunk_index")
+          .eq("document_id", doc.id)
+          .order("chunk_index", { ascending: true });
+        if (chunksErr) throw chunksErr;
+        text = (chunks || []).map((c: any) => c.content).join("\n\n");
+      }
+      if (!text) {
+        setViewError("لا يوجد محتوى متاح لهذا الملف.");
+      } else {
+        setViewContent(text);
+      }
+    } catch (e: any) {
+      console.error("openViewer error:", e);
+      setViewError(e?.message || "تعذّر تحميل المحتوى");
+    } finally {
+      setViewLoading(false);
+    }
+  };
 
   useEffect(() => {
     fetchDocuments();
@@ -338,7 +385,16 @@ const AdminKnowledge = () => {
               filteredDocs.map((doc) => (
                 <div
                   key={doc.id}
-                  className={`flex items-center justify-between p-4 rounded-xl transition-all duration-300 ease-out hover:translate-y-[-2px] ${
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => openViewer(doc)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      openViewer(doc);
+                    }
+                  }}
+                  className={`flex items-center justify-between p-4 rounded-xl cursor-pointer transition-all duration-300 ease-out hover:translate-y-[-2px] ${
                     isDark
                       ? "bg-white/5 border border-white/5 hover:bg-white/8"
                       : "bg-secondary/30 border border-black/5 hover:bg-secondary/60 hover:border-primary/20"
@@ -355,18 +411,7 @@ const AdminKnowledge = () => {
                       )}
                     </div>
                     <div className="min-w-0">
-                      {doc.source_url ? (
-                        <a
-                          href={doc.source_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-sm font-medium text-foreground truncate hover:underline block"
-                        >
-                          {doc.name}
-                        </a>
-                      ) : (
-                        <p className="text-sm font-medium text-foreground truncate">{doc.name}</p>
-                      )}
+                      <p className="text-sm font-medium text-foreground truncate">{doc.name}</p>
                       <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
                         <span className={`px-1.5 py-0.5 rounded text-[10px] ${doc.source_type === "web" ? "bg-primary/15 text-primary" : "bg-muted"}`}>
                           {doc.source_type === "web" ? "موقع" : "يدوي"}
@@ -387,7 +432,10 @@ const AdminKnowledge = () => {
                   <Button
                     variant="ghost"
                     size="icon"
-                    onClick={() => setDeleteTarget(doc)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setDeleteTarget(doc);
+                    }}
                     className="text-destructive hover:text-destructive hover:bg-destructive/10 shrink-0"
                   >
                     <Trash2 className="w-4 h-4" />
@@ -436,6 +484,53 @@ const AdminKnowledge = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Document Viewer Dialog */}
+      <Dialog open={!!viewTarget} onOpenChange={(open) => { if (!open) { setViewTarget(null); setViewContent(""); setViewError(""); } }}>
+        <DialogContent dir="rtl" className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-right">
+              {viewTarget?.source_type === "web" ? (
+                <Globe className="w-5 h-5 text-primary shrink-0" />
+              ) : (
+                <FileText className="w-5 h-5 text-primary shrink-0" />
+              )}
+              <span className="truncate">{viewTarget?.name}</span>
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="max-h-[65vh] overflow-y-auto rounded-lg border border-border bg-muted/30 p-4">
+            {viewLoading ? (
+              <div className="flex justify-center py-8">
+                <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+              </div>
+            ) : viewError ? (
+              <div className="flex flex-col items-center gap-2 py-8 text-destructive text-sm">
+                <AlertCircle className="w-6 h-6" />
+                <span>{viewError}</span>
+              </div>
+            ) : (
+              <div className="prose-chat text-sm leading-relaxed">
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>{viewContent}</ReactMarkdown>
+              </div>
+            )}
+          </div>
+
+          <DialogFooter className="flex-row-reverse sm:flex-row-reverse gap-2">
+            <Button variant="outline" onClick={() => { setViewTarget(null); setViewContent(""); setViewError(""); }}>
+              إغلاق
+            </Button>
+            {viewTarget?.source_url && (
+              <Button asChild variant="secondary" className="gap-2">
+                <a href={viewTarget.source_url} target="_blank" rel="noopener noreferrer">
+                  <ExternalLink className="w-4 h-4" />
+                  فتح المصدر
+                </a>
+              </Button>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
