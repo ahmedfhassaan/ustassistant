@@ -41,15 +41,16 @@ import {
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 
-const CATEGORIES = [
+const DEFAULT_CATEGORIES = [
   "قبول وتسجيل",
   "رسوم ومالية",
   "مقررات وخطط دراسية",
   "جداول وامتحانات",
   "مرافق وخدمات طلابية",
   "مشاريع تخرّج",
-] as const;
+];
 
+const CATEGORIES_SETTING_KEY = "knowledge_categories";
 const WEB_CATEGORY = "موقع الجامعة";
 const UNCATEGORIZED = "بدون تصنيف";
 
