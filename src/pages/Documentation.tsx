@@ -494,11 +494,29 @@ const Documentation = () => {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <MiniCard title="كاش هاش" body="حفظ الإجابات للأسئلة المتطابقة لمدة ٢٤ ساعة." />
-              <MiniCard title="كاش دلالي" body="مطابقة الأسئلة المتشابهة بالمتجهات لتفادي التكرار." />
-              <MiniCard title="فحوصات متوازية" body="استدعاءات Promise.all مع مهل صارمة." />
-              <MiniCard title="استضافة عالمية" body="نشر ثابت على Cloudflare Pages مع SPA Routing." />
+              <MiniCard title="كاش هاش" body="حفظ الإجابات للأسئلة المتطابقة لمدة ٢٤ ساعة (TTL قابل للتعديل)." />
+              <MiniCard title="كاش دلالي" body="مطابقة الأسئلة المتشابهة بالمتجهات لتفادي إعادة التوليد المكلف." />
+              <MiniCard title="فحوصات متوازية" body="استدعاءات Promise.all مع مهل (Timeouts) صارمة لتفادي التعليق." />
+              <MiniCard title="بث الإجابة" body="Server-Sent Events لتجربة فورية بدون انتظار اكتمال الإجابة." />
+              <MiniCard title="تجزئة الحزم" body="manualChunks في Vite لفصل المكتبات عن كود التطبيق وتسريع التحميل." />
+              <MiniCard title="استضافة عالمية" body="نشر ثابت على Cloudflare Pages مع SPA Routing عبر _redirects." />
             </div>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="text-right">Edge Function</TableHead>
+                  <TableHead className="text-right">الدور</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                <TableRow><TableCell className="font-medium">chat</TableCell><TableCell>قلب RAG: استرجاع، تصنيف، توليد، بث، وتسجيل.</TableCell></TableRow>
+                <TableRow><TableCell className="font-medium">rewrite-query</TableCell><TableCell>إعادة صياغة سؤال الطالب لتحسين دقة البحث.</TableCell></TableRow>
+                <TableRow><TableCell className="font-medium">generate-embedding</TableCell><TableCell>توليد متجه دلالي لاستعلام أو مقطع.</TableCell></TableRow>
+                <TableRow><TableCell className="font-medium">process-document</TableCell><TableCell>تقسيم وثيقة Markdown وتوليد متجهاتها.</TableCell></TableRow>
+                <TableRow><TableCell className="font-medium">crawl-website</TableCell><TableCell>زحف صفحات ويب واستخراج نصها لقاعدة المعرفة.</TableCell></TableRow>
+                <TableRow><TableCell className="font-medium">backfill-embeddings</TableCell><TableCell>توليد المتجهات الناقصة لمقاطع موجودة سابقاً.</TableCell></TableRow>
+              </TableBody>
+            </Table>
           </CardContent>
         </Card>
 
