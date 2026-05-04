@@ -294,38 +294,39 @@ const Documentation = () => {
               <TableBody>
                 <TableRow>
                   <TableCell className="font-medium">١. كاش هاش</TableCell>
-                  <TableCell>فحص الأسئلة المتطابقة حرفياً وإرجاع إجابة مخزّنة خلال ٢٤ ساعة.</TableCell>
+                  <TableCell>تطابق حرفي للسؤال (بعد التطبيع). TTL افتراضي ٢٤ ساعة، نطاق آمن <code>1h–72h</code>. يُخزَّن <code>source_set_hash</code> لإبطال الكاش عند تغيُّر الوثائق.</TableCell>
                 </TableRow>
                 <TableRow>
                   <TableCell className="font-medium">٢. كاش دلالي</TableCell>
-                  <TableCell>مطابقة الأسئلة المتشابهة معنىً عبر متجهات (Vector Similarity).</TableCell>
+                  <TableCell>مطابقة بمتجهات بعتبة افتراضية <code>cosine ≥ 0.92</code>. يُعاد الإجابة المخزَّنة مع علامة <code>cache_hit: 'semantic'</code> للشفافية.</TableCell>
                 </TableRow>
                 <TableRow>
                   <TableCell className="font-medium">٣. إعادة صياغة الاستعلام</TableCell>
-                  <TableCell>تحسين السؤال (rewrite-query) لزيادة دقة الاسترجاع العربي.</TableCell>
+                  <TableCell>تحسين السؤال (<code>rewrite-query</code>) بمهلة <code>3s</code> صارمة، مع fallback للسؤال الأصلي عند الفشل أو التجاوز.</TableCell>
                 </TableRow>
                 <TableRow>
                   <TableCell className="font-medium">٤. البحث الهجين</TableCell>
-                  <TableCell>مزج FTS العربي (وزن ٠٫٤) مع البحث الدلالي (وزن ٠٫٦) عبر pgvector.</TableCell>
+                  <TableCell>دمج <code>0.4·FTS + 0.6·Semantic</code> بعد تطبيع <code>min-max</code> على نفس السلَّم <code>[0,1]</code>. عند غياب المتجه: fallback إلى FTS وحده.</TableCell>
                 </TableRow>
                 <TableRow>
                   <TableCell className="font-medium">٥. تصنيف النية</TableCell>
-                  <TableCell>تحديد نوع السؤال (قبول/تسجيل/مقررات/مشاريع/عام) لتوجيه التصفية.</TableCell>
+                  <TableCell>تحديد نوع السؤال (قبول/تسجيل/مقررات/مشاريع/عام) لتوجيه التصفية واستبعاد مصادر غير ملائمة.</TableCell>
                 </TableRow>
                 <TableRow>
                   <TableCell className="font-medium">٦. عتبة الثقة</TableCell>
-                  <TableCell>منع الإجابة عند ضعف المصادر وعرض اعتذار بدلاً من التخمين.</TableCell>
+                  <TableCell>افتراضي <code>0.62</code> ضمن نطاق آمن <code>[0.5, 0.8]</code>. أقل من ذلك ⇒ اعتذار صريح بدل التخمين.</TableCell>
                 </TableRow>
                 <TableRow>
                   <TableCell className="font-medium">٧. التوليد المقيَّد</TableCell>
-                  <TableCell>صياغة الإجابة من المقاطع المسترجعة فقط بتعليمات صارمة للنموذج.</TableCell>
+                  <TableCell>Gemini SSE بمهلة <code>25s</code>، ضمن ميزانية إجمالية للطلب <code>30s</code>. تنتهي بإجابة جزئية أو اعتذار.</TableCell>
                 </TableRow>
               </TableBody>
             </Table>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-              <MiniCard title="حجم المقطع" body="≈ ٦٠٠ كلمة لكل Chunk لتحسين دقة الاسترجاع وتقليل الضجيج." />
-              <MiniCard title="أبعاد المتجه" body="٧٦٨ بُعداً عبر نموذج gemini-embedding-001." />
-              <MiniCard title="عمر الكاش" body="٢٤ ساعة افتراضياً، قابل للتعديل من إعدادات المشرف." />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <MiniCard title="حجم المقطع" body="600 token لكل Chunk مع تداخل 80 token لتحسين الاسترجاع." />
+              <MiniCard title="أبعاد المتجه" body="768 عبر outputDimensionality (الافتراضي للنموذج 3072)." />
+              <MiniCard title="ميزانية الطلب" body="p50 ≤ 1.2s (كاش) / p95 ≤ 6s (RAG كامل)." />
+              <MiniCard title="منع الهلوسة" body="غياب مصادر بثقة < 0.62 ⇒ اعتذار بدلاً من التوليد." />
             </div>
             <Notice tone="success">
               عتبة الثقة (Confidence Threshold) قابلة للضبط من لوحة المشرف لتحقيق التوازن بين الدقة والتغطية.
@@ -445,7 +446,7 @@ const Documentation = () => {
           <CardContent className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <MiniCard title="الطالب" body="رقم جامعي + كلمة سر مشفّرة (bcrypt). يصل للمحادثة وحفظ السجل فقط." />
-              <MiniCard title="المشرف" body="رقم خاص (20260000) مع صلاحية كاملة على لوحة التحكم وقاعدة المعرفة." />
+              <MiniCard title="المشرف" body="مستخدم Seed برقم 20260000 يُنشأ في جدول user_roles بدور admin. لا فحص مرمَّز في الكود." />
             </div>
             <Table>
               <TableHeader>
@@ -466,7 +467,7 @@ const Documentation = () => {
               </TableBody>
             </Table>
             <Notice tone="warn">
-              لا يوجد وصول للأكاديميين أو الموظفين. التصميم متعمَّد لتقليل الأدوار وتبسيط الصلاحيات.
+              لا يوجد وصول للأكاديميين أو الموظفين. ترقية أي مستخدم لاحقاً تتم عبر <code>migration</code> على جدول <code>user_roles</code> فقط، وليس من واجهة الإدارة.
             </Notice>
           </CardContent>
         </Card>
@@ -480,10 +481,11 @@ const Documentation = () => {
             <ul className="space-y-2">
               <Bullet>سياسات RLS مُفعَّلة على جميع الجداول الحساسة (الطلاب، السجلات، التقييمات).</Bullet>
               <Bullet>المفاتيح السرية (Gemini API) تُقرأ داخل Edge Functions فقط، ولا تظهر في الواجهة أبداً.</Bullet>
-              <Bullet>تشفير كلمات سر الطلاب بـ <code>bcrypt</code> ولا تُخزَّن نصاً صريحاً مطلقاً.</Bullet>
-              <Bullet>قفل حساب المشرف على معرّف رقمي ثابت (20260000) بدون إمكانية إنشاء مشرفين إضافيين من الواجهة.</Bullet>
-              <Bullet>الاستعلامات تمرّ عبر طبقة خدمات رقيقة (lib/) — لا استدعاءات DB مباشرة من المكوّنات.</Bullet>
-              <Bullet>تطهير المدخلات (trim) في صفحة الدخول لمنع الأخطاء والثغرات الأساسية.</Bullet>
+              <Bullet>تشفير كلمات سر الطلاب بـ <code>bcrypt</code> (cost factor <code>10</code>). تتم المقارنة داخل Edge Function الخاصة بالدخول، ولا تُرسَل التجزئة للواجهة مطلقاً.</Bullet>
+              <Bullet>إنشاء/إلغاء صلاحية المشرف يتم عبر <code>migration</code> فقط على جدول <code>user_roles</code>، لا من الواجهة.</Bullet>
+              <Bullet>الاستعلامات تمرّ عبر طبقة خدمات رقيقة (<code>lib/</code>) — لا استدعاءات DB مباشرة من المكوّنات.</Bullet>
+              <Bullet>Rate Limiting افتراضي مستهدف على دالة <code>chat</code>: <code>30 طلباً/دقيقة لكل حساب</code>.</Bullet>
+              <Bullet>فحص دفاعي: تُرفض المتجهات إن لم تكن بطول <code>768</code> بُعداً، تجنّباً لتلوّث الفهرس.</Bullet>
               <Bullet icon="⚠️">لا تخزَّن أي معلومات شخصية حساسة خارج النطاق الضروري للخدمة.</Bullet>
             </ul>
             <Notice tone="info">
@@ -506,6 +508,23 @@ const Documentation = () => {
               <MiniCard title="تجزئة الحزم" body="manualChunks في Vite لفصل المكتبات عن كود التطبيق وتسريع التحميل." />
               <MiniCard title="استضافة عالمية" body="نشر ثابت على Cloudflare Pages مع SPA Routing عبر _redirects." />
             </div>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="text-right">المقياس (SLO)</TableHead>
+                  <TableHead className="text-right">الهدف</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                <TableRow><TableCell className="font-medium">زمن الإجابة من الكاش (p50)</TableCell><TableCell><code>≤ 1.2s</code></TableCell></TableRow>
+                <TableRow><TableCell className="font-medium">زمن إجابة RAG كامل (p95)</TableCell><TableCell><code>≤ 6s</code></TableCell></TableRow>
+                <TableRow><TableCell className="font-medium">ميزانية الطلب القصوى</TableCell><TableCell><code>30s</code> (تنتهي بإجابة جزئية أو اعتذار)</TableCell></TableRow>
+                <TableRow><TableCell className="font-medium">مهلة generate-embedding</TableCell><TableCell><code>4s</code></TableCell></TableRow>
+                <TableRow><TableCell className="font-medium">مهلة rewrite-query</TableCell><TableCell><code>3s</code></TableCell></TableRow>
+                <TableRow><TableCell className="font-medium">مهلة Gemini generation</TableCell><TableCell><code>25s</code></TableCell></TableRow>
+                <TableRow><TableCell className="font-medium">دقة الإجابات على golden_eval</TableCell><TableCell><code>≥ 85%</code> (تشابه دلالي ≥ 0.85)</TableCell></TableRow>
+              </TableBody>
+            </Table>
             <Table>
               <TableHeader>
                 <TableRow>
@@ -538,6 +557,8 @@ const Documentation = () => {
               <Bullet icon="⚠️">قد تتأخر الإجابات عن المستجدات حتى يحدّث المشرف الوثائق المرجعية.</Bullet>
               <Bullet icon="⚠️">لا يخدم طلاباً من خارج قاعدة الحسابات المسجَّلة في النظام.</Bullet>
               <Bullet icon="⚠️">لا يدعم رفع الصور أو الصوت — تجربة نصية بحتة عمداً.</Bullet>
+              <Bullet icon="⚠️">مشاريع التخرج تُستبعد تلقائياً من نوايا: قبول، تسجيل، مقررات، رسوم.</Bullet>
+              <Bullet icon="⚠️">نموذج <code>gemini-3-flash-preview</code> هو نموذج معاينة؛ ستتم ترقيته عند إصدار GA دون كسر العقد العام لدالة <code>chat</code>.</Bullet>
             </ul>
             <Notice tone="warn">
               عند عدم توفّر معلومة موثّقة، سيعتذر المساعد ويُحيل الطالب للجهة المختصة بدلاً من التخمين.
@@ -583,6 +604,27 @@ const Documentation = () => {
                 <TableRow><TableCell className="font-medium"><code>/docs</code></TableCell><TableCell>هذه الصفحة (مرادف <code>/documentation</code>).</TableCell></TableRow>
               </TableBody>
             </Table>
+            <div>
+              <h4 className="text-sm font-semibold mb-2">عقد دالة <code>chat</code> (Edge Function)</h4>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="text-right">الحقل</TableHead>
+                    <TableHead className="text-right">النوع</TableHead>
+                    <TableHead className="text-right">ملاحظة</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  <TableRow><TableCell className="font-medium"><code>question</code> (in)</TableCell><TableCell><code>string</code></TableCell><TableCell>يُمرَّر بعد <code>normalizeArabic</code>.</TableCell></TableRow>
+                  <TableRow><TableCell className="font-medium"><code>user_id</code> (in)</TableCell><TableCell><code>uuid</code></TableCell><TableCell>إجباري لتتبع الاستخدام و RLS.</TableCell></TableRow>
+                  <TableRow><TableCell className="font-medium"><code>conversation_id</code> (in)</TableCell><TableCell><code>uuid?</code></TableCell><TableCell>اختياري لمتابعة المحادثة.</TableCell></TableRow>
+                  <TableRow><TableCell className="font-medium"><code>cache_hit</code> (out)</TableCell><TableCell><code>'hash' | 'semantic' | 'none'</code></TableCell><TableCell>شفافية مصدر الإجابة.</TableCell></TableRow>
+                  <TableRow><TableCell className="font-medium"><code>confidence</code> (out)</TableCell><TableCell><code>number</code></TableCell><TableCell>قيمة في النطاق <code>[0,1]</code>.</TableCell></TableRow>
+                  <TableRow><TableCell className="font-medium"><code>sources</code> (out)</TableCell><TableCell><code>{`Array<{type,title,ref}>`}</code></TableCell><TableCell>قد تكون فارغة عند الاعتذار.</TableCell></TableRow>
+                  <TableRow><TableCell className="font-medium">البث</TableCell><TableCell>SSE</TableCell><TableCell>أحداث <code>delta</code> ثم <code>done</code>.</TableCell></TableRow>
+                </TableBody>
+              </Table>
+            </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <MiniCard title="docs/PROJECT_STRUCTURE.md" body="تنظيم المجلدات وفصل المسؤوليات (UI / Services / Edge)." />
               <MiniCard title="docs/CODING_CONVENTIONS.md" body="قواعد التسمية، التعديل أولاً، منع تكرار الملفات." />
