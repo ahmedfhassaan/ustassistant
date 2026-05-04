@@ -380,13 +380,25 @@ const Documentation = () => {
           </CardHeader>
           <CardContent className="space-y-4">
             <p className="text-sm md:text-base leading-relaxed">
-              عند توفّر مصادر للإجابة، تُعرض أسفل الرسالة كقائمة قابلة للنقر تحوي اسم الوثيقة ورقم المقطع
-              المرجعي، ليتمكن الطالب من التحقق بنفسه.
+              تُعرض المصادر أسفل كل إجابة بشكل منظَّم، ليتمكن الطالب من التحقق بنفسه قبل الاعتماد على المعلومة.
             </p>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="text-right">نوع المصدر</TableHead>
+                  <TableHead className="text-right">طريقة العرض</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                <TableRow><TableCell className="font-medium">وثيقة Markdown</TableCell><TableCell>اسم الملف + رقم المقطع المرجعي.</TableCell></TableRow>
+                <TableRow><TableCell className="font-medium">مصدر ويب</TableCell><TableCell>عنوان الصفحة + رابط مباشر للمصدر الأصلي.</TableCell></TableRow>
+                <TableRow><TableCell className="font-medium">مشروع تخرج</TableCell><TableCell>عنوان المشروع + سنة التخرج إن وُجدت.</TableCell></TableRow>
+              </TableBody>
+            </Table>
             <ul className="space-y-2">
-              <Bullet>عرض اسم الوثيقة الأصلية بوضوح.</Bullet>
-              <Bullet>إخفاء قسم المصادر تلقائياً عند عدم وجودها.</Bullet>
-              <Bullet>إمكانية تقييم الإجابة (👍 / 👎) مع ربطها بالمصادر للتدقيق.</Bullet>
+              <Bullet>إخفاء قسم المصادر تلقائياً عند عدم توفّرها.</Bullet>
+              <Bullet>تقييم الإجابة (👍 / 👎) مع نموذج تفصيلي للسلبية يربطها بالمصادر للتدقيق لاحقاً.</Bullet>
+              <Bullet>كل تقييم سلبي يصل لوحة "التقييمات" في لوحة المشرف لتحليله.</Bullet>
             </ul>
           </CardContent>
         </Card>
