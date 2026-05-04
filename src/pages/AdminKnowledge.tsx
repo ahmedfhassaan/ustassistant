@@ -48,6 +48,10 @@ const AdminKnowledge = () => {
   const [deleteConfirmEnabled, setDeleteConfirmEnabled] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [reprocessing, setReprocessing] = useState(false);
+  const [viewTarget, setViewTarget] = useState<KnowledgeDoc | null>(null);
+  const [viewContent, setViewContent] = useState<string>("");
+  const [viewLoading, setViewLoading] = useState(false);
+  const [viewError, setViewError] = useState<string>("");
   const { isDark } = useTheme();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -59,6 +63,40 @@ const AdminKnowledge = () => {
       return () => clearTimeout(timer);
     }
   }, [deleteTarget]);
+
+  const openViewer = async (doc: KnowledgeDoc) => {
+    setViewTarget(doc);
+    setViewContent("");
+    setViewError("");
+    setViewLoading(true);
+    try {
+      let text = "";
+      if (doc.file_path) {
+        const { data: blob, error } = await supabase.storage.from("knowledge").download(doc.file_path);
+        if (error) throw error;
+        if (blob) text = await blob.text();
+      }
+      if (!text) {
+        const { data: chunks, error: chunksErr } = await supabase
+          .from("knowledge_chunks")
+          .select("content,chunk_index")
+          .eq("document_id", doc.id)
+          .order("chunk_index", { ascending: true });
+        if (chunksErr) throw chunksErr;
+        text = (chunks || []).map((c: any) => c.content).join("\n\n");
+      }
+      if (!text) {
+        setViewError("لا يوجد محتوى متاح لهذا الملف.");
+      } else {
+        setViewContent(text);
+      }
+    } catch (e: any) {
+      console.error("openViewer error:", e);
+      setViewError(e?.message || "تعذّر تحميل المحتوى");
+    } finally {
+      setViewLoading(false);
+    }
+  };
 
   useEffect(() => {
     fetchDocuments();
