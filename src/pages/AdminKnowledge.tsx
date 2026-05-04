@@ -385,7 +385,16 @@ const AdminKnowledge = () => {
               filteredDocs.map((doc) => (
                 <div
                   key={doc.id}
-                  className={`flex items-center justify-between p-4 rounded-xl transition-all duration-300 ease-out hover:translate-y-[-2px] ${
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => openViewer(doc)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      openViewer(doc);
+                    }
+                  }}
+                  className={`flex items-center justify-between p-4 rounded-xl cursor-pointer transition-all duration-300 ease-out hover:translate-y-[-2px] ${
                     isDark
                       ? "bg-white/5 border border-white/5 hover:bg-white/8"
                       : "bg-secondary/30 border border-black/5 hover:bg-secondary/60 hover:border-primary/20"
@@ -402,18 +411,7 @@ const AdminKnowledge = () => {
                       )}
                     </div>
                     <div className="min-w-0">
-                      {doc.source_url ? (
-                        <a
-                          href={doc.source_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-sm font-medium text-foreground truncate hover:underline block"
-                        >
-                          {doc.name}
-                        </a>
-                      ) : (
-                        <p className="text-sm font-medium text-foreground truncate">{doc.name}</p>
-                      )}
+                      <p className="text-sm font-medium text-foreground truncate">{doc.name}</p>
                       <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
                         <span className={`px-1.5 py-0.5 rounded text-[10px] ${doc.source_type === "web" ? "bg-primary/15 text-primary" : "bg-muted"}`}>
                           {doc.source_type === "web" ? "موقع" : "يدوي"}
@@ -434,7 +432,10 @@ const AdminKnowledge = () => {
                   <Button
                     variant="ghost"
                     size="icon"
-                    onClick={() => setDeleteTarget(doc)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setDeleteTarget(doc);
+                    }}
                     className="text-destructive hover:text-destructive hover:bg-destructive/10 shrink-0"
                   >
                     <Trash2 className="w-4 h-4" />
