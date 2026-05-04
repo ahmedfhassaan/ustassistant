@@ -798,7 +798,6 @@ const AdminKnowledge = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-      </Dialog>
 
       {/* Manage Categories Dialog */}
       <Dialog open={categoriesDialogOpen} onOpenChange={setCategoriesDialogOpen}>
