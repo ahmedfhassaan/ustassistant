@@ -1,48 +1,33 @@
-# البحث المباشر بديل كامل للزحف المخزّن
+## الهدف
+إزالة قسم "الزحف المخزّن" من واجهة الإدارة بالكامل، والإبقاء فقط على إعدادات **البحث المباشر (Live Search)** مع حقل رابط الموقع الذي يحدّد نطاق البحث.
 
-## الفكرة
-عند تفعيل "البحث المباشر"، يصبح هو **مصدر الويب الوحيد**:
-- يُتجاهل المحتوى المزحوف المخزّن في `knowledge_chunks` (مصادر الويب).
-- يبحث Firecrawl لحظياً في موقع الجامعة فقط (`site:ust.edu`) لكل سؤال.
-- المستندات المرفوعة (PDFs/Markdown) **تبقى** مصدراً مكمّلاً.
-- الزحف المجدول الليلي يتوقّف تلقائياً عند التفعيل.
+## التغييرات
 
-## السلوك في `chat`
-1. تحقّق من `live_search_enabled`.
-2. إذا مفعّل:
-   - استخراج النطاق من `web_crawl_root_url` (مثلاً `ust.edu`).
-   - استدعاء Firecrawl `/v2/search` بـ `query: "site:{domain} {question}"`، `limit: live_search_max_results`، مع `scrapeOptions.formats: ['markdown']` و `onlyMainContent: true`.
-   - timeout صارم (`live_search_timeout_ms`) عبر `AbortSignal.timeout`.
-   - بناء `context` من النتائج: لكل صفحة عنوان + رابط + محتوى مقتطع (~1800 حرف).
-   - استدعاء RAG للمستندات فقط (تصفية `source_type = 'manual'` أو ما شابه — أو ببساطة استخدام نفس البحث ولكن **لا** نستدعي بحث الويب).
-3. إذا غير مفعّل: يبقى السلوك الحالي بالكامل.
-4. **Fallback**: إذا فشل Firecrawl نهائياً (شبكة/استثناء)، نُرجع رسالة `fallback_message` بدلاً من إجابة مخترعة (لأن المستخدم اختار البديل الكامل).
+### 1. `src/components/admin/WebSourceCard.tsx`
+- حذف كامل قسم "تفعيل الزحف المخزّن" بما فيه:
+  - زر التبديل `web_crawl_enabled`
+  - عرض آخر تحديث وآخر حالة (`web_crawl_last_run_at` / `web_crawl_last_status`)
+  - زر "تحديث الآن" والدالة `handleRunNow` المرتبطة باستدعاء `crawl-website`
+  - الأيقونات `RefreshCw / CheckCircle2 / AlertCircle` غير المستخدمة
+  - الحالات: `enabled, lastRunAt, lastStatus, running, crawlDisabled`
+- تبسيط `KEYS` لإبقاء فقط:
+  ```
+  web_crawl_root_url
+  live_search_enabled
+  live_search_max_results
+  live_search_timeout_ms
+  ```
+- إزالة شرط التعطيل البصري للقسم القديم وإزالة جملة "الزحف الليلي يتوقف تلقائياً" من نص التوضيح، لتصبح:  
+  «عند التفعيل، يبحث المساعد لحظياً في موقع الجامعة لكل سؤال. المستندات المرفوعة تبقى مصدراً مكمّلاً.»
+- في `handleSave` لا نحفظ `web_crawl_enabled` بعد الآن.
+- إعادة تسمية عنوان البطاقة (اختياري) إلى: «مصدر الويب — البحث المباشر».
 
-## الزحف المجدول
-- في cron job + Edge Function `crawl-website`: التحقّق من `live_search_enabled`؛ إذا `true` نتخطّى التشغيل ونسجّل `web_crawl_last_status = 'skipped (live mode)'`.
+### 2. الإبقاء كما هو (لا تغيير)
+- `supabase/functions/chat/index.ts`: المنطق يقرأ `live_search_enabled` فقط؛ يبقى `web_crawl_root_url` كنطاق للبحث.
+- `supabase/functions/crawl-website/index.ts`: لا يُستدعى من الواجهة بعد الآن. يبقى موجوداً كملف خامل بدون أي زر يشغّله (يمكن حذفه لاحقاً عند الحاجة).
+- لا تغيير على قاعدة البيانات. مفاتيح `web_crawl_enabled` / `web_crawl_last_*` تبقى في الجدول دون استخدام، ولن تظهر في الواجهة.
 
-## الإعدادات الجديدة (`assistant_settings`)
-| المفتاح | الافتراضي | الوصف |
-|---|---|---|
-| `live_search_enabled` | `false` | تفعيل وضع البحث الحي (بديل كامل للزحف) |
-| `live_search_max_results` | `4` | عدد صفحات النتائج المحضرة لكل سؤال |
-| `live_search_timeout_ms` | `12000` | أقصى انتظار لـ Firecrawl قبل التراجع |
+## ملخّص ملف واحد فقط يُعدَّل
+- `src/components/admin/WebSourceCard.tsx`
 
-## واجهة المسؤول — `WebSourceCard.tsx`
-- قسم بارز جديد أعلى البطاقة بعنوان "وضع البحث المباشر" مع `Switch`.
-- عند التفعيل:
-  - تنبيه أصفر: "سيتم تجاهل المحتوى المزحوف وإيقاف الزحف الليلي. كل سؤال يُكلّف استدعاء Firecrawl."
-  - حقول: عدد النتائج (slider 1–8)، زمن الانتظار (input ms).
-  - تعطيل (disable) قسم "الزحف وتحديث الآن" مع توضيح أنه غير ضروري في هذا الوضع.
-- عند تعطيله: يعود قسم الزحف العادي.
-
-## الأمان والاستهلاك
-- مفتاح `FIRECRAWL_API_KEY` متوفر مسبقاً ضمن أسرار Edge Functions.
-- الكاش الحالي (`response_cache` بـ TTL 24h) يبقى يعمل — الأسئلة المتكررة لا تستدعي Firecrawl.
-- زمن استجابة متوقع 3–8 ثوان للأسئلة الجديدة (مقابل دقّة لحظية).
-
-## الملفات المتأثرة
-- `supabase/functions/chat/index.ts` — منطق Live Search + تجاوز RAG للويب.
-- `supabase/functions/crawl-website/index.ts` — تخطّي التشغيل عند `live_search_enabled`.
-- `src/components/admin/WebSourceCard.tsx` — قسم الوضع الحي + التعطيل المتبادل.
-- migration: إدراج 3 إعدادات افتراضية في `assistant_settings`.
+النتيجة: بطاقة نظيفة تعرض فقط حقل رابط الموقع، مفتاح "وضع البحث المباشر"، وحقلَي عدد النتائج وزمن الانتظار، مع زر "حفظ الإعدادات".
