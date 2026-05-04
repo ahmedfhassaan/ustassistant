@@ -34,21 +34,58 @@ function classifyQuestion(text: string): string {
   return "عام";
 }
 
-// Detect questions about admission/registration or curriculum/study plans
-// → these should NOT be answered from graduation project files
-function isAdmissionOrCurriculumQuestion(text: string): boolean {
-  const t = text.toLowerCase();
-  const keywords = [
-    // القبول والتسجيل
-    "قبول", "تسجيل", "تقديم", "التحاق", "شروط القبول", "أوراق القبول",
-    "رسوم القبول", "مواعيد التسجيل", "كيف اسجل", "كيف أسجل", "كيف اقدم", "كيف أقدم",
-    // المقررات والخطط الدراسية
-    "خطة دراسية", "الخطة الدراسية", "خطه دراسيه", "مقرر", "مقررات",
-    "مادة", "مواد", "ساعة معتمدة", "ساعات معتمدة", "جدول دراسي",
-    "تخصص", "التخصص", "رمز مقرر", "رمز المادة", "كود المادة",
-    "خطة الدراسة", "البرنامج الدراسي", "متطلبات التخرج",
+// Unified question intent classifier
+// Used to route RAG behavior — primarily to decide when to exclude graduation project docs.
+type QuestionIntent =
+  | "admission"
+  | "registration"
+  | "curriculum"
+  | "graduation_projects"
+  | "other";
+
+function classifyIntent(text: string): QuestionIntent {
+  const t = (text || "").toLowerCase();
+
+  // 1) Explicit graduation projects — checked first to avoid being filtered out.
+  const projectKeywords = [
+    "مشاريع التخرج", "مشروع التخرج", "مشروع تخرج", "مشاريع تخرج",
+    "مشاريع سابقة", "أمثلة مشاريع", "امثلة مشاريع", "نماذج مشاريع",
+    "graduation project", "graduation projects",
   ];
-  return keywords.some(k => t.includes(k));
+  if (projectKeywords.some(k => t.includes(k))) return "graduation_projects";
+
+  // 2) Admission / application
+  const admissionKeywords = [
+    "قبول", "التحاق", "شروط القبول", "أوراق القبول", "اوراق القبول",
+    "رسوم القبول", "نسبة القبول", "كيف اقدم", "كيف أقدم", "كيف أقدّم",
+    "تقديم", "التقديم", "التسجيل بالجامعة", "التسجيل في الجامعة",
+  ];
+  if (admissionKeywords.some(k => t.includes(k))) return "admission";
+
+  // 3) Registration (course registration / add-drop / scheduling)
+  const registrationKeywords = [
+    "تسجيل المقررات", "تسجيل المواد", "حذف وإضافة", "حذف واضافة",
+    "سحب مادة", "سحب مقرر", "فتح التسجيل", "مواعيد التسجيل",
+    "الفصل القادم", "جدول التسجيل", "كيف اسجل", "كيف أسجل",
+  ];
+  if (registrationKeywords.some(k => t.includes(k))) return "registration";
+
+  // 4) Curriculum / study plans
+  const curriculumKeywords = [
+    "خطة دراسية", "الخطة الدراسية", "خطه دراسيه", "خطة الدراسة",
+    "مقرر", "مقررات", "مادة", "مواد", "ساعة معتمدة", "ساعات معتمدة",
+    "جدول دراسي", "تخصص", "التخصص", "رمز مقرر", "رمز المادة", "كود المادة",
+    "البرنامج الدراسي", "متطلبات التخرج",
+  ];
+  if (curriculumKeywords.some(k => t.includes(k))) return "curriculum";
+
+  return "other";
+}
+
+// Backward-compat shim (kept in case other callers reference it).
+function isAdmissionOrCurriculumQuestion(text: string): boolean {
+  const i = classifyIntent(text);
+  return i === "admission" || i === "registration" || i === "curriculum";
 }
 
 // Detect graduation project documents by name pattern
@@ -544,18 +581,24 @@ serve(async (req) => {
           chunks = (chunks as any[]).filter((c: any) => !excludedWebDocNames!.has(c.document_name));
         }
 
-        // Intent-based filter: exclude graduation project docs for admission/curriculum questions
-        if (isAdmissionOrCurriculumQuestion(lastUserMessage)) {
+        // Intent-based filter: route based on question intent
+        const intent = classifyIntent(lastUserMessage);
+        const shouldExcludeProjects =
+          intent === "admission" || intent === "registration" || intent === "curriculum";
+        console.log(`[chat] question intent=${intent} excludeProjects=${shouldExcludeProjects}`);
+
+        if (shouldExcludeProjects) {
           const before = chunks.length;
           const filtered = (chunks as any[]).filter((c: any) => !isGraduationProjectDoc(c.document_name));
-          // Only apply filter if it doesn't wipe out all results (let live search take over otherwise)
           if (filtered.length > 0) {
             chunks = filtered;
-            console.log(`[chat] intent=admission_or_curriculum: filtered ${before - filtered.length} project chunks, kept ${filtered.length}`);
+            console.log(`[chat] intent=${intent}: filtered ${before - filtered.length} project chunks, kept ${filtered.length}`);
           } else {
-            console.log(`[chat] intent=admission_or_curriculum: all ${before} chunks were projects → keeping none, will trigger live search`);
+            console.log(`[chat] intent=${intent}: all ${before} chunks were projects → keeping none, will trigger live search`);
             chunks = null;
           }
+        } else if (intent === "graduation_projects") {
+          console.log(`[chat] intent=graduation_projects: keeping project chunks as-is`);
         }
       }
 
