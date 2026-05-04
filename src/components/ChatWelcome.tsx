@@ -1,4 +1,5 @@
-import { GraduationCap, MapPin, Wallet, Lightbulb, Sparkles, HelpCircle } from "lucide-react";
+import { GraduationCap, MapPin, Wallet, Lightbulb, Sparkles, HelpCircle, Mail } from "lucide-react";
+import { Link } from "react-router-dom";
 import { useTheme } from "@/hooks/use-theme";
 import { useSettings } from "@/hooks/use-settings";
 import universityLogo from "@/assets/university-logo.png";
@@ -113,6 +114,17 @@ const ChatWelcome = ({ studentName, onSuggestionClick }: ChatWelcomeProps) => {
         <div className="animate-fade-in-up flex items-center justify-center gap-2 text-muted-foreground/60" style={{ animationDelay: "0.5s", opacity: 0 }}>
           <HelpCircle className="w-3.5 h-3.5" />
           <span className="text-xs">يمكنك كتابة أي سؤال أو اختيار أحد الاقتراحات أعلاه</span>
+        </div>
+
+        {/* Contact link */}
+        <div className="animate-fade-in-up" style={{ animationDelay: "0.6s", opacity: 0 }}>
+          <Link
+            to="/contact"
+            className="inline-flex items-center gap-1.5 text-xs text-muted-foreground/70 hover:text-primary transition-colors"
+          >
+            <Mail className="w-3.5 h-3.5" />
+            <span>هل تحتاج مساعدة بشرية؟ تواصل معنا</span>
+          </Link>
         </div>
       </div>
     </div>
