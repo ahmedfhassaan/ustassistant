@@ -481,10 +481,11 @@ const Documentation = () => {
             <ul className="space-y-2">
               <Bullet>سياسات RLS مُفعَّلة على جميع الجداول الحساسة (الطلاب، السجلات، التقييمات).</Bullet>
               <Bullet>المفاتيح السرية (Gemini API) تُقرأ داخل Edge Functions فقط، ولا تظهر في الواجهة أبداً.</Bullet>
-              <Bullet>تشفير كلمات سر الطلاب بـ <code>bcrypt</code> ولا تُخزَّن نصاً صريحاً مطلقاً.</Bullet>
-              <Bullet>قفل حساب المشرف على معرّف رقمي ثابت (20260000) بدون إمكانية إنشاء مشرفين إضافيين من الواجهة.</Bullet>
-              <Bullet>الاستعلامات تمرّ عبر طبقة خدمات رقيقة (lib/) — لا استدعاءات DB مباشرة من المكوّنات.</Bullet>
-              <Bullet>تطهير المدخلات (trim) في صفحة الدخول لمنع الأخطاء والثغرات الأساسية.</Bullet>
+              <Bullet>تشفير كلمات سر الطلاب بـ <code>bcrypt</code> (cost factor <code>10</code>). تتم المقارنة داخل Edge Function الخاصة بالدخول، ولا تُرسَل التجزئة للواجهة مطلقاً.</Bullet>
+              <Bullet>إنشاء/إلغاء صلاحية المشرف يتم عبر <code>migration</code> فقط على جدول <code>user_roles</code>، لا من الواجهة.</Bullet>
+              <Bullet>الاستعلامات تمرّ عبر طبقة خدمات رقيقة (<code>lib/</code>) — لا استدعاءات DB مباشرة من المكوّنات.</Bullet>
+              <Bullet>Rate Limiting افتراضي مستهدف على دالة <code>chat</code>: <code>30 طلباً/دقيقة لكل حساب</code>.</Bullet>
+              <Bullet>فحص دفاعي: تُرفض المتجهات إن لم تكن بطول <code>768</code> بُعداً، تجنّباً لتلوّث الفهرس.</Bullet>
               <Bullet icon="⚠️">لا تخزَّن أي معلومات شخصية حساسة خارج النطاق الضروري للخدمة.</Bullet>
             </ul>
             <Notice tone="info">
