@@ -1,4 +1,5 @@
-import { LogOut, Menu, Moon, Sun } from "lucide-react";
+import { BookOpen, LogOut, Menu, Moon, Sun } from "lucide-react";
+import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useTheme } from "@/hooks/use-theme";
 import { useSettings } from "@/hooks/use-settings";
@@ -46,6 +47,17 @@ const ChatHeader = ({ studentName, onLogout, onMenuClick }: ChatHeaderProps) => 
       </div>
 
       <div className="flex items-center gap-1 sm:gap-2 min-w-0">
+        <Link to="/documentation">
+          <Button
+            variant="ghost"
+            size="sm"
+            title="التوثيق"
+            className="text-muted-foreground hover:text-foreground transition-colors shrink-0 gap-1.5"
+          >
+            <BookOpen className="w-4 h-4" />
+            <span className="hidden md:inline text-sm">التوثيق</span>
+          </Button>
+        </Link>
         <Button
           variant="ghost"
           size="icon"
