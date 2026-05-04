@@ -95,9 +95,9 @@ const WebSourceCard = ({ onChanged: _onChanged }: { onChanged?: () => void }) =>
           </div>
         ) : (
           <>
-            {/* رابط الموقع — يحدّد نطاق البحث */}
+            {/* النطاق المستهدف للبحث في Google */}
             <div className="space-y-2">
-              <Label htmlFor="web-url">رابط الموقع</Label>
+              <Label htmlFor="web-url">النطاق المستهدف</Label>
               <Input
                 id="web-url"
                 dir="ltr"
@@ -106,6 +106,9 @@ const WebSourceCard = ({ onChanged: _onChanged }: { onChanged?: () => void }) =>
                 placeholder="https://www.ust.edu"
                 className={isDark ? "glass-input" : ""}
               />
+              <p className="text-xs text-muted-foreground">
+                يُستخدم لتقييد بحث Google Grounding ضمن هذا النطاق فقط.
+              </p>
             </div>
 
             {/* قسم وضع البحث المباشر */}
