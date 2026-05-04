@@ -1,4 +1,4 @@
-import { CalendarDays, BookOpen, GraduationCap, ClipboardList, Sparkles, HelpCircle } from "lucide-react";
+import { GraduationCap, MapPin, Wallet, Lightbulb } from "lucide-react";
 import { useTheme } from "@/hooks/use-theme";
 import { useSettings } from "@/hooks/use-settings";
 import universityLogo from "@/assets/university-logo.png";
@@ -11,33 +11,33 @@ interface ChatWelcomeProps {
 
 const suggestions = [
   {
-    icon: CalendarDays,
-    title: "التقويم الأكاديمي",
-    question: "متى يبدأ التسجيل للفصل القادم؟",
+    icon: GraduationCap,
+    title: "التخصصات والكليات",
+    question: "ما هي التخصصات المتاحة في كلية الهندسة والحاسبات؟",
     color: "text-blue-400",
     bgLight: "bg-blue-50 border-blue-100",
     bgDark: "bg-blue-500/10 border-blue-500/20",
   },
   {
-    icon: BookOpen,
-    title: "اللوائح والأنظمة",
-    question: "ما هي شروط التحويل بين الأقسام؟",
+    icon: MapPin,
+    title: "فروع الجامعة",
+    question: "ما هي فروع الجامعة والتخصصات المتاحة في كل فرع؟",
     color: "text-emerald-400",
     bgLight: "bg-emerald-50 border-emerald-100",
     bgDark: "bg-emerald-500/10 border-emerald-500/20",
   },
   {
-    icon: GraduationCap,
-    title: "الامتحانات",
-    question: "كيف أقدم طلب تأجيل امتحان؟",
+    icon: Wallet,
+    title: "الرسوم والخصومات",
+    question: "ما هي خصومات الإخوة على الرسوم الدراسية؟",
     color: "text-amber-400",
     bgLight: "bg-amber-50 border-amber-100",
     bgDark: "bg-amber-500/10 border-amber-500/20",
   },
   {
-    icon: ClipboardList,
-    title: "الإجراءات الإدارية",
-    question: "كيف أحصل على كشف درجات رسمي؟",
+    icon: Lightbulb,
+    title: "مشاريع التخرج",
+    question: "اذكر لي بعض مشاريع التخرج في تقنية المعلومات",
     color: "text-purple-400",
     bgLight: "bg-purple-50 border-purple-100",
     bgDark: "bg-purple-500/10 border-purple-500/20",
