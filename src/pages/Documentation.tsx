@@ -604,6 +604,27 @@ const Documentation = () => {
                 <TableRow><TableCell className="font-medium"><code>/docs</code></TableCell><TableCell>هذه الصفحة (مرادف <code>/documentation</code>).</TableCell></TableRow>
               </TableBody>
             </Table>
+            <div>
+              <h4 className="text-sm font-semibold mb-2">عقد دالة <code>chat</code> (Edge Function)</h4>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="text-right">الحقل</TableHead>
+                    <TableHead className="text-right">النوع</TableHead>
+                    <TableHead className="text-right">ملاحظة</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  <TableRow><TableCell className="font-medium"><code>question</code> (in)</TableCell><TableCell><code>string</code></TableCell><TableCell>يُمرَّر بعد <code>normalizeArabic</code>.</TableCell></TableRow>
+                  <TableRow><TableCell className="font-medium"><code>user_id</code> (in)</TableCell><TableCell><code>uuid</code></TableCell><TableCell>إجباري لتتبع الاستخدام و RLS.</TableCell></TableRow>
+                  <TableRow><TableCell className="font-medium"><code>conversation_id</code> (in)</TableCell><TableCell><code>uuid?</code></TableCell><TableCell>اختياري لمتابعة المحادثة.</TableCell></TableRow>
+                  <TableRow><TableCell className="font-medium"><code>cache_hit</code> (out)</TableCell><TableCell><code>'hash' | 'semantic' | 'none'</code></TableCell><TableCell>شفافية مصدر الإجابة.</TableCell></TableRow>
+                  <TableRow><TableCell className="font-medium"><code>confidence</code> (out)</TableCell><TableCell><code>number</code></TableCell><TableCell>قيمة في النطاق <code>[0,1]</code>.</TableCell></TableRow>
+                  <TableRow><TableCell className="font-medium"><code>sources</code> (out)</TableCell><TableCell><code>{`Array<{type,title,ref}>`}</code></TableCell><TableCell>قد تكون فارغة عند الاعتذار.</TableCell></TableRow>
+                  <TableRow><TableCell className="font-medium">البث</TableCell><TableCell>SSE</TableCell><TableCell>أحداث <code>delta</code> ثم <code>done</code>.</TableCell></TableRow>
+                </TableBody>
+              </Table>
+            </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <MiniCard title="docs/PROJECT_STRUCTURE.md" body="تنظيم المجلدات وفصل المسؤوليات (UI / Services / Edge)." />
               <MiniCard title="docs/CODING_CONVENTIONS.md" body="قواعد التسمية، التعديل أولاً، منع تكرار الملفات." />
