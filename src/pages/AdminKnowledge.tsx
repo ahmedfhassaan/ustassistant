@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from "react";
-import { Upload, FileText, Trash2, Search, Loader2, CheckCircle, AlertCircle, AlertTriangle, RefreshCw, Globe, ExternalLink, Tag } from "lucide-react";
+import { Upload, FileText, Trash2, Search, Loader2, CheckCircle, AlertCircle, AlertTriangle, RefreshCw, Globe, ExternalLink, Tag, Plus, Pencil, Settings2 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import EmptyState from "@/components/EmptyState";
@@ -41,15 +41,16 @@ import {
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 
-const CATEGORIES = [
+const DEFAULT_CATEGORIES = [
   "قبول وتسجيل",
   "رسوم ومالية",
   "مقررات وخطط دراسية",
   "جداول وامتحانات",
   "مرافق وخدمات طلابية",
   "مشاريع تخرّج",
-] as const;
+];
 
+const CATEGORIES_SETTING_KEY = "knowledge_categories";
 const WEB_CATEGORY = "موقع الجامعة";
 const UNCATEGORIZED = "بدون تصنيف";
 
@@ -80,6 +81,12 @@ const AdminKnowledge = () => {
   const [viewContent, setViewContent] = useState<string>("");
   const [viewLoading, setViewLoading] = useState(false);
   const [viewError, setViewError] = useState<string>("");
+  const [categories, setCategories] = useState<string[]>(DEFAULT_CATEGORIES);
+  const [categoriesDialogOpen, setCategoriesDialogOpen] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState("");
+  const [editingIndex, setEditingIndex] = useState<number | null>(null);
+  const [editingValue, setEditingValue] = useState("");
+  const [savingCategories, setSavingCategories] = useState(false);
   const { isDark } = useTheme();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -128,7 +135,124 @@ const AdminKnowledge = () => {
 
   useEffect(() => {
     fetchDocuments();
+    fetchCategories();
   }, []);
+
+  const fetchCategories = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("assistant_settings")
+        .select("value")
+        .eq("key", CATEGORIES_SETTING_KEY)
+        .maybeSingle();
+      if (error) throw error;
+      if (data?.value) {
+        const parsed = JSON.parse(data.value);
+        if (Array.isArray(parsed) && parsed.every((x) => typeof x === "string")) {
+          setCategories(parsed);
+        }
+      }
+    } catch (e) {
+      console.warn("fetchCategories failed, using defaults", e);
+    }
+  };
+
+  const persistCategories = async (next: string[]) => {
+    setSavingCategories(true);
+    try {
+      const { data: existing } = await supabase
+        .from("assistant_settings")
+        .select("id")
+        .eq("key", CATEGORIES_SETTING_KEY)
+        .maybeSingle();
+      const value = JSON.stringify(next);
+      if (existing?.id) {
+        const { error } = await supabase
+          .from("assistant_settings")
+          .update({ value, updated_at: new Date().toISOString() })
+          .eq("id", existing.id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from("assistant_settings")
+          .insert({ key: CATEGORIES_SETTING_KEY, value });
+        if (error) throw error;
+      }
+      setCategories(next);
+    } catch (e: any) {
+      toast({ title: "تعذّر حفظ التصنيفات", description: e?.message, variant: "destructive" });
+      throw e;
+    } finally {
+      setSavingCategories(false);
+    }
+  };
+
+  const handleAddCategory = async () => {
+    const name = newCategoryName.trim();
+    if (!name) return;
+    if (categories.includes(name)) {
+      toast({ title: "التصنيف موجود مسبقاً", variant: "destructive" });
+      return;
+    }
+    try {
+      await persistCategories([...categories, name]);
+      setNewCategoryName("");
+      toast({ title: "تمت إضافة التصنيف", description: name });
+    } catch {}
+  };
+
+  const handleStartEdit = (idx: number) => {
+    setEditingIndex(idx);
+    setEditingValue(categories[idx]);
+  };
+
+  const handleSaveEdit = async () => {
+    if (editingIndex === null) return;
+    const name = editingValue.trim();
+    const oldName = categories[editingIndex];
+    if (!name || name === oldName) {
+      setEditingIndex(null);
+      return;
+    }
+    if (categories.includes(name)) {
+      toast({ title: "التصنيف موجود مسبقاً", variant: "destructive" });
+      return;
+    }
+    try {
+      const next = [...categories];
+      next[editingIndex] = name;
+      await persistCategories(next);
+      // Migrate existing docs to the new name
+      const { error } = await supabase
+        .from("knowledge_documents")
+        .update({ category: name })
+        .eq("category", oldName);
+      if (!error) {
+        setDocuments((prev) => prev.map((d) => (d.category === oldName ? { ...d, category: name } : d)));
+      }
+      setEditingIndex(null);
+      toast({ title: "تم تعديل التصنيف", description: `${oldName} → ${name}` });
+    } catch {}
+  };
+
+  const handleDeleteCategory = async (idx: number) => {
+    const name = categories[idx];
+    const usedCount = documents.filter((d) => d.category === name).length;
+    const msg = usedCount > 0
+      ? `سيتم إزالة التصنيف "${name}" من ${usedCount} مستنداً (سيصبحون بدون تصنيف). متابعة؟`
+      : `حذف التصنيف "${name}"؟`;
+    if (!confirm(msg)) return;
+    try {
+      const next = categories.filter((_, i) => i !== idx);
+      await persistCategories(next);
+      if (usedCount > 0) {
+        await supabase.from("knowledge_documents").update({ category: null }).eq("category", name);
+        setDocuments((prev) => prev.map((d) => (d.category === name ? { ...d, category: null } : d)));
+      }
+      toast({ title: "تم حذف التصنيف", description: name });
+    } catch {}
+  };
+
 
   const fetchDocuments = async () => {
     setLoading(true);
@@ -161,7 +285,7 @@ const AdminKnowledge = () => {
       if (!groups.has(cat)) groups.set(cat, []);
       groups.get(cat)!.push(d);
     }
-    const order = [...CATEGORIES, WEB_CATEGORY, UNCATEGORIZED];
+    const order = [...categories, WEB_CATEGORY, UNCATEGORIZED];
     const sorted: { category: string; docs: KnowledgeDoc[] }[] = [];
     for (const cat of order) {
       if (groups.has(cat)) {
@@ -171,7 +295,7 @@ const AdminKnowledge = () => {
     }
     for (const [cat, docs] of groups) sorted.push({ category: cat, docs });
     return sorted;
-  }, [filteredDocs]);
+  }, [filteredDocs, categories]);
 
   const defaultOpenSections = useMemo(
     () => (searchQuery ? groupedDocs.map((g) => g.category) : groupedDocs.slice(0, 1).map((g) => g.category)),
@@ -380,6 +504,14 @@ const AdminKnowledge = () => {
           <CardTitle className="text-lg">إدارة قاعدة المعرفة</CardTitle>
           <div className="flex flex-wrap items-center gap-2">
             <Button
+              onClick={() => setCategoriesDialogOpen(true)}
+              variant="outline"
+              className="gap-2 flex-1 sm:flex-none"
+            >
+              <Settings2 className="w-4 h-4" />
+              <span className="truncate">إدارة التصنيفات</span>
+            </Button>
+            <Button
               onClick={handleReprocessAll}
               disabled={reprocessing || documents.length === 0}
               variant="outline"
@@ -543,7 +675,7 @@ const AdminKnowledge = () => {
                                   <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
                                     <DropdownMenuLabel>اختر تصنيفاً</DropdownMenuLabel>
                                     <DropdownMenuSeparator />
-                                    {CATEGORIES.map((c) => (
+                                    {categories.map((c) => (
                                       <DropdownMenuItem
                                         key={c}
                                         onSelect={() => handleChangeCategory(doc, c)}
@@ -663,6 +795,79 @@ const AdminKnowledge = () => {
                 </a>
               </Button>
             )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Manage Categories Dialog */}
+      <Dialog open={categoriesDialogOpen} onOpenChange={setCategoriesDialogOpen}>
+        <DialogContent dir="rtl" className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>إدارة التصنيفات</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
+              {categories.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-4">لا توجد تصنيفات بعد</p>
+              ) : (
+                categories.map((cat, idx) => (
+                  <div key={cat + idx} className="flex items-center gap-2 p-2 rounded-lg border border-border bg-secondary/20">
+                    {editingIndex === idx ? (
+                      <>
+                        <Input
+                          value={editingValue}
+                          onChange={(e) => setEditingValue(e.target.value)}
+                          onKeyDown={(e) => { if (e.key === "Enter") handleSaveEdit(); }}
+                          className="flex-1 text-right"
+                          dir="rtl"
+                          autoFocus
+                        />
+                        <Button size="sm" onClick={handleSaveEdit} disabled={savingCategories}>حفظ</Button>
+                        <Button size="sm" variant="ghost" onClick={() => setEditingIndex(null)}>إلغاء</Button>
+                      </>
+                    ) : (
+                      <>
+                        <Tag className="w-4 h-4 text-primary shrink-0" />
+                        <span className="flex-1 text-sm">{cat}</span>
+                        <span className="text-xs text-muted-foreground">
+                          {documents.filter((d) => d.category === cat).length}
+                        </span>
+                        <Button size="icon" variant="ghost" onClick={() => handleStartEdit(idx)} title="تعديل">
+                          <Pencil className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          onClick={() => handleDeleteCategory(idx)}
+                          disabled={savingCategories}
+                          title="حذف"
+                          className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </>
+                    )}
+                  </div>
+                ))
+              )}
+            </div>
+            <div className="flex items-center gap-2 pt-2 border-t border-border">
+              <Input
+                value={newCategoryName}
+                onChange={(e) => setNewCategoryName(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") handleAddCategory(); }}
+                placeholder="اسم تصنيف جديد"
+                className="flex-1 text-right"
+                dir="rtl"
+              />
+              <Button onClick={handleAddCategory} disabled={savingCategories || !newCategoryName.trim()} className="gap-2">
+                <Plus className="w-4 h-4" />
+                إضافة
+              </Button>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCategoriesDialogOpen(false)}>إغلاق</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
