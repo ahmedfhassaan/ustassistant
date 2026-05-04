@@ -5,14 +5,24 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const SYSTEM_PROMPT = `أنت أداة إعادة صياغة استعلامات بحث جامعية.
-مهمتك: تحويل سؤال الطالب إلى مجموعة من 5 إلى 10 كلمات مفتاحية بحثية باللغة العربية فقط.
+const SYSTEM_PROMPT = `أنت أداة توسيع استعلامات بحث جامعية متعددة الصيغ.
+مهمتك: تحويل سؤال الطالب إلى **3 صيغ بحث مختلفة** باللغة العربية، مفصولة بالرمز |
+
+الصيغ الثلاث المطلوبة (بهذا الترتيب الحرفي):
+1. **صيغة الكلمات الأساسية**: 4-7 كلمات مفتاحية مباشرة من السؤال (بدون أحرف جر أو أدوات استفهام).
+2. **صيغة موسّعة بالسياق**: نفس الكلمات + كلمات سياقية محتمل ارتباطها (الفرع، الموعد، الشروط، الرسوم، المتطلبات، البدائل) — اختر فقط ما يناسب نوع السؤال.
+3. **صيغة بزاوية بديلة**: صياغة نفس السؤال بمرادفات وكلمات أكاديمية مختلفة (مثلاً: "تخصصات" → "أقسام كليات برامج"، "موعد" → "تاريخ بداية جدول").
 
 قواعد صارمة:
-- أعد فقط الكلمات المفتاحية مفصولة بمسافات. لا جمل، لا شرح، لا علامات ترقيم.
-- ركّز على المصطلحات الجامعية الأكاديمية والإدارية ذات الصلة (تسجيل، مقررات، امتحانات، رسوم، خطة دراسية، انسحاب، اعتذار، ...).
-- لا تخترع معلومات خارج موضوع السؤال.
-- إذا كان السؤال خارج النطاق الجامعي تماماً، أعد السؤال الأصلي كما هو.`;
+- أعد **3 صيغ فقط** مفصولة بالرمز | (شرطة عمودية).
+- كل صيغة 4-10 كلمات.
+- لا جمل كاملة، لا شرح، لا علامات ترقيم، لا أرقام تعداد.
+- لا تخترع معلومات؛ ابقَ ضمن موضوع السؤال.
+- إذا كان السؤال خارج النطاق الجامعي تماماً، أعد السؤال الأصلي ثلاث مرات مفصولاً بـ |
+
+مثال:
+سؤال: "ما تخصصات قسم الحاسبات؟"
+الناتج: تخصصات قسم الحاسبات | تخصصات قسم الحاسبات فرع تعز صنعاء كلية | أقسام برامج هندسة الحاسوب تقنية معلومات`;
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -31,7 +41,7 @@ serve(async (req) => {
     const GOOGLE_AI_API_KEY = Deno.env.get("GOOGLE_AI_API_KEY");
     if (!GOOGLE_AI_API_KEY) {
       return new Response(
-        JSON.stringify({ rewritten: question, fallback: true }),
+        JSON.stringify({ rewritten: question, variants: [question], fallback: true }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -47,7 +57,7 @@ serve(async (req) => {
         body: JSON.stringify({
           contents: [{ role: "user", parts: [{ text: question }] }],
           systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
-          generationConfig: { maxOutputTokens: 60, temperature: 0.1 },
+          generationConfig: { maxOutputTokens: 150, temperature: 0.2 },
         }),
         signal: controller.signal,
       });
@@ -55,7 +65,7 @@ serve(async (req) => {
 
       if (!r.ok) {
         return new Response(
-          JSON.stringify({ rewritten: question, fallback: true }),
+          JSON.stringify({ rewritten: question, variants: [question], fallback: true }),
           { headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
@@ -63,25 +73,34 @@ serve(async (req) => {
       const data = await r.json();
       const text = data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
 
-      // Sanity guard: keep only short keyword strings
-      if (!text || text.length < 3 || text.length > 200) {
+      if (!text || text.length < 3 || text.length > 500) {
         return new Response(
-          JSON.stringify({ rewritten: question, fallback: true }),
+          JSON.stringify({ rewritten: question, variants: [question], fallback: true }),
           { headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
 
-      // Strip surrounding quotes/punctuation
-      const cleaned = text.replace(/^["'«»\s]+|["'«»\s\.\?!]+$/g, "").trim();
+      // Parse pipe-separated variants
+      const variants = text
+        .split("|")
+        .map((v: string) => v.replace(/^["'«»\s\-\d\.\)]+|["'«»\s\.\?!]+$/g, "").trim())
+        .filter((v: string) => v.length >= 3 && v.length <= 200)
+        .slice(0, 3);
+
+      const finalVariants = variants.length > 0 ? variants : [question];
       return new Response(
-        JSON.stringify({ rewritten: cleaned || question, fallback: false }),
+        JSON.stringify({
+          rewritten: finalVariants[0] || question,
+          variants: finalVariants,
+          fallback: false,
+        }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     } catch (e) {
       clearTimeout(timer);
       console.warn("[rewrite-query] failed:", e instanceof Error ? e.message : e);
       return new Response(
-        JSON.stringify({ rewritten: question, fallback: true }),
+        JSON.stringify({ rewritten: question, variants: [question], fallback: true }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
