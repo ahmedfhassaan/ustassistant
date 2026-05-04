@@ -88,6 +88,11 @@ async function loadSettings(supabase: any): Promise<Record<string, string>> {
     weight_semantic_default: "0.6",
     weight_text_exact: "0.65",
     weight_text_semantic_lean: "0.3",
+    // ---- Live Search ----
+    live_search_enabled: "false",
+    live_search_max_results: "4",
+    live_search_timeout_ms: "12000",
+    web_crawl_root_url: "https://www.ust.edu",
   };
   try {
     const { data } = await supabase.from("assistant_settings").select("key, value");
