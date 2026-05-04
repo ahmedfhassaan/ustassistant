@@ -73,12 +73,12 @@ const SectionHeader = ({
   Icon: React.ComponentType<{ className?: string }>;
 }) => (
   <div className="flex items-start gap-3">
-    <div className="h-11 w-11 shrink-0 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
+    <div className="h-11 w-11 shrink-0 rounded-xl bg-primary/10 ring-1 ring-primary/15 text-primary flex items-center justify-center">
       <Icon className="w-5 h-5" />
     </div>
     <div className="flex-1">
       <CardTitle className="text-xl md:text-2xl flex items-center gap-2">
-        <span className="text-primary">{AR_NUMS[index]}.</span>
+        <span className="text-primary/80 font-semibold">{AR_NUMS[index]}.</span>
         <span>{title}</span>
       </CardTitle>
       <p className="text-sm text-muted-foreground mt-1">{subtitle}</p>
@@ -96,10 +96,10 @@ const Notice = ({
 }) => {
   const styles =
     tone === "warn"
-      ? "bg-destructive/10 border-destructive/30 text-foreground"
+      ? "bg-destructive/10 border-destructive/20 text-foreground"
       : tone === "success"
-      ? "bg-primary/10 border-primary/30 text-foreground"
-      : "bg-muted border-border text-foreground";
+      ? "bg-primary/10 border-primary/20 text-foreground"
+      : "bg-muted/50 border-border text-foreground";
   const icon =
     tone === "warn" ? "⚠️" : tone === "success" ? "✅" : "💡";
   return (
@@ -118,7 +118,7 @@ const Bullet = ({ icon = "✅", children }: { icon?: string; children: React.Rea
 );
 
 const MiniCard = ({ title, body }: { title: string; body: string }) => (
-  <div className="rounded-xl border border-border bg-card/50 p-4">
+  <div className="rounded-xl border border-border/60 bg-muted/30 p-4">
     <h4 className="font-semibold text-sm text-foreground mb-1">{title}</h4>
     <p className="text-sm text-muted-foreground leading-relaxed">{body}</p>
   </div>
@@ -165,8 +165,8 @@ const Documentation = () => {
 
       <main className="max-w-5xl mx-auto px-4 py-8 space-y-8">
         {/* الهيرو */}
-        <section className="relative overflow-hidden rounded-3xl border border-border bg-gradient-to-br from-primary/15 via-background to-background p-6 md:p-10">
-          <div className="absolute -top-24 -left-24 w-72 h-72 rounded-full bg-primary/20 blur-3xl pointer-events-none" />
+        <section className="relative overflow-hidden rounded-3xl border border-border bg-gradient-to-br from-primary/10 via-background to-background p-6 md:p-10">
+          <div className="absolute -top-24 -left-24 w-72 h-72 rounded-full bg-primary/10 blur-3xl pointer-events-none" />
           <div className="relative flex items-start justify-between gap-6 flex-wrap">
             <div className="flex-1 min-w-[260px]">
               <Badge variant="secondary" className="mb-3">
@@ -189,7 +189,7 @@ const Documentation = () => {
                 <Badge variant="outline">React + Vite</Badge>
               </div>
             </div>
-            <div className="h-16 w-16 rounded-2xl bg-primary/15 border border-primary/30 flex items-center justify-center shrink-0">
+            <div className="h-16 w-16 rounded-2xl bg-primary/10 ring-1 ring-primary/20 flex items-center justify-center shrink-0">
               <Sparkles className="w-7 h-7 text-primary" />
             </div>
           </div>
@@ -216,9 +216,9 @@ const Documentation = () => {
                 <a
                   key={s.id}
                   href={`#${s.id}`}
-                  className="flex items-center gap-3 rounded-lg border border-border bg-card/40 px-3 py-2 hover:bg-primary/5 hover:border-primary/30 transition-colors text-sm"
+                  className="flex items-center gap-3 rounded-lg border border-border/60 bg-muted/20 px-3 py-2 hover:bg-primary/10 hover:border-primary/25 transition-colors text-sm"
                 >
-                  <span className="h-7 w-7 rounded-md bg-muted text-muted-foreground text-xs font-semibold flex items-center justify-center">
+                  <span className="h-7 w-7 rounded-md bg-primary/10 text-primary text-xs font-semibold flex items-center justify-center">
                     {AR_NUMS[i]}
                   </span>
                   <span className="font-medium">{s.title}</span>
