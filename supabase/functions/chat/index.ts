@@ -410,7 +410,10 @@ serve(async (req) => {
       if (enableRewrite && rewrittenQuery && !variants.some(v => v.toLowerCase() === rewrittenQuery.toLowerCase())) {
         variants.push(rewrittenQuery);
       }
-
+      const branchVariant = expandBranchVariant(lastUserMessage);
+      if (branchVariant && !variants.some(v => v.toLowerCase() === branchVariant.toLowerCase())) {
+        variants.push(branchVariant);
+      }
       // Run all variant searches in parallel and pick the one with the best top rank
       const results = await Promise.all(
         variants.map(v => supabase.rpc("search_knowledge_hybrid", { ...rpcParamsBase, query_text: v }))
