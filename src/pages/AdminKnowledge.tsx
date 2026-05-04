@@ -295,7 +295,7 @@ const AdminKnowledge = () => {
     }
     for (const [cat, docs] of groups) sorted.push({ category: cat, docs });
     return sorted;
-  }, [filteredDocs]);
+  }, [filteredDocs, categories]);
 
   const defaultOpenSections = useMemo(
     () => (searchQuery ? groupedDocs.map((g) => g.category) : groupedDocs.slice(0, 1).map((g) => g.category)),
