@@ -473,12 +473,17 @@ const Documentation = () => {
           </CardHeader>
           <CardContent className="space-y-4">
             <ul className="space-y-2">
-              <Bullet>سياسات RLS مُفعَّلة على جميع الجداول الحساسة.</Bullet>
-              <Bullet>المفاتيح السرية تُقرأ داخل Edge Functions فقط، ولا تظهر في الواجهة.</Bullet>
-              <Bullet>تشفير كلمات السر بـ bcrypt ولا تُخزَّن نصاً صريحاً.</Bullet>
-              <Bullet>الاستعلامات تمرّ عبر طبقة خدمات رقيقة، لا استدعاءات DB من المكوّنات.</Bullet>
-              <Bullet icon="⚠️">عدم تخزين أي معلومات شخصية حساسة خارج النطاق الضروري.</Bullet>
+              <Bullet>سياسات RLS مُفعَّلة على جميع الجداول الحساسة (الطلاب، السجلات، التقييمات).</Bullet>
+              <Bullet>المفاتيح السرية (Gemini API) تُقرأ داخل Edge Functions فقط، ولا تظهر في الواجهة أبداً.</Bullet>
+              <Bullet>تشفير كلمات سر الطلاب بـ <code>bcrypt</code> ولا تُخزَّن نصاً صريحاً مطلقاً.</Bullet>
+              <Bullet>قفل حساب المشرف على معرّف رقمي ثابت (20260000) بدون إمكانية إنشاء مشرفين إضافيين من الواجهة.</Bullet>
+              <Bullet>الاستعلامات تمرّ عبر طبقة خدمات رقيقة (lib/) — لا استدعاءات DB مباشرة من المكوّنات.</Bullet>
+              <Bullet>تطهير المدخلات (trim) في صفحة الدخول لمنع الأخطاء والثغرات الأساسية.</Bullet>
+              <Bullet icon="⚠️">لا تخزَّن أي معلومات شخصية حساسة خارج النطاق الضروري للخدمة.</Bullet>
             </ul>
+            <Notice tone="info">
+              المراجعة الدورية لقاعدة البيانات والصلاحيات جزء من قواعد <code>/docs/AI_WORKFLOW_RULES.md</code>.
+            </Notice>
           </CardContent>
         </Card>
 
