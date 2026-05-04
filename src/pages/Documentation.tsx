@@ -557,14 +557,36 @@ const Documentation = () => {
                 <TableRow><TableCell className="font-medium">الواجهة</TableCell><TableCell>React 18 + Vite + TypeScript + Tailwind</TableCell></TableRow>
                 <TableRow><TableCell className="font-medium">المكوّنات</TableCell><TableCell>shadcn/ui + Tajawal + Glassmorphism</TableCell></TableRow>
                 <TableRow><TableCell className="font-medium">الخادم</TableCell><TableCell>Supabase (DB + Auth + Edge Functions)</TableCell></TableRow>
-                <TableRow><TableCell className="font-medium">الذكاء الاصطناعي</TableCell><TableCell>Gemini مباشرة عبر Edge Functions</TableCell></TableRow>
-                <TableRow><TableCell className="font-medium">البحث</TableCell><TableCell>pgvector + Arabic FTS (Hybrid)</TableCell></TableRow>
-                <TableRow><TableCell className="font-medium">النشر</TableCell><TableCell>Cloudflare Pages (Static + SPA)</TableCell></TableRow>
+                <TableRow><TableCell className="font-medium">الذكاء الاصطناعي</TableCell><TableCell>Gemini مباشرة (gemini-3-flash-preview + gemini-embedding-001)</TableCell></TableRow>
+                <TableRow><TableCell className="font-medium">البحث</TableCell><TableCell>pgvector + Arabic FTS (Hybrid 0.4 / 0.6)</TableCell></TableRow>
+                <TableRow><TableCell className="font-medium">إدارة الحالة</TableCell><TableCell>React Query (5.62) + Context للثيم</TableCell></TableRow>
+                <TableRow><TableCell className="font-medium">النشر</TableCell><TableCell>Cloudflare Pages (Static + SPA via _redirects)</TableCell></TableRow>
               </TableBody>
             </Table>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="text-right">المسار</TableHead>
+                  <TableHead className="text-right">الوصف</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                <TableRow><TableCell className="font-medium"><code>/</code></TableCell><TableCell>الصفحة التعريفية / إعادة توجيه للدخول.</TableCell></TableRow>
+                <TableRow><TableCell className="font-medium"><code>/login</code></TableCell><TableCell>دخول مزدوج (طالب/مشرف) مع Split-screen على الديسكتوب.</TableCell></TableRow>
+                <TableRow><TableCell className="font-medium"><code>/chat</code></TableCell><TableCell>واجهة المحادثة الرئيسية للطلاب.</TableCell></TableRow>
+                <TableRow><TableCell className="font-medium"><code>/admin/*</code></TableCell><TableCell>لوحة المشرف وصفحاتها الفرعية.</TableCell></TableRow>
+                <TableRow><TableCell className="font-medium"><code>/docs</code></TableCell><TableCell>هذه الصفحة (مرادف <code>/documentation</code>).</TableCell></TableRow>
+              </TableBody>
+            </Table>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <MiniCard title="docs/PROJECT_STRUCTURE.md" body="تنظيم المجلدات وفصل المسؤوليات (UI / Services / Edge)." />
+              <MiniCard title="docs/CODING_CONVENTIONS.md" body="قواعد التسمية، التعديل أولاً، منع تكرار الملفات." />
+              <MiniCard title="docs/DECISIONS.md" body="القرارات المعمارية الكبرى ومبرراتها." />
+              <MiniCard title="docs/AI_WORKFLOW_RULES.md" body="قواعد عمل وكيل الذكاء الاصطناعي ضمن المشروع." />
+            </div>
             <Notice tone="success">
               <CheckCircle2 className="inline w-4 h-4 ml-1" />
-              راجع ملفات <code>/docs</code> داخل المستودع للقواعد المعمارية الكاملة.
+              راجع ملفات <code>/docs</code> داخل المستودع للقواعد المعمارية الكاملة قبل أي تعديل جوهري.
             </Notice>
             <div className="flex flex-wrap gap-2 pt-2">
               <Link to="/chat">
