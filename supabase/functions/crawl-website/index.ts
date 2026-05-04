@@ -61,6 +61,14 @@ serve(async (req) => {
   // Parse request and validate BEFORE backgrounding so we can return errors
   const body = await req.json().catch(() => ({}));
   const enabled = (await getSetting(supabase, "web_crawl_enabled", "true")) === "true";
+  const liveMode = (await getSetting(supabase, "live_search_enabled", "false")) === "true";
+  if (liveMode && !body?.force) {
+    await setSetting(supabase, "web_crawl_last_status", "skipped (live search mode)");
+    return new Response(
+      JSON.stringify({ skipped: true, reason: "live_search_enabled" }),
+      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
   if (!enabled && !body?.force) {
     return new Response(
       JSON.stringify({ error: "زحف الويب معطّل في الإعدادات" }),
