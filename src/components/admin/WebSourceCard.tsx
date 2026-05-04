@@ -120,7 +120,7 @@ const WebSourceCard = ({ onChanged: _onChanged }: { onChanged?: () => void }) =>
                 </span>
               </div>
               <p className="text-xs text-muted-foreground">
-                عند التفعيل، يبحث المساعد لحظياً في موقع الجامعة لكل سؤال. المستندات المرفوعة تبقى مصدراً مكمّلاً.
+                عند التفعيل، إذا لم تكفِ المستندات المرفوعة للإجابة، يبحث المساعد لحظياً في موقع الجامعة لاستكمال المعلومات.
               </p>
 
               {liveEnabled && (
