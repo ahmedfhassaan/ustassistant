@@ -360,11 +360,16 @@ const Documentation = () => {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <MiniCard title="الصيغ المدعومة" body="ملفات Markdown نصية فقط (.md) لضمان الجودة وتجنّب فقدان البنية." />
-              <MiniCard title="مسار المعالجة" body="قراءة → تقسيم → توليد متجهات → تخزين → جاهز للبحث الفوري." />
-              <MiniCard title="التحديث" body="يمكن للمشرف استبدال أو حذف أي وثيقة، وإعادة معالجتها بضغطة." />
-              <MiniCard title="الأمان" body="رفع داخلي عبر لوحة المشرف فقط، بدون رفع سحابي مفتوح." />
+              <MiniCard title="ملفات Markdown" body="رفع داخلي عبر لوحة المشرف لملفات .md نصية فقط — يضمن الجودة ويتجنّب فقدان البنية." />
+              <MiniCard title="مصادر ويب (URL)" body="تزويد المشرف بروابط ليتم زحفها (crawl-website)، استخراج النص، ودمجها في قاعدة المعرفة." />
+              <MiniCard title="مسار المعالجة" body="قراءة → تطبيع عربي → تقسيم (~٦٠٠ كلمة) → توليد متجهات → تخزين → جاهز للبحث." />
+              <MiniCard title="إعادة المعالجة" body="استبدال أو حذف أي وثيقة، أو تشغيل backfill-embeddings لإكمال المتجهات الناقصة." />
+              <MiniCard title="تصدير سجلات الدردشة" body="تصدير المحادثات والتقييمات بصيغ CSV / XLSX / PDF لأغراض المراجعة." />
+              <MiniCard title="الأمان" body="رفع داخلي حصري عبر حساب المشرف — لا رفع سحابي مفتوح ولا روابط عامة." />
             </div>
+            <Notice tone="info">
+              ملفات الإعداد الحساسة (config.toml، .env، integrations/supabase/*) محميَّة ولا تُعدَّل من الواجهة.
+            </Notice>
           </CardContent>
         </Card>
 
