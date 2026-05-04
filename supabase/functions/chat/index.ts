@@ -416,6 +416,20 @@ serve(async (req) => {
       }
     }
 
+    // When live search is on, exclude web-crawled documents from RPC results (manual docs only)
+    let excludedWebDocNames: Set<string> | null = null;
+    if (liveSearchEnabled) {
+      try {
+        const { data: webDocs } = await supabase
+          .from("knowledge_documents")
+          .select("name")
+          .neq("source_type", "manual");
+        excludedWebDocNames = new Set((webDocs || []).map((d: any) => d.name as string));
+      } catch (e) {
+        console.warn("[chat] could not load web doc names:", e);
+      }
+    }
+
     try {
       const rpcParamsBase: any = {
         max_results: initialCount,
