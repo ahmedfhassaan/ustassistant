@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Globe, Loader2, RefreshCw, CheckCircle2, AlertCircle } from "lucide-react";
+import { Globe, Loader2, RefreshCw, CheckCircle2, AlertCircle, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
@@ -9,7 +9,15 @@ import { useTheme } from "@/hooks/use-theme";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 
-const KEYS = ["web_crawl_enabled", "web_crawl_root_url", "web_crawl_last_run_at", "web_crawl_last_status"];
+const KEYS = [
+  "web_crawl_enabled",
+  "web_crawl_root_url",
+  "web_crawl_last_run_at",
+  "web_crawl_last_status",
+  "live_search_enabled",
+  "live_search_max_results",
+  "live_search_timeout_ms",
+];
 
 const WebSourceCard = ({ onChanged }: { onChanged?: () => void }) => {
   const { isDark } = useTheme();
@@ -20,6 +28,11 @@ const WebSourceCard = ({ onChanged }: { onChanged?: () => void }) => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [running, setRunning] = useState(false);
+
+  // Live search state
+  const [liveEnabled, setLiveEnabled] = useState(false);
+  const [liveMax, setLiveMax] = useState(4);
+  const [liveTimeout, setLiveTimeout] = useState(12000);
 
   useEffect(() => {
     (async () => {
@@ -33,6 +46,9 @@ const WebSourceCard = ({ onChanged }: { onChanged?: () => void }) => {
           if (r.key === "web_crawl_root_url" && r.value) setRootUrl(r.value);
           if (r.key === "web_crawl_last_run_at") setLastRunAt(r.value || "");
           if (r.key === "web_crawl_last_status") setLastStatus(r.value || "");
+          if (r.key === "live_search_enabled") setLiveEnabled(r.value === "true");
+          if (r.key === "live_search_max_results") setLiveMax(parseInt(r.value) || 4);
+          if (r.key === "live_search_timeout_ms") setLiveTimeout(parseInt(r.value) || 12000);
         }
       }
       setLoading(false);
@@ -60,6 +76,9 @@ const WebSourceCard = ({ onChanged }: { onChanged?: () => void }) => {
     try {
       await upsert("web_crawl_enabled", enabled ? "true" : "false");
       await upsert("web_crawl_root_url", rootUrl.trim());
+      await upsert("live_search_enabled", liveEnabled ? "true" : "false");
+      await upsert("live_search_max_results", String(Math.max(1, Math.min(8, liveMax))));
+      await upsert("live_search_timeout_ms", String(Math.max(3000, Math.min(30000, liveTimeout))));
       toast({ title: "تم حفظ الإعدادات" });
     } catch (e: any) {
       toast({ title: "خطأ", description: e.message, variant: "destructive" });
@@ -85,7 +104,6 @@ const WebSourceCard = ({ onChanged }: { onChanged?: () => void }) => {
         title: "اكتمل الزحف",
         description: `أُضيف ${r?.added ?? 0} | حُدِّث ${r?.updated ?? 0} | تُجاوز ${r?.skipped ?? 0} | فشل ${r?.failed ?? 0}`,
       });
-      // Refresh settings
       const { data: s } = await supabase
         .from("assistant_settings")
         .select("key,value")
@@ -104,6 +122,7 @@ const WebSourceCard = ({ onChanged }: { onChanged?: () => void }) => {
 
   const statusOk = lastStatus.startsWith("success");
   const statusBad = lastStatus.startsWith("failed");
+  const crawlDisabled = liveEnabled;
 
   return (
     <Card
@@ -124,17 +143,7 @@ const WebSourceCard = ({ onChanged }: { onChanged?: () => void }) => {
           </div>
         ) : (
           <>
-            <p className="text-sm text-muted-foreground">
-              يتم زحف الموقع وتخزين محتواه ضمن قاعدة المعرفة. الإجابات تستخدمه تلقائياً مع المستندات المرفوعة.
-            </p>
-
-            <div className="flex items-center justify-between p-3 rounded-lg bg-secondary/30 border border-black/5 dark:bg-white/5 dark:border-white/5">
-              <Label htmlFor="web-enabled" className="cursor-pointer">تفعيل مصدر الويب</Label>
-              <span dir="ltr" className="inline-flex">
-                <Switch id="web-enabled" checked={enabled} onCheckedChange={setEnabled} />
-              </span>
-            </div>
-
+            {/* رابط الموقع — مشترك لكلا الوضعين */}
             <div className="space-y-2">
               <Label htmlFor="web-url">رابط الموقع</Label>
               <Input
@@ -147,25 +156,83 @@ const WebSourceCard = ({ onChanged }: { onChanged?: () => void }) => {
               />
             </div>
 
-            <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-              {statusOk && <CheckCircle2 className="w-4 h-4 text-green-500" />}
-              {statusBad && <AlertCircle className="w-4 h-4 text-destructive" />}
-              <span>
-                {lastRunAt
-                  ? `آخر تحديث: ${new Date(lastRunAt).toLocaleString("ar-SA")}`
-                  : "لم يتم التحديث بعد"}
-              </span>
-              {lastStatus && <span className="opacity-70">— {lastStatus}</span>}
+            {/* قسم وضع البحث المباشر */}
+            <div className="rounded-xl border border-primary/30 bg-primary/5 p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <Label htmlFor="live-enabled" className="cursor-pointer flex items-center gap-2 font-semibold">
+                  <Zap className="w-4 h-4 text-primary" />
+                  وضع البحث المباشر (Live Search)
+                </Label>
+                <span dir="ltr" className="inline-flex">
+                  <Switch id="live-enabled" checked={liveEnabled} onCheckedChange={setLiveEnabled} />
+                </span>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                عند التفعيل، يبحث المساعد لحظياً في موقع الجامعة لكل سؤال بدلاً من الاعتماد على المحتوى المخزّن.
+                الزحف الليلي يتوقف تلقائياً، والمستندات المرفوعة تبقى مصدراً مكمّلاً.
+              </p>
+
+              {liveEnabled && (
+                <div className="grid grid-cols-2 gap-3 pt-2">
+                  <div className="space-y-1">
+                    <Label htmlFor="live-max" className="text-xs">عدد النتائج (1–8)</Label>
+                    <Input
+                      id="live-max"
+                      type="number"
+                      min={1}
+                      max={8}
+                      value={liveMax}
+                      onChange={(e) => setLiveMax(parseInt(e.target.value) || 4)}
+                      className={isDark ? "glass-input" : ""}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="live-timeout" className="text-xs">زمن الانتظار (ms)</Label>
+                    <Input
+                      id="live-timeout"
+                      type="number"
+                      min={3000}
+                      max={30000}
+                      step={1000}
+                      value={liveTimeout}
+                      onChange={(e) => setLiveTimeout(parseInt(e.target.value) || 12000)}
+                      className={isDark ? "glass-input" : ""}
+                    />
+                  </div>
+                </div>
+              )}
             </div>
 
-            <div className="flex flex-wrap gap-2">
-              <Button onClick={handleSave} disabled={saving} variant="outline" className="gap-2">
-                {saving && <Loader2 className="w-4 h-4 animate-spin" />}
-                حفظ الإعدادات
-              </Button>
-              <Button onClick={handleRunNow} disabled={running || !enabled} className="gap-2">
+            {/* قسم الزحف المخزّن — يُعطّل عند تفعيل البحث المباشر */}
+            <div className={`space-y-3 ${crawlDisabled ? "opacity-50 pointer-events-none" : ""}`}>
+              <div className="flex items-center justify-between p-3 rounded-lg bg-secondary/30 border border-black/5 dark:bg-white/5 dark:border-white/5">
+                <Label htmlFor="web-enabled" className="cursor-pointer">تفعيل الزحف المخزّن</Label>
+                <span dir="ltr" className="inline-flex">
+                  <Switch id="web-enabled" checked={enabled} onCheckedChange={setEnabled} disabled={crawlDisabled} />
+                </span>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                {statusOk && <CheckCircle2 className="w-4 h-4 text-green-500" />}
+                {statusBad && <AlertCircle className="w-4 h-4 text-destructive" />}
+                <span>
+                  {lastRunAt
+                    ? `آخر تحديث: ${new Date(lastRunAt).toLocaleString("ar-SA")}`
+                    : "لم يتم التحديث بعد"}
+                </span>
+                {lastStatus && <span className="opacity-70">— {lastStatus}</span>}
+              </div>
+
+              <Button onClick={handleRunNow} disabled={running || !enabled || crawlDisabled} className="gap-2">
                 {running ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
                 {running ? "جاري الزحف..." : "تحديث الآن"}
+              </Button>
+            </div>
+
+            <div className="flex flex-wrap gap-2 pt-2 border-t border-black/5 dark:border-white/5">
+              <Button onClick={handleSave} disabled={saving} className="gap-2">
+                {saving && <Loader2 className="w-4 h-4 animate-spin" />}
+                حفظ الإعدادات
               </Button>
             </div>
           </>
