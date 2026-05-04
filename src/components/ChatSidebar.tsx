@@ -1,4 +1,4 @@
-import { Plus, MessageSquare } from "lucide-react";
+import { Plus, MessageSquare, BookOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useTheme } from "@/hooks/use-theme";
 import type { Conversation } from "@/pages/Chat";
@@ -56,6 +56,22 @@ const ChatSidebar = ({ conversations, activeId, onSelect, onNewChat }: ChatSideb
             </button>
           ))
         )}
+      </div>
+
+      <div className={`p-3 border-t ${isDark ? "border-white/6" : "border-border"}`}>
+        <a
+          href="/documentation"
+          target="_blank"
+          rel="noopener noreferrer"
+          className={`w-full flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm transition-all duration-200 ${
+            isDark
+              ? "text-muted-foreground hover:bg-white/5 hover:text-foreground"
+              : "text-sidebar-foreground hover:bg-sidebar-accent/50"
+          }`}
+        >
+          <BookOpen className="w-4 h-4 shrink-0 opacity-70" />
+          <span className="truncate">دليل استخدام المساعد</span>
+        </a>
       </div>
     </aside>
   );
