@@ -1,5 +1,5 @@
-import { useState, useEffect, useRef } from "react";
-import { Upload, FileText, Trash2, Search, Loader2, CheckCircle, AlertCircle, AlertTriangle, RefreshCw, Globe, ExternalLink } from "lucide-react";
+import { useState, useEffect, useRef, useMemo } from "react";
+import { Upload, FileText, Trash2, Search, Loader2, CheckCircle, AlertCircle, AlertTriangle, RefreshCw, Globe, ExternalLink, Tag } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import EmptyState from "@/components/EmptyState";
@@ -26,6 +26,32 @@ import {
   AlertDialogFooter,
   AlertDialogCancel,
 } from "@/components/ui/alert-dialog";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
+
+const CATEGORIES = [
+  "قبول وتسجيل",
+  "رسوم ومالية",
+  "مقررات وخطط دراسية",
+  "جداول وامتحانات",
+  "مرافق وخدمات طلابية",
+  "مشاريع تخرّج",
+] as const;
+
+const WEB_CATEGORY = "موقع الجامعة";
+const UNCATEGORIZED = "بدون تصنيف";
 
 interface KnowledgeDoc {
   id: string;
@@ -37,7 +63,9 @@ interface KnowledgeDoc {
   created_at: string;
   source_type?: string | null;
   source_url?: string | null;
+  category?: string | null;
 }
+
 
 const AdminKnowledge = () => {
   const [documents, setDocuments] = useState<KnowledgeDoc[]>([]);
@@ -120,6 +148,50 @@ const AdminKnowledge = () => {
   const filteredDocs = documents.filter((d) =>
     d.name.includes(searchQuery)
   );
+
+  const docCategory = (d: KnowledgeDoc): string => {
+    if (d.source_type === "web") return WEB_CATEGORY;
+    return d.category && d.category.trim() ? d.category : UNCATEGORIZED;
+  };
+
+  const groupedDocs = useMemo(() => {
+    const groups = new Map<string, KnowledgeDoc[]>();
+    for (const d of filteredDocs) {
+      const cat = docCategory(d);
+      if (!groups.has(cat)) groups.set(cat, []);
+      groups.get(cat)!.push(d);
+    }
+    const order = [...CATEGORIES, WEB_CATEGORY, UNCATEGORIZED];
+    const sorted: { category: string; docs: KnowledgeDoc[] }[] = [];
+    for (const cat of order) {
+      if (groups.has(cat)) {
+        sorted.push({ category: cat, docs: groups.get(cat)! });
+        groups.delete(cat);
+      }
+    }
+    for (const [cat, docs] of groups) sorted.push({ category: cat, docs });
+    return sorted;
+  }, [filteredDocs]);
+
+  const defaultOpenSections = useMemo(
+    () => (searchQuery ? groupedDocs.map((g) => g.category) : groupedDocs.slice(0, 1).map((g) => g.category)),
+    [groupedDocs, searchQuery]
+  );
+
+  const handleChangeCategory = async (doc: KnowledgeDoc, newCategory: string | null) => {
+    const value = newCategory === UNCATEGORIZED ? null : newCategory;
+    try {
+      const { error } = await supabase
+        .from("knowledge_documents")
+        .update({ category: value })
+        .eq("id", doc.id);
+      if (error) throw error;
+      setDocuments((prev) => prev.map((d) => (d.id === doc.id ? { ...d, category: value } : d)));
+      toast({ title: "تم تحديث التصنيف", description: `${doc.name} → ${newCategory || UNCATEGORIZED}` });
+    } catch (e: any) {
+      toast({ title: "تعذّر تحديث التصنيف", description: e?.message, variant: "destructive" });
+    }
+  };
 
   const handleFileSelect = () => {
     fileInputRef.current?.click();
@@ -382,66 +454,129 @@ const AdminKnowledge = () => {
                 />
               )
             ) : (
-              filteredDocs.map((doc) => (
-                <div
-                  key={doc.id}
-                  role="button"
-                  tabIndex={0}
-                  onClick={() => openViewer(doc)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" || e.key === " ") {
-                      e.preventDefault();
-                      openViewer(doc);
-                    }
-                  }}
-                  className={`flex items-center justify-between p-4 rounded-xl cursor-pointer transition-all duration-300 ease-out hover:translate-y-[-2px] ${
-                    isDark
-                      ? "bg-white/5 border border-white/5 hover:bg-white/8"
-                      : "bg-secondary/30 border border-black/5 hover:bg-secondary/60 hover:border-primary/20"
-                  }`}
-                >
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div className={`p-2 rounded-lg transition-all ${
-                      isDark ? "bg-primary/10 glow-highlight" : "bg-primary/10"
-                    }`}>
-                      {doc.source_type === "web" ? (
-                        <Globe className={`w-5 h-5 text-primary ${isDark ? "glow-icon" : ""}`} />
-                      ) : (
-                        <FileText className={`w-5 h-5 text-primary ${isDark ? "glow-icon" : ""}`} />
-                      )}
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium text-foreground truncate">{doc.name}</p>
-                      <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
-                        <span className={`px-1.5 py-0.5 rounded text-[10px] ${doc.source_type === "web" ? "bg-primary/15 text-primary" : "bg-muted"}`}>
-                          {doc.source_type === "web" ? "موقع" : "يدوي"}
-                        </span>
-                        <span>{doc.file_type.toUpperCase()}</span>
-                        <span className="opacity-50">·</span>
-                        <span>{formatSize(doc.file_size)}</span>
-                        <span className="opacity-50">·</span>
-                        <span className="flex items-center gap-1">
-                          {getStatusIcon(doc.status)}
-                          {getStatusText(doc.status)}
-                        </span>
-                        <span className="opacity-50">·</span>
-                        <span>{new Date(doc.created_at).toLocaleDateString("ar-SA")}</span>
-                      </div>
-                    </div>
-                  </div>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setDeleteTarget(doc);
-                    }}
-                    className="text-destructive hover:text-destructive hover:bg-destructive/10 shrink-0"
+              <Accordion
+                type="multiple"
+                defaultValue={defaultOpenSections}
+                key={searchQuery + "|" + groupedDocs.map(g => g.category).join(",")}
+                className="space-y-2"
+              >
+                {groupedDocs.map(({ category, docs }) => (
+                  <AccordionItem
+                    key={category}
+                    value={category}
+                    className={`rounded-xl border ${isDark ? "border-white/10 bg-white/5" : "border-black/5 bg-secondary/20"} overflow-hidden`}
                   >
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
-                </div>
-              ))
+                    <AccordionTrigger className="px-4 py-3 hover:no-underline">
+                      <div className="flex items-center gap-2 flex-1">
+                        {category === WEB_CATEGORY ? (
+                          <Globe className="w-4 h-4 text-primary" />
+                        ) : (
+                          <Tag className="w-4 h-4 text-primary" />
+                        )}
+                        <span className="text-sm font-semibold">{category}</span>
+                        <span className="text-xs text-muted-foreground bg-muted/60 px-2 py-0.5 rounded-full ms-1">
+                          {docs.length}
+                        </span>
+                      </div>
+                    </AccordionTrigger>
+                    <AccordionContent className="px-3 pb-3">
+                      <div className="space-y-2">
+                        {docs.map((doc) => (
+                          <div
+                            key={doc.id}
+                            role="button"
+                            tabIndex={0}
+                            onClick={() => openViewer(doc)}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter" || e.key === " ") {
+                                e.preventDefault();
+                                openViewer(doc);
+                              }
+                            }}
+                            className={`flex items-center justify-between p-3 rounded-lg cursor-pointer transition-all duration-200 ease-out hover:translate-y-[-1px] ${
+                              isDark
+                                ? "bg-white/5 border border-white/5 hover:bg-white/8"
+                                : "bg-white border border-black/5 hover:border-primary/20"
+                            }`}
+                          >
+                            <div className="flex items-center gap-3 min-w-0">
+                              <div className={`p-2 rounded-lg transition-all ${isDark ? "bg-primary/10 glow-highlight" : "bg-primary/10"}`}>
+                                {doc.source_type === "web" ? (
+                                  <Globe className={`w-5 h-5 text-primary ${isDark ? "glow-icon" : ""}`} />
+                                ) : (
+                                  <FileText className={`w-5 h-5 text-primary ${isDark ? "glow-icon" : ""}`} />
+                                )}
+                              </div>
+                              <div className="min-w-0">
+                                <p className="text-sm font-medium text-foreground truncate">{doc.name}</p>
+                                <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
+                                  <span className={`px-1.5 py-0.5 rounded text-[10px] ${doc.source_type === "web" ? "bg-primary/15 text-primary" : "bg-muted"}`}>
+                                    {doc.source_type === "web" ? "موقع" : "يدوي"}
+                                  </span>
+                                  <span>{doc.file_type.toUpperCase()}</span>
+                                  <span className="opacity-50">·</span>
+                                  <span>{formatSize(doc.file_size)}</span>
+                                  <span className="opacity-50">·</span>
+                                  <span className="flex items-center gap-1">
+                                    {getStatusIcon(doc.status)}
+                                    {getStatusText(doc.status)}
+                                  </span>
+                                  <span className="opacity-50">·</span>
+                                  <span>{new Date(doc.created_at).toLocaleDateString("ar-SA")}</span>
+                                </div>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-1 shrink-0">
+                              {doc.source_type !== "web" && (
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      onClick={(e) => e.stopPropagation()}
+                                      title="تغيير التصنيف"
+                                      className="text-muted-foreground hover:text-primary hover:bg-primary/10"
+                                    >
+                                      <Tag className="w-4 h-4" />
+                                    </Button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+                                    <DropdownMenuLabel>اختر تصنيفاً</DropdownMenuLabel>
+                                    <DropdownMenuSeparator />
+                                    {CATEGORIES.map((c) => (
+                                      <DropdownMenuItem
+                                        key={c}
+                                        onSelect={() => handleChangeCategory(doc, c)}
+                                      >
+                                        {c} {docCategory(doc) === c && "✓"}
+                                      </DropdownMenuItem>
+                                    ))}
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuItem onSelect={() => handleChangeCategory(doc, null)}>
+                                      {UNCATEGORIZED} {docCategory(doc) === UNCATEGORIZED && "✓"}
+                                    </DropdownMenuItem>
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
+                              )}
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setDeleteTarget(doc);
+                                }}
+                                className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </AccordionContent>
+                  </AccordionItem>
+                ))}
+              </Accordion>
             )}
           </div>
         </CardContent>
