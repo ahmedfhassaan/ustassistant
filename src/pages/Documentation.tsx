@@ -347,7 +347,7 @@ const Documentation = () => {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               <MiniCard title="وثائق رسمية" body="لوائح، خطط دراسية، إرشادات قبول وتسجيل، رسوم وخدمات. تُرفع كملفات Markdown." />
               <MiniCard title="مشاريع تخرج سابقة" body="مرجع للطلاب الباحثين عن أمثلة. تُستبعد تلقائياً من أسئلة القبول/التسجيل/المقررات." />
-              <MiniCard title="مصادر ويب" body="صفحات يحدّدها المشرف ويتم زحفها (crawl-website) ومعالجتها كقاعدة معرفة." />
+              <MiniCard title="بحث مباشر (Google Grounding)" body="عند الحاجة، يبحث المساعد لحظياً في موقع الجامعة عبر Google Grounding ويُرفق المصادر — بدون زحف مسبق." />
             </div>
             <ul className="space-y-2">
               <Bullet>تقسيم آلي إلى مقاطع (Chunks) بطول ≈ ٦٠٠ كلمة لتحسين الاسترجاع.</Bullet>
