@@ -413,17 +413,22 @@ const Documentation = () => {
               <TableHeader>
                 <TableRow>
                   <TableHead className="text-right">الصفحة</TableHead>
+                  <TableHead className="text-right">المسار</TableHead>
                   <TableHead className="text-right">الوظيفة</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                <TableRow><TableCell className="font-medium">الرئيسية</TableCell><TableCell>إحصاءات الاستخدام ومعدّل الرضا.</TableCell></TableRow>
-                <TableRow><TableCell className="font-medium">قاعدة المعرفة</TableCell><TableCell>إضافة/حذف/تحديث الوثائق وإعادة المعالجة.</TableCell></TableRow>
-                <TableRow><TableCell className="font-medium">الطلاب</TableCell><TableCell>إدارة حسابات الطلاب (CRUD).</TableCell></TableRow>
-                <TableRow><TableCell className="font-medium">التقييمات</TableCell><TableCell>مراجعة الردود السلبية لتحسين الأداء.</TableCell></TableRow>
-                <TableRow><TableCell className="font-medium">الإعدادات</TableCell><TableCell>تخصيص سلوك المساعد، الحدود، والتعليمات.</TableCell></TableRow>
+                <TableRow><TableCell className="font-medium">الرئيسية</TableCell><TableCell><code>/admin</code></TableCell><TableCell>إحصاءات الاستخدام، عدد الأسئلة، معدّل الرضا (نسبة 👍).</TableCell></TableRow>
+                <TableRow><TableCell className="font-medium">قاعدة المعرفة</TableCell><TableCell><code>/admin/knowledge</code></TableCell><TableCell>رفع/حذف الوثائق، إضافة مصادر ويب، إعادة معالجة المتجهات.</TableCell></TableRow>
+                <TableRow><TableCell className="font-medium">الأسئلة الشائعة</TableCell><TableCell><code>/admin/faq</code></TableCell><TableCell>إدارة قائمة الأسئلة الجاهزة التي تظهر للطلاب.</TableCell></TableRow>
+                <TableRow><TableCell className="font-medium">الطلاب</TableCell><TableCell><code>/admin/students</code></TableCell><TableCell>إنشاء/تعديل/حذف حسابات الطلاب وكلمات السر.</TableCell></TableRow>
+                <TableRow><TableCell className="font-medium">التقييمات</TableCell><TableCell><code>/admin/feedback</code></TableCell><TableCell>تحليل التقييمات السلبية مع المصادر المرتبطة.</TableCell></TableRow>
+                <TableRow><TableCell className="font-medium">الإعدادات</TableCell><TableCell><code>/admin/settings</code></TableCell><TableCell>تخصيص تعليمات النظام، عتبات الثقة، حدود الكاش، نموذج Gemini.</TableCell></TableRow>
               </TableBody>
             </Table>
+            <Notice tone="info">
+              تتيح صفحة الإعدادات حقن <strong>تعليمات نظام مخصّصة (System Instructions)</strong> لتشكيل سلوك المساعد دون تعديل الكود.
+            </Notice>
           </CardContent>
         </Card>
 
