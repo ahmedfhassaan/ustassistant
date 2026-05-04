@@ -489,7 +489,7 @@ serve(async (req) => {
           const limit = Math.min(Math.max(parseInt(settings.live_search_max_results) || 4, 1), 8);
           const timeoutMs = Math.min(Math.max(parseInt(settings.live_search_timeout_ms) || 12000, 3000), 30000);
 
-          console.log(`[chat][live] firing site:${domain} q="${lastUserMessage}" docsRank=${maxRank.toFixed(3)} limit=${limit} timeout=${timeoutMs}`);
+          if (debugRag) console.log(`[chat] LIVE SEARCH (fallback) on site:${domain} q="${lastUserMessage}" docsRank=${maxRank.toFixed(3)} limit=${limit}`);
 
           const liveRes = await fetch("https://api.firecrawl.dev/v2/search", {
             method: "POST",
