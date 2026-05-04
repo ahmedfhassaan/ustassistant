@@ -1,4 +1,4 @@
-import { GraduationCap, MapPin, Wallet, Lightbulb } from "lucide-react";
+import { GraduationCap, MapPin, Wallet, Lightbulb, Sparkles, HelpCircle } from "lucide-react";
 import { useTheme } from "@/hooks/use-theme";
 import { useSettings } from "@/hooks/use-settings";
 import universityLogo from "@/assets/university-logo.png";
