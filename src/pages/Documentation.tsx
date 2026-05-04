@@ -128,6 +128,11 @@ const Documentation = () => {
   const { isDark, toggle } = useTheme();
   const navigate = useNavigate();
 
+  // نفس أسلوب إبراز بطاقة تسجيل الدخول
+  const cardElevated = isDark
+    ? "bg-[hsl(222_40%_14%)] border-primary/25 shadow-[0_0_40px_rgba(112,200,255,0.08),0_20px_60px_rgba(0,0,0,0.4)] ring-1 ring-white/5 rounded-3xl"
+    : "bg-background border-border/40 ring-1 ring-primary/5 shadow-[0_20px_60px_rgba(0,0,0,0.08)] rounded-3xl";
+
   return (
     <div dir="rtl" className="min-h-screen bg-background text-foreground">
       {/* Header مبسّط */}
