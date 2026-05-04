@@ -537,7 +537,7 @@ const Documentation = () => {
                 <TableRow><TableCell className="font-medium">rewrite-query</TableCell><TableCell>إعادة صياغة سؤال الطالب لتحسين دقة البحث.</TableCell></TableRow>
                 <TableRow><TableCell className="font-medium">generate-embedding</TableCell><TableCell>توليد متجه دلالي لاستعلام أو مقطع.</TableCell></TableRow>
                 <TableRow><TableCell className="font-medium">process-document</TableCell><TableCell>تقسيم وثيقة Markdown وتوليد متجهاتها.</TableCell></TableRow>
-                <TableRow><TableCell className="font-medium">crawl-website</TableCell><TableCell>زحف صفحات ويب واستخراج نصها لقاعدة المعرفة.</TableCell></TableRow>
+                
                 <TableRow><TableCell className="font-medium">backfill-embeddings</TableCell><TableCell>توليد المتجهات الناقصة لمقاطع موجودة سابقاً.</TableCell></TableRow>
               </TableBody>
             </Table>
