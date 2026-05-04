@@ -81,6 +81,12 @@ const AdminKnowledge = () => {
   const [viewContent, setViewContent] = useState<string>("");
   const [viewLoading, setViewLoading] = useState(false);
   const [viewError, setViewError] = useState<string>("");
+  const [categories, setCategories] = useState<string[]>(DEFAULT_CATEGORIES);
+  const [categoriesDialogOpen, setCategoriesDialogOpen] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState("");
+  const [editingIndex, setEditingIndex] = useState<number | null>(null);
+  const [editingValue, setEditingValue] = useState("");
+  const [savingCategories, setSavingCategories] = useState(false);
   const { isDark } = useTheme();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
