@@ -530,7 +530,7 @@ serve(async (req) => {
               liveContext = "\n\n--- معلومات مباشرة من موقع الجامعة (بحث لحظي) ---\n" +
                 ctxParts.join("\n\n") +
                 "\n--- نهاية المعلومات المباشرة ---";
-              if (debugRag) console.log(`[chat] LIVE SEARCH got ${goodItems.length} results`);
+              console.log(`[chat][live] got ${goodItems.length} results, sources=${liveSourceNames.join(", ")}`);
             } else {
               console.warn("[chat] LIVE SEARCH returned 0 items");
             }
