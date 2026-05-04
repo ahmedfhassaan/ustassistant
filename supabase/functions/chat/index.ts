@@ -88,6 +88,11 @@ async function loadSettings(supabase: any): Promise<Record<string, string>> {
     weight_semantic_default: "0.6",
     weight_text_exact: "0.65",
     weight_text_semantic_lean: "0.3",
+    // ---- Live Search ----
+    live_search_enabled: "false",
+    live_search_max_results: "4",
+    live_search_timeout_ms: "12000",
+    web_crawl_root_url: "https://www.ust.edu",
   };
   try {
     const { data } = await supabase.from("assistant_settings").select("key, value");
@@ -341,6 +346,89 @@ serve(async (req) => {
     let sourceNames: string[] = [];
     let maxRank = 0;
     let resolvedQuestionForModel = lastUserMessage;
+    const liveSearchEnabled = settings.live_search_enabled === "true";
+    let liveSearchUsed = false;
+
+    // ---- LIVE SEARCH MODE: query Firecrawl in real-time, replace web-crawled context ----
+    if (liveSearchEnabled) {
+      const FIRECRAWL_KEY = Deno.env.get("FIRECRAWL_API_KEY");
+      if (!FIRECRAWL_KEY) {
+        console.error("[chat] live_search_enabled but FIRECRAWL_API_KEY missing");
+      } else {
+        try {
+          const rootUrl = settings.web_crawl_root_url || "https://www.ust.edu";
+          let domain = "";
+          try { domain = new URL(rootUrl).hostname.replace(/^www\./, ""); } catch { domain = "ust.edu"; }
+          const limit = Math.min(Math.max(parseInt(settings.live_search_max_results) || 4, 1), 8);
+          const timeoutMs = Math.min(Math.max(parseInt(settings.live_search_timeout_ms) || 12000, 3000), 30000);
+
+          if (debugRag) console.log(`[chat] LIVE SEARCH on site:${domain} q="${lastUserMessage}" limit=${limit}`);
+
+          const liveRes = await fetch("https://api.firecrawl.dev/v2/search", {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${FIRECRAWL_KEY}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              query: `site:${domain} ${lastUserMessage}`,
+              limit,
+              scrapeOptions: { formats: ["markdown"], onlyMainContent: true },
+            }),
+            signal: AbortSignal.timeout(timeoutMs),
+          });
+
+          if (liveRes.ok) {
+            const liveData = await liveRes.json();
+            // Firecrawl v2 search response: { success, data: { web: [...] } } or { data: [...] }
+            const items: any[] = Array.isArray(liveData?.data?.web)
+              ? liveData.data.web
+              : Array.isArray(liveData?.data) ? liveData.data : [];
+
+            const goodItems = items.filter((it: any) => (it?.markdown || it?.description) && it?.url);
+            if (goodItems.length > 0) {
+              liveSearchUsed = true;
+              maxRank = 1; // Trust live results as high-confidence
+              const ctxParts: string[] = [];
+              for (const it of goodItems.slice(0, limit)) {
+                const title = (it.title || it.url || "").toString().slice(0, 120);
+                const url = it.url as string;
+                let body = (it.markdown || it.description || "").toString();
+                if (body.length > 1800) body = body.slice(0, 1800) + "…";
+                ctxParts.push(`[مصدر مباشر: ${title} | ${url}]\n${body}`);
+                sourceNames.push(title || url);
+              }
+              sourceNames = [...new Set(sourceNames)];
+              knowledgeContext = "\n\n--- معلومات مباشرة من موقع الجامعة (بحث لحظي) ---\n" +
+                ctxParts.join("\n\n") +
+                "\n--- نهاية المعلومات المباشرة ---";
+              if (debugRag) console.log(`[chat] LIVE SEARCH got ${goodItems.length} results`);
+            } else {
+              console.warn("[chat] LIVE SEARCH returned 0 items");
+            }
+          } else {
+            const errTxt = await liveRes.text().catch(() => "");
+            console.error(`[chat] LIVE SEARCH HTTP ${liveRes.status}: ${errTxt.slice(0, 200)}`);
+          }
+        } catch (e) {
+          console.error("[chat] LIVE SEARCH error:", e instanceof Error ? e.message : e);
+        }
+      }
+    }
+
+    // When live search is on, exclude web-crawled documents from RPC results (manual docs only)
+    let excludedWebDocNames: Set<string> | null = null;
+    if (liveSearchEnabled) {
+      try {
+        const { data: webDocs } = await supabase
+          .from("knowledge_documents")
+          .select("name")
+          .neq("source_type", "manual");
+        excludedWebDocNames = new Set((webDocs || []).map((d: any) => d.name as string));
+      } catch (e) {
+        console.warn("[chat] could not load web doc names:", e);
+      }
+    }
 
     try {
       const rpcParamsBase: any = {
@@ -406,6 +494,13 @@ serve(async (req) => {
       if (rpcError) console.error("[chat] hybrid search error:", rpcError);
 
       if (chunks && chunks.length > 0) {
+        // Filter out web-crawled chunks when live search is active
+        if (excludedWebDocNames && excludedWebDocNames.size > 0) {
+          chunks = (chunks as any[]).filter((c: any) => !excludedWebDocNames!.has(c.document_name));
+        }
+      }
+
+      if (chunks && chunks.length > 0) {
         // Optional reranking
         let finalChunks = chunks;
         if (enableRerank) {
@@ -427,16 +522,19 @@ serve(async (req) => {
           finalChunks = chunks.slice(0, finalCount);
         }
 
-        maxRank = Math.max(...finalChunks.map((c: any) => c.rank as number));
+        const docsMaxRank = Math.max(...finalChunks.map((c: any) => c.rank as number));
+        maxRank = Math.max(maxRank, docsMaxRank);
         // Filter sources: only chunks with rank >= half of confidence threshold count as "real" sources
         const minSourceRank = (parseInt(settings.confidence_threshold) || 30) / 100 * 0.5;
         const relevantChunks = finalChunks.filter((c: any) => (c.rank as number) >= minSourceRank);
-        sourceNames = [...new Set(relevantChunks.map((c: any) => c.document_name as string))];
-        knowledgeContext = "\n\n--- معلومات من قاعدة المعرفة الجامعية ---\n" +
+        const docSourceNames = [...new Set(relevantChunks.map((c: any) => c.document_name as string))];
+        sourceNames = [...new Set([...sourceNames, ...docSourceNames])];
+        const docsContext = "\n\n--- معلومات من قاعدة المعرفة الجامعية ---\n" +
           finalChunks.map((c: any) =>
             `[مصدر: ${c.document_name} | درجة الصلة: ${((c.rank as number) * 100).toFixed(0)}%]\n${c.content}`
           ).join("\n\n") +
           "\n--- نهاية المعلومات ---";
+        knowledgeContext = liveSearchUsed ? knowledgeContext + docsContext : docsContext;
       }
     } catch (e) {
       console.error("Knowledge search error:", e);
