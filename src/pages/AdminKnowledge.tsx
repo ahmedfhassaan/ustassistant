@@ -550,7 +550,7 @@ const AdminKnowledge = () => {
                                   <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
                                     <DropdownMenuLabel>اختر تصنيفاً</DropdownMenuLabel>
                                     <DropdownMenuSeparator />
-                                    {CATEGORIES.map((c) => (
+                                    {categories.map((c) => (
                                       <DropdownMenuItem
                                         key={c}
                                         onSelect={() => handleChangeCategory(doc, c)}
