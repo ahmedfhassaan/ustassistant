@@ -92,7 +92,7 @@ async function loadSettings(supabase: any): Promise<Record<string, string>> {
     max_messages_per_day: "100",
     abuse_protection: "true",
     // ---- New RAG settings ----
-    enable_query_rewriting: "false",
+    enable_query_rewriting: "true",
     enable_reranking: "false",
     initial_results_count: "15",
     final_results_count: "8",
