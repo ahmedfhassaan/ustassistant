@@ -446,55 +446,63 @@ serve(async (req) => {
         rpcParamsBase.query_embedding = JSON.stringify(queryEmbedding);
       }
 
-      // Build query variants: original + arabic-normalized + fuzzy-corrected (+ rewritten)
+      // Build query variants: original + arabic-normalized + fuzzy-corrected + (rewritten variants from LLM)
       const variants = generateQueryVariants(lastUserMessage);
-      if (enableRewrite && rewrittenQuery && !variants.some(v => v.toLowerCase() === rewrittenQuery.toLowerCase())) {
-        variants.push(rewrittenQuery);
+      if (enableRewrite) {
+        for (const v of [rewrittenQuery, ...rewriteVariants]) {
+          if (v && v.length >= 3 && !variants.some(x => x.toLowerCase() === v.toLowerCase())) {
+            variants.push(v);
+          }
+        }
       }
-      const branchVariant = expandBranchVariant(lastUserMessage);
-      if (branchVariant && !variants.some(v => v.toLowerCase() === branchVariant.toLowerCase())) {
-        variants.push(branchVariant);
-      }
-      // Run all variant searches in parallel and pick the one with the best top rank
+
+      // Run all variant searches in parallel
       const results = await Promise.all(
         variants.map(v => supabase.rpc("search_knowledge_hybrid", { ...rpcParamsBase, query_text: v }))
       );
 
-      // Score each variant: prioritise (1) more results, (2) higher top rank,
-      // (3) higher cumulative rank. Variants after the first (normalized / corrected
-      // / rewritten) get a tiny tie-breaker so they win when the original ties.
-      let chunks: any[] | null = null;
+      // UNION strategy: merge all variants' results, dedupe by chunk_id, keep MAX rank per chunk.
+      // This ensures we don't lose contextual chunks (e.g. branch info) just because the
+      // top variant didn't match them.
+      const mergedById = new Map<string, any>();
       let rpcError: any = null;
-      let bestVariant = variants[0];
-      let bestScore = -Infinity;
-      const variantScores: { v: string; n: number; top: number; sum: number; score: number }[] = [];
+      const variantScores: { v: string; n: number; top: number }[] = [];
 
       results.forEach((r, i) => {
         if (r.error && !rpcError) rpcError = r.error;
         const data = r.data || [];
-        const n = data.length;
-        const top = n > 0 ? (data[0].rank as number) : 0;
-        const sum = data.reduce((acc: number, c: any) => acc + (c.rank as number), 0);
-        const tieBreak = i === 0 ? 0 : 0.0001 * i;
-        const score = n * 0.6 + top * 1.0 + sum * 0.2 + tieBreak;
-        variantScores.push({ v: variants[i], n, top, sum, score });
-        if (score > bestScore) {
-          bestScore = score;
-          chunks = data;
-          bestVariant = variants[i];
+        const top = data.length > 0 ? (data[0].rank as number) : 0;
+        variantScores.push({ v: variants[i], n: data.length, top });
+        for (const c of data) {
+          const existing = mergedById.get(c.chunk_id);
+          if (!existing || (c.rank as number) > (existing.rank as number)) {
+            mergedById.set(c.chunk_id, c);
+          }
         }
       });
 
+      // Pick the variant with the best top rank just for "resolved question" display
+      const bestVariantEntry = variantScores.reduce(
+        (best, cur) => (cur.top > best.top ? cur : best),
+        variantScores[0] || { v: variants[0], n: 0, top: 0 }
+      );
+      const bestVariant = bestVariantEntry.v;
       const normalizedBestVariant = bestVariant.trim().replace(/\s+/g, " ");
       const normalizedOriginalQuestion = lastUserMessage.trim().replace(/\s+/g, " ");
       if (normalizedBestVariant) {
         resolvedQuestionForModel = normalizedBestVariant;
       }
 
+      // Sort merged chunks by rank (descending) → input for downstream selection
+      let chunks: any[] | null = Array.from(mergedById.values()).sort(
+        (a: any, b: any) => (b.rank as number) - (a.rank as number)
+      );
+      if (chunks.length === 0) chunks = null;
+
       if (debugRag) {
         console.log(`[chat] variants tried: ${variants.map(v => `"${v}"`).join(" | ")}`);
-        console.log(`[chat] variant scores: ${variantScores.map(s => `"${s.v}" n=${s.n} top=${s.top.toFixed(3)} sum=${s.sum.toFixed(3)} score=${s.score.toFixed(3)}`).join(" | ")}`);
-        console.log(`[chat] best variant: "${bestVariant}"`);
+        console.log(`[chat] variant scores: ${variantScores.map(s => `"${s.v}" n=${s.n} top=${s.top.toFixed(3)}`).join(" | ")}`);
+        console.log(`[chat] merged unique chunks: ${chunks?.length || 0}`);
         if (normalizedBestVariant && normalizedBestVariant !== normalizedOriginalQuestion) {
           console.log(`[chat] resolved question for model: "${resolvedQuestionForModel}"`);
         }
@@ -510,25 +518,28 @@ serve(async (req) => {
       }
 
       if (chunks && chunks.length > 0) {
-        // Optional reranking
+        // Selection strategy: rerank → MMR diversification → top-K
         let finalChunks = chunks;
         if (enableRerank) {
           try {
+            // Rerank then diversify with MMR to avoid 8 near-duplicate chunks
+            const reranked = rerankChunks(chunks, lastUserMessage, Math.min(chunks.length, finalCount * 2));
+            finalChunks = mmrSelect(reranked, finalCount, 0.7);
             if (debugRag) {
-              console.log("[chat] rerank BEFORE:", chunks.map((c: any, i: number) =>
+              console.log("[chat] MMR-after-rerank:", finalChunks.map((c: any, i: number) =>
                 `${i + 1}. ${c.document_name} (rank=${(c.rank as number).toFixed(3)})`).join(" | "));
             }
-            finalChunks = rerankChunks(chunks, lastUserMessage, finalCount);
-            if (debugRag) {
-              console.log("[chat] rerank AFTER:", finalChunks.map((c: any, i: number) =>
-                `${i + 1}. ${c.document_name} (score=${(c._rerankScore || 0).toFixed(3)})`).join(" | "));
-            }
           } catch (e) {
-            console.warn("[chat] rerank failed, using hybrid order:", e);
-            finalChunks = chunks.slice(0, finalCount);
+            console.warn("[chat] rerank+mmr failed, using hybrid order:", e);
+            finalChunks = mmrSelect(chunks, finalCount, 0.7);
           }
         } else {
-          finalChunks = chunks.slice(0, finalCount);
+          // Even without rerank, apply MMR for diversity
+          finalChunks = mmrSelect(chunks, finalCount, 0.7);
+          if (debugRag) {
+            console.log("[chat] MMR selected:", finalChunks.map((c: any, i: number) =>
+              `${i + 1}. ${c.document_name} (rank=${(c.rank as number).toFixed(3)})`).join(" | "));
+          }
         }
 
         const docsMaxRank = Math.max(...finalChunks.map((c: any) => c.rank as number));
