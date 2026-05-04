@@ -1,55 +1,40 @@
-## خطة إضافة معلومات التواصل (الخيار A — Hardcoded)
+## الهدف
+حذف تكامل Firecrawl بالكامل، والاعتماد فقط على **Google Grounding Search** (المُفعَّل أصلًا داخل `chat/index.ts` كوضع `live_search_enabled`).
 
-### 1. ملف مركزي للمعلومات
-إنشاء `src/config/contact.ts` يحتوي على كل بيانات التواصل في مكان واحد، ليسهل تعديلها لاحقاً دون لمس الواجهات:
+## التغييرات
 
-```ts
-export const contactInfo = {
-  supportEmail: "support@ustassistant.online",
-  registrationEmail: "registration@ust.edu",
-  whatsapp: "",          // اختياري — يُترك فارغاً لإخفاء البطاقة
-  workingHours: "الأحد - الخميس، 8 صباحاً - 3 عصراً",
-  universityWebsite: "https://ust.edu",
-  reportIssueNote: "للإبلاغ عن إجابة خاطئة، استخدم زر 👎 أسفل الرسالة",
-};
-```
+### 1. حذف ملفات/مكونات
+- **حذف** Edge Function: `supabase/functions/crawl-website/` بالكامل.
+- **حذف** المكوّن: `src/components/admin/WebSourceCard.tsx` (أو إعادة بنائه؟ — انظر أدناه).
+- **حذف** سر `FIRECRAWL_API_KEY` من إعدادات المشروع.
 
-> أي حقل فارغ (`""`) لن تظهر بطاقته — لا حاجة لتعديل الكود لإخفائه.
+### 2. تعديل `src/pages/AdminKnowledge.tsx`
+- إزالة `import WebSourceCard` والاستخدام في السطر 501.
+- استبداله بـ **بطاقة جديدة** (`LiveSearchCard`) مبسّطة فيها فقط:
+  - مفتاح تشغيل/إيقاف **«البحث المباشر في موقع الجامعة (Google)»** → يحفظ `live_search_enabled`.
+  - حقل **«النطاق المستهدف»** (افتراضيًا `www.ust.edu`) → يحفظ `web_crawl_root_url` (نُعيد استخدام نفس المفتاح كـ "domain" لتقييد البحث).
+  - مهلة الاستجابة (ms) → `live_search_timeout_ms`.
+  - عدد المصادر الأقصى → `live_search_max_results`.
+- إزالة كل أزرار «تشغيل الزحف الآن» وعرض حالة الزحف.
 
-### 2. صفحة `/contact` مستقلة
-- ملف جديد `src/pages/Contact.tsx` بنفس نمط `Documentation.tsx` (نفس الـ `cardElevated`، RTL، دعم Light/Dark، Tajawal).
-- بطاقات بسيطة: البريد، البريد الأكاديمي، واتساب (إن وُجد)، ساعات العمل، الإبلاغ عن خطأ، الموقع الرسمي.
-- روابط `mailto:` و `https://wa.me/...` و `target="_blank" rel="noopener"`.
-- زر رجوع إلى `/chat`.
-- إضافة المسار في `src/App.tsx`: `<Route path="/contact" element={<Contact />} />`.
+### 3. تعديل `supabase/functions/chat/index.ts`
+- **تغيير الافتراضي** للسطر 169: `live_search_enabled: "true"` (بدلاً من `"false"`).
+- لا تغيير على منطق Grounding نفسه — يعمل بالفعل بشكل صحيح (الأسطر 655-705).
 
-### 3. قسم داخل صفحة التوثيق
-- إضافة قسم `#contact` في الشريط الجانبي لـ `Documentation.tsx` (آخر عنصر).
-- نفس البطاقات المختصرة، لتسهيل الوصول للمطورين/المشرفين.
+### 4. تعديل `src/pages/Documentation.tsx`
+- حذف الأسطر التي تذكر `crawl-website` ومصادر الويب المُزحوفة (350، 370، 540).
+- إضافة فقرة قصيرة تشرح **Google Grounding** كمصدر مباشر للمعلومات اللحظية.
 
-### 4. بطاقة صغيرة في `ChatWelcome`
-- تحت بطاقات الاقتراحات، سطر صغير غير متطفل:
-  > هل تحتاج مساعدة بشرية؟ [تواصل معنا](/contact)
-- يستخدم `text-xs text-muted-foreground` ليظل خفيفاً ولا يكسر بساطة الواجهة.
+### 5. قاعدة البيانات
+- لا تغيير على المخطط. مفاتيح `assistant_settings` التالية تبقى كما هي وتُستخدم:
+  - `live_search_enabled`, `live_search_max_results`, `live_search_timeout_ms`, `web_crawl_root_url` (يُعاد استخدامه كـ domain filter).
+- **اختياري:** حذف صفوف `assistant_settings` ذات المفاتيح: `web_crawl_enabled`, `web_crawl_last_run_at`, `web_crawl_last_status` (لم تعد مستخدمة).
+- **اختياري:** الإبقاء على `knowledge_documents` ذات `source_type = 'web'` السابقة (لن تُحدَّث بعد الآن، لكنها تظل في الـ RAG حتى يحذفها المشرف يدويًا من واجهة المعرفة).
 
-### 5. رابط في الـ Footer
-- في `Documentation.tsx` و `Login.tsx` (إن وُجد footer)، إضافة رابط نصي صغير "تواصل معنا" يفتح `/contact`.
+## ما لن يتغيّر
+- منطق Google Grounding في `chat/index.ts` (موجود وجاهز).
+- باقي تدفّق RAG (FTS + pgvector + caching).
+- صفحة `/contact` وبقية الواجهات.
 
----
-
-### تفاصيل تقنية
-- **لا تغييرات على قاعدة البيانات.** صفر migrations، صفر أعمدة جديدة.
-- **لا Edge Functions جديدة.**
-- **حماية البريد من البوتات:** استخدام `mailto:` مباشر مقبول (الموقع خلف Cloudflare). لا حاجة لإخفاء معقد.
-- **i18n:** كل النصوص عربية مباشرة في الملف، لا حاجة لنظام ترجمة.
-- **التحديث المستقبلي:** لتعديل أي معلومة، يُعدَّل `src/config/contact.ts` فقط.
-
-### ما أحتاجه منك قبل التنفيذ
-ما هي القيم الفعلية التي تريد عرضها؟
-- 📧 بريد الدعم: `support@ustassistant.online` — هل صحيح؟
-- 📧 بريد شؤون الطلاب: هل تريد ذكره؟ وما هو؟
-- 📱 رقم واتساب: هل يوجد؟ (أتركه فارغاً إذا لا)
-- 🕐 ساعات العمل: الأحد - الخميس 8ص - 3ع — هل صحيح؟
-- 🌐 الموقع الرسمي للجامعة: ما الرابط؟
-
-إذا أردت التنفيذ بقيم افتراضية (placeholders) ثم تعدّلها لاحقاً في `contact.ts`، أخبرني فقط وأبدأ مباشرة.
+## ملاحظة سياسية (Google ToS)
+Google تشترط عرض **Search Suggestions** (`searchEntryPoint.renderedContent`) عند استخدام Grounding في إنتاج. الكود الحالي لا يعرضها — إن أردت الالتزام الكامل، أضف عرضها أسفل الإجابة. أخبرني إن أردت إضافة ذلك ضمن نفس التغيير.
