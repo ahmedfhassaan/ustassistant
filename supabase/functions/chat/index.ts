@@ -34,6 +34,34 @@ function classifyQuestion(text: string): string {
   return "عام";
 }
 
+// Detect questions about admission/registration or curriculum/study plans
+// → these should NOT be answered from graduation project files
+function isAdmissionOrCurriculumQuestion(text: string): boolean {
+  const t = text.toLowerCase();
+  const keywords = [
+    // القبول والتسجيل
+    "قبول", "تسجيل", "تقديم", "التحاق", "شروط القبول", "أوراق القبول",
+    "رسوم القبول", "مواعيد التسجيل", "كيف اسجل", "كيف أسجل", "كيف اقدم", "كيف أقدم",
+    // المقررات والخطط الدراسية
+    "خطة دراسية", "الخطة الدراسية", "خطه دراسيه", "مقرر", "مقررات",
+    "مادة", "مواد", "ساعة معتمدة", "ساعات معتمدة", "جدول دراسي",
+    "تخصص", "التخصص", "رمز مقرر", "رمز المادة", "كود المادة",
+    "خطة الدراسة", "البرنامج الدراسي", "متطلبات التخرج",
+  ];
+  return keywords.some(k => t.includes(k));
+}
+
+// Detect graduation project documents by name pattern
+function isGraduationProjectDoc(name: string): boolean {
+  if (!name) return false;
+  const n = name.trim();
+  const projectPrefixes = ["مشروع", "نظام", "تطبيق", "منصة", "موقع", "بوابة"];
+  const officialKeywords = ["دليل", "خطة", "خطه", "لائحة", "لائحه", "سياسة", "سياسه", "رسوم", "نظام الجامعة", "اللائحة"];
+  const startsWithProject = projectPrefixes.some(p => n.startsWith(p));
+  const isOfficial = officialKeywords.some(k => n.includes(k));
+  return startsWithProject && !isOfficial;
+}
+
 // ----------------- Query type classifier (for dynamic weights) -----------------
 type QueryKind = "exact" | "semantic" | "default";
 
@@ -514,6 +542,20 @@ serve(async (req) => {
         // Filter out web-crawled chunks when live search is active
         if (excludedWebDocNames && excludedWebDocNames.size > 0) {
           chunks = (chunks as any[]).filter((c: any) => !excludedWebDocNames!.has(c.document_name));
+        }
+
+        // Intent-based filter: exclude graduation project docs for admission/curriculum questions
+        if (isAdmissionOrCurriculumQuestion(lastUserMessage)) {
+          const before = chunks.length;
+          const filtered = (chunks as any[]).filter((c: any) => !isGraduationProjectDoc(c.document_name));
+          // Only apply filter if it doesn't wipe out all results (let live search take over otherwise)
+          if (filtered.length > 0) {
+            chunks = filtered;
+            console.log(`[chat] intent=admission_or_curriculum: filtered ${before - filtered.length} project chunks, kept ${filtered.length}`);
+          } else {
+            console.log(`[chat] intent=admission_or_curriculum: all ${before} chunks were projects → keeping none, will trigger live search`);
+            chunks = null;
+          }
         }
       }
 
