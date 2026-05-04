@@ -511,6 +511,23 @@ const Documentation = () => {
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead className="text-right">المقياس (SLO)</TableHead>
+                  <TableHead className="text-right">الهدف</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                <TableRow><TableCell className="font-medium">زمن الإجابة من الكاش (p50)</TableCell><TableCell><code>≤ 1.2s</code></TableCell></TableRow>
+                <TableRow><TableCell className="font-medium">زمن إجابة RAG كامل (p95)</TableCell><TableCell><code>≤ 6s</code></TableCell></TableRow>
+                <TableRow><TableCell className="font-medium">ميزانية الطلب القصوى</TableCell><TableCell><code>30s</code> (تنتهي بإجابة جزئية أو اعتذار)</TableCell></TableRow>
+                <TableRow><TableCell className="font-medium">مهلة generate-embedding</TableCell><TableCell><code>4s</code></TableCell></TableRow>
+                <TableRow><TableCell className="font-medium">مهلة rewrite-query</TableCell><TableCell><code>3s</code></TableCell></TableRow>
+                <TableRow><TableCell className="font-medium">مهلة Gemini generation</TableCell><TableCell><code>25s</code></TableCell></TableRow>
+                <TableRow><TableCell className="font-medium">دقة الإجابات على golden_eval</TableCell><TableCell><code>≥ 85%</code> (تشابه دلالي ≥ 0.85)</TableCell></TableRow>
+              </TableBody>
+            </Table>
+            <Table>
+              <TableHeader>
+                <TableRow>
                   <TableHead className="text-right">Edge Function</TableHead>
                   <TableHead className="text-right">الدور</TableHead>
                 </TableRow>
