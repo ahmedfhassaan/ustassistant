@@ -94,8 +94,8 @@ async function loadSettings(supabase: any): Promise<Record<string, string>> {
     // ---- New RAG settings ----
     enable_query_rewriting: "false",
     enable_reranking: "false",
-    initial_results_count: "10",
-    final_results_count: "5",
+    initial_results_count: "15",
+    final_results_count: "8",
     weight_text_default: "0.4",
     weight_semantic_default: "0.6",
     weight_text_exact: "0.65",
