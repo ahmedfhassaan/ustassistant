@@ -561,9 +561,10 @@ serve(async (req) => {
 
     // ---- LIVE SEARCH (Google Search Grounding via Gemini): only if docs are insufficient ----
     const confThresholdFraction = (parseInt(settings.confidence_threshold) || 30) / 100;
-    const docsInsufficient = maxRank < confThresholdFraction;
+    // Trigger live search if rank is low OR no relevant sources passed the filter (RAG matched noise)
+    const docsInsufficient = maxRank < confThresholdFraction || sourceNames.length === 0;
     let liveContext = "";
-    console.log(`[chat] LIVE SEARCH gate: enabled=${liveSearchEnabled} docsInsufficient=${docsInsufficient} explicitWeb=${explicitWeb} maxRank=${maxRank.toFixed(3)} threshold=${confThresholdFraction}`);
+    console.log(`[chat] LIVE SEARCH gate: enabled=${liveSearchEnabled} docsInsufficient=${docsInsufficient} explicitWeb=${explicitWeb} maxRank=${maxRank.toFixed(3)} sourcesCount=${sourceNames.length} threshold=${confThresholdFraction}`);
     if (liveSearchEnabled && (docsInsufficient || explicitWeb)) {
       try {
         const rootUrl = settings.web_crawl_root_url || "https://www.ust.edu";
