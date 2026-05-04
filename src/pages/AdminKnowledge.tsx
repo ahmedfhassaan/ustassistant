@@ -168,7 +168,7 @@ const AdminKnowledge = () => {
       if (!groups.has(cat)) groups.set(cat, []);
       groups.get(cat)!.push(d);
     }
-    const order = [...CATEGORIES, WEB_CATEGORY, UNCATEGORIZED];
+    const order = [...categories, WEB_CATEGORY, UNCATEGORIZED];
     const sorted: { category: string; docs: KnowledgeDoc[] }[] = [];
     for (const cat of order) {
       if (groups.has(cat)) {
