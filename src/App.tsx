@@ -15,6 +15,7 @@ import AdminSettings from "./pages/AdminSettings";
 import AdminStudents from "./pages/AdminStudents";
 import AdminFeedback from "./pages/AdminFeedback";
 import Documentation from "./pages/Documentation";
+import Contact from "./pages/Contact";
 
 
 const queryClient = new QueryClient();
@@ -37,6 +38,7 @@ const App = () => (
             <Route path="/chat" element={<Chat />} />
             <Route path="/documentation" element={<Documentation />} />
             <Route path="/docs" element={<Documentation />} />
+            <Route path="/contact" element={<Contact />} />
             <Route
               path="/admin"
               element={

@@ -646,8 +646,13 @@ const Documentation = () => {
           </CardContent>
         </Card>
 
-        <footer className="text-center text-xs text-muted-foreground py-6">
-          Smart University Assistant — وثيقة الإصدار ١٫٠
+        <footer className="text-center text-xs text-muted-foreground py-6 space-y-2">
+          <div>Smart University Assistant — وثيقة الإصدار ١٫٠</div>
+          <div>
+            <Link to="/contact" className="text-primary hover:underline">
+              تواصل معنا
+            </Link>
+          </div>
         </footer>
       </main>
     </div>
