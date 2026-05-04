@@ -146,6 +146,24 @@ async function tryRewriteQuery(supabaseUrl: string, supabaseKey: string, questio
   }
 }
 
+// ----------------- Branch/location expansion -----------------
+// Adds branch synonyms when the question is about specializations/faculties
+// so the search retrieves chunks about all branches, not just the most relevant text match.
+const BRANCH_TERMS = ["تعز", "صنعاء", "عدن", "الحديدة", "إب", "حضرموت", "المكلا", "فرع", "فروع"];
+const SPECIALIZATION_TERMS = [
+  "تخصص", "تخصصات", "قسم", "أقسام", "كلية", "كليات",
+  "حاسبات", "هندسة", "طب", "صيدلة", "إدارة", "علوم", "محاسبة", "تمريض"
+];
+
+function expandBranchVariant(question: string): string | null {
+  const lower = question.toLowerCase();
+  const hasSpec = SPECIALIZATION_TERMS.some(t => lower.includes(t));
+  const hasBranch = BRANCH_TERMS.some(t => lower.includes(t));
+  // Only expand when asking about specializations WITHOUT specifying a branch
+  if (!hasSpec || hasBranch) return null;
+  return `${question} فرع تعز صنعاء عدن كلية`;
+}
+
 // ----------------- Lightweight reranking (no extra network) -----------------
 function tokenize(s: string): string[] {
   return s.toLowerCase().split(/[\s،,.;:!\?\(\)\[\]\|\/\\"'«»]+/).filter(w => w.length >= 2);
