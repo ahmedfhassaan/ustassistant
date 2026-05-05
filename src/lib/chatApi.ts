@@ -6,7 +6,7 @@ interface StreamChatOptions {
   messages: Msg[];
   userId?: string;
   onDelta: (deltaText: string) => void;
-  onDone: (meta?: { sources?: string; cached?: boolean }) => void;
+  onDone: (meta?: { sources?: string; cached?: boolean; educationalExplain?: boolean }) => void;
   signal?: AbortSignal;
 }
 
@@ -46,14 +46,16 @@ export async function streamChat({ messages, userId, onDelta, onDone, signal }: 
   let textBuffer = "";
   let streamDone = false;
   let metaSources: string | undefined;
+  let metaEdu = false;
 
   const handleParsedLine = (jsonStr: string): boolean => {
     if (jsonStr === "[DONE]") return true;
     try {
       const parsed = JSON.parse(jsonStr);
-      // Meta event: { meta: { sources: "..." } }
-      if (parsed?.meta?.sources) {
-        metaSources = String(parsed.meta.sources);
+      // Meta event: { meta: { sources?: "...", educational_explain?: true } }
+      if (parsed?.meta) {
+        if (parsed.meta.sources) metaSources = String(parsed.meta.sources);
+        if (parsed.meta.educational_explain) metaEdu = true;
         return false;
       }
       const content = parsed.choices?.[0]?.delta?.content as string | undefined;
@@ -107,5 +109,5 @@ export async function streamChat({ messages, userId, onDelta, onDone, signal }: 
     }
   }
 
-  onDone({ sources: metaSources });
+  onDone({ sources: metaSources, educationalExplain: metaEdu });
 }

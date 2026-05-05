@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { BookOpen, Bot, User, ThumbsUp, ThumbsDown } from "lucide-react";
+import { BookOpen, Bot, User, ThumbsUp, ThumbsDown, Info } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { supabase } from "@/integrations/supabase/client";
@@ -66,6 +66,15 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
           ) : (
             <div className="prose prose-sm prose-chat max-w-none text-sm leading-7" dir="rtl">
               <ReactMarkdown remarkPlugins={[remarkGfm]}>{message.content}</ReactMarkdown>
+            </div>
+          )}
+          {!isUser && message.educationalExplain && (
+            <div
+              className="mt-2.5 px-3 py-2 rounded-lg text-xs flex items-start gap-1.5 bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-amber-500/20"
+              dir="rtl"
+            >
+              <Info className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+              <span>ملاحظة: الشرح التالي توضيح تعليمي عام، وليس معلومة رسمية من الجامعة.</span>
             </div>
           )}
           {message.source && (

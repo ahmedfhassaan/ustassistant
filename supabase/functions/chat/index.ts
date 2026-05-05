@@ -52,6 +52,25 @@ const FOLLOW_UP_PHRASES = [
   "وماذا بعد", "ليش", "لماذا", "كيف", "وين", "أين", "هذا", "هذا السؤال",
 ];
 
+const EXPLAIN_PHRASES = [
+  "لم أفهم","لم افهم","ما فهمت","مو فاهم","غير واضح","ما وضحت",
+  "اشرح أكثر","اشرح اكثر","اشرح","وضح","وضّح","وضح أكثر",
+  "أعطني مثال","اعطني مثال","مثال","مثل ماذا",
+  "حلها خطوة","خطوة بخطوة","الخطوات","كيف الحل","كيف نحل",
+  "لماذا هذه","ليش هذي","لماذا الإجابة","ليش الجواب","علل","فسر","فسّر",
+];
+const ADMIN_BLOCK_KEYWORDS = [
+  "قبول","تسجيل","رسوم","تأجيل","جدول","الجداول","لائحة","لوائح","قرار","فرع","فروع",
+];
+function isExplainRequest(text: string): boolean {
+  const t = (text || "").toLowerCase();
+  return EXPLAIN_PHRASES.some(p => t.includes(p.toLowerCase()));
+}
+function hasAdminTopic(text: string): boolean {
+  const t = (text || "").toLowerCase();
+  return ADMIN_BLOCK_KEYWORDS.some(k => t.includes(k));
+}
+
 function sanitizeSessionText(text: string, maxLength = 180): string {
   return (text || "")
     .replace(/<!--[\s\S]*?-->/g, " ")
@@ -788,6 +807,7 @@ serve(async (req) => {
     let liveSearchUsed = false;
     let docsContext = "";
     let questionIntent: QuestionIntent = "other";
+    let educationalExplain = false;
 
     // When live search is enabled, exclude pre-crawled web documents from RPC results to avoid duplication with live results
     let excludedWebDocNames: Set<string> | null = null;
@@ -886,6 +906,14 @@ serve(async (req) => {
       const intentRewritten = classifyIntent(rewrittenQuery || "");
       const intent: QuestionIntent = inferIntentFromSession(lastUserMessage, priorMessages, rewrittenQuery || "");
       questionIntent = intent;
+      // Detect "explain" follow-up after an exam-paper answer → allow general educational knowledge
+      educationalExplain =
+        isExplainRequest(lastUserMessage) &&
+        !hasAdminTopic(lastUserMessage) &&
+        intent === "exam_papers";
+      if (educationalExplain) {
+        console.log("[chat] EDU explain mode active for exam-paper follow-up");
+      }
 
       if (chunks && chunks.length > 0) {
         // Filter out web-crawled chunks when live search is active
@@ -1194,9 +1222,19 @@ ${lastUserMessage}`;
       ? `\n\n🌐 **أولوية المصدر:** اعتمد **أولاً وبشكل رئيسي** على "معلومات مباشرة من موقع الجامعة (بحث لحظي)" أدناه، واذكر روابط المصادر إن أمكن. استخدم المستندات المحلية فقط كمكمّل عند الحاجة.`
       : "";
 
+    const eduBlock = educationalExplain ? `
+
+🎓 **وضع الشرح التعليمي (مفعّل لهذه الرسالة فقط — يتجاوز قاعدة منع المعرفة العامة):**
+- الطالب طلب توضيحاً لإجابة سابقة من «نماذج الامتحانات السابقة».
+- مسموح باستخدام معرفتك العامة التعليمية فقط لـ: تبسيط الفكرة، شرح المفهوم، إعطاء مثال مشابه، شرح خطوات الحل، توضيح سبب صحة الإجابة.
+- يُمنع منعاً تاماً استخدام المعرفة العامة في: اللوائح الجامعية، القبول والتسجيل، الرسوم، التأجيل، الجداول، القرارات الرسمية، أو أي معلومة إدارية تخص الجامعة. إذا سأل الطالب عن شيء من هذه، اعتذر ووجّهه للجهة المختصة.
+- ابدأ بسطر يقتبس النص الأصلي من النموذج (إن توفر في السياق) باستخدام \`>\`، ثم عنواناً فرعياً \`### شرح تعليمي عام\` قبل التوضيح، لتمييز ما هو من المصدر عمّا هو شرح عام.
+- في **آخر سطر** من ردك أضف الوسم: \`<!--EDU_EXPLAIN: 1-->\`
+` : "";
+
     const systemPrompt = `أنت ${settings.assistant_name}، مساعد ذكاء اصطناعي متخصص في مساعدة طلاب الجامعة.
 
-${strictBlock}${webPriorityBlock}
+${strictBlock}${webPriorityBlock}${eduBlock}
 
 مهامك:
 - الإجابة على أسئلة الطلاب المتعلقة بالجامعة والدراسة
@@ -1329,7 +1367,10 @@ ${toneInstruction}
       const flushSafe = async (force = false) => {
         const KEEP_TAIL = 60;
         if (force) {
-          const cleaned = pendingText.replace(/<!--\s*USED_SOURCES:[\s\S]*?-->/gi, "").trimEnd();
+          const cleaned = pendingText
+            .replace(/<!--\s*USED_SOURCES:[\s\S]*?-->/gi, "")
+            .replace(/<!--\s*EDU_EXPLAIN:[\s\S]*?-->/gi, "")
+            .trimEnd();
           if (cleaned.length > 0) {
             const openaiChunk = { choices: [{ delta: { content: cleaned } }] };
             await writer.write(encoder.encode(`data: ${JSON.stringify(openaiChunk)}\n\n`));
@@ -1419,13 +1460,23 @@ ${toneInstruction}
           finalSources = [];
         }
 
+        const eduMatch = fullContent.match(/<!--\s*EDU_EXPLAIN:\s*1\s*-->/i);
+        const isEdu = !!eduMatch || educationalExplain;
+
+        const metaPayload: any = {};
         if (settings.show_sources === "true" && finalSources.length > 0) {
-          const meta = { meta: { sources: finalSources.join("، ") } };
-          await writer.write(encoder.encode(`data: ${JSON.stringify(meta)}\n\n`));
+          metaPayload.sources = finalSources.join("، ");
+        }
+        if (isEdu) metaPayload.educational_explain = true;
+        if (Object.keys(metaPayload).length) {
+          await writer.write(encoder.encode(`data: ${JSON.stringify({ meta: metaPayload })}\n\n`));
         }
         await writer.write(encoder.encode("data: [DONE]\n\n"));
 
-        const cleanContent = fullContent.replace(/<!--\s*USED_SOURCES:[\s\S]*?-->/gi, "").trimEnd();
+        const cleanContent = fullContent
+          .replace(/<!--\s*USED_SOURCES:[\s\S]*?-->/gi, "")
+          .replace(/<!--\s*EDU_EXPLAIN:[\s\S]*?-->/gi, "")
+          .trimEnd();
 
         if (cleanContent) {
           try {

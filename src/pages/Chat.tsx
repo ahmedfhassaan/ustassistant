@@ -20,6 +20,7 @@ export interface Message {
   content: string;
   source?: string;
   question?: string;
+  educationalExplain?: boolean;
 }
 
 export interface Conversation {
@@ -213,6 +214,7 @@ const Chat = () => {
             content: cleanContent,
             source,
             question: text,
+            educationalExplain: meta?.educationalExplain,
           };
 
           const finalMessages: Message[] = [...newMessages, assistantMsg];
