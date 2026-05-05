@@ -15,6 +15,7 @@ const features = [
   { icon: Users, text: "الإجراءات الإدارية" },
   { icon: Shield, text: "دعم فوري على مدار الساعة" },
   { icon: FileText, text: "مشاريع التخرج السابقة" },
+  { icon: ClipboardList, text: "نماذج الامتحانات السابقة" },
 ];
 
 const Login = () => {
