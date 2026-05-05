@@ -1,45 +1,39 @@
-## المشكلة
+## الهدف
+ضمان أن البحث الحي يقتصر على موقع **جامعة العلوم والتكنولوجيا – عدن (ust.edu)** فقط، مع منع أي خلط مع جامعة العلوم والتكنولوجيا في صنعاء.
 
-البوابة الحالية لتفعيل Google Grounding:
+## المشكلة الحالية
+في `supabase/functions/chat/index.ts` (السطر 689) الـ prompt الموجَّه لـ Gemini مكتوب:
+> "ابحث في موقع جامعة العلوم والتكنولوجيا (ust.edu) ..."
+
+اسم "جامعة العلوم والتكنولوجيا" بدون تحديد "عدن" قد يدفع Gemini للبحث عن جامعة صنعاء (وهي الأشهر بهذا الاسم) بدلاً من جامعة عدن، وقد يجلب نتائج من نطاقات أخرى مثل `ust.edu.ye` (جامعة صنعاء).
+
+كما أن الكود حالياً لا يفلتر روابط `groundingChunks`، فلو رجعت روابط من خارج `ust.edu` يتم عرضها كمصادر.
+
+## التغييرات
+
+### 1) تصحيح الـ prompt (السطر 689)
+- استبدال النص ليكون صريحاً: "جامعة العلوم والتكنولوجيا – عدن، اليمن، موقعها الرسمي ust.edu فقط".
+- إضافة تعليمات صريحة: "تجاهل أي معلومات عن جامعة العلوم والتكنولوجيا في صنعاء (ust.edu.ye) ولا تستخدمها مطلقاً".
+- التأكيد: "إن لم تجد المعلومة في ust.edu فأجب بأنها غير متوفرة".
+
+### 2) تثبيت النطاق على ust.edu
+- تجاهل `settings.web_crawl_root_url` لهذا الغرض وفرض `domain = "ust.edu"` بشكل ثابت في كود البحث الحي، حتى لا يتم تغييره عن طريق الخطأ من إعدادات الإدمن.
+
+### 3) فلترة المصادر المُسترجَعة (الأسطر 715–722)
+- عند معالجة `groundingChunks`، قبول الروابط فقط التي تنتمي لنطاق `ust.edu` أو نطاقاته الفرعية.
+- استبعاد أي رابط يحتوي على `ust.edu.ye` أو نطاقات أخرى.
+- إذا كانت كل الروابط من خارج `ust.edu`، يتم تجاهل النص ولا يُستخدم كمصدر.
+
+### 4) تحديث الـ log
+طباعة عدد المصادر المقبولة والمرفوضة:
 ```
-docsInsufficient = maxRank < threshold || sourceNames.length === 0
-trigger if (liveSearchEnabled && (docsInsufficient || explicitWeb))
+[chat] GOOGLE GROUNDING accepted=N rejected=M (only ust.edu allowed)
 ```
 
-في سؤال "اذكر المجلات العلمية": rank=0.916 و5 مصادر، فاعتُبرت كافية — لكنها لم تكن تحتوي إجابة فعلية. النتيجة: fallback بدون استدعاء Grounding.
+## ملفات ستُعدَّل
+- `supabase/functions/chat/index.ts` — قسم Google Grounding فقط (~الأسطر 680–745).
 
-## الحل: فحص كفاية سريع قبل الرد (LLM Sufficiency Gate)
-
-قبل توليد الرد النهائي، نُجري **استدعاء سريع جداً** لـ `gemini-2.5-flash-lite` نسأله:
-
-> "بناءً على المقاطع التالية، هل تكفي للإجابة الكاملة على سؤال المستخدم؟ أجب بكلمة واحدة فقط: YES أو NO."
-
-- إذا `NO` → نُفعّل Google Grounding تلقائياً (نفس مسار `explicitWeb`)، حتى لو كان rank مرتفعاً.
-- إذا `YES` → نُكمل عادياً بدون Grounding.
-- إذا فشل الاستدعاء أو تجاوز 3 ثوانٍ → نعتبره `YES` (لا نُعطّل التدفق).
-
-### نقاط التطبيق في `supabase/functions/chat/index.ts`
-
-1. بعد بناء `docsContext` وقبل بوابة Live Search (~السطر 647)، نضيف:
-   ```ts
-   let docsAnswerable = true;
-   if (liveSearchEnabled && docsContext && !docsInsufficient && !explicitWeb) {
-     docsAnswerable = await checkSufficiency(lastUserMessage, docsContext);
-   }
-   ```
-2. تعديل الشرط:
-   ```ts
-   if (liveSearchEnabled && (docsInsufficient || explicitWeb || !docsAnswerable)) { ... }
-   ```
-3. عند `!docsAnswerable` نُعامله كـ `explicitWeb` لأولوية المصدر الويب في الـ system prompt.
-4. إضافة دالة `checkSufficiency()` تستخدم `gemini-2.5-flash-lite` مع `maxOutputTokens: 5` و `AbortSignal.timeout(3000)`.
-
-### مزايا
-
-- لا تأخير محسوس (طلب قصير ~300-700ms، فقط عند توفر مستندات وعدم وجود تفعيل صريح).
-- يمنع fallback الكاذب عندما تكون مقاطع الـ RAG ذات rank عالٍ لكنها لا تجيب.
-- لا يؤثر على الكاش (الكاش يعمل قبل هذه المرحلة).
-
-## النشر
-
-نشر edge function `chat`.
+## خارج النطاق
+- لا تغيير على RAG أو قاعدة المعرفة المحلية.
+- لا تغيير على الواجهة.
+- لا إضافة حقول جديدة في إعدادات الإدمن.

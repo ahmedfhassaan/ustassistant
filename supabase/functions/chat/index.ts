@@ -679,14 +679,23 @@ serve(async (req) => {
     console.log(`[chat] LIVE SEARCH gate: enabled=${liveSearchEnabled} docsInsufficient=${docsInsufficient} explicitWeb=${explicitWeb} answerable=${docsAnswerable} maxRank=${maxRank.toFixed(3)} sourcesCount=${sourceNames.length} threshold=${confThresholdFraction}`);
     if (liveSearchEnabled && (docsInsufficient || explicitWeb)) {
       try {
-        const rootUrl = settings.web_crawl_root_url || "https://www.ust.edu";
-        let domain = "";
-        try { domain = new URL(rootUrl).hostname.replace(/^www\./, ""); } catch { domain = "ust.edu"; }
+        // Hard-locked to ust.edu (University of Science and Technology - Aden, Yemen)
+        // DO NOT change to ust.edu.ye (that is a different university in Sanaa)
+        const domain = "ust.edu";
         const timeoutMs = Math.min(Math.max(parseInt(settings.live_search_timeout_ms) || 12000, 3000), 30000);
 
-        console.log(`[chat] GOOGLE GROUNDING start site:${domain} q="${lastUserMessage.slice(0,80)}"`);
+        console.log(`[chat] GOOGLE GROUNDING start site:${domain} (Aden only) q="${lastUserMessage.slice(0,80)}"`);
 
-        const groundingPrompt = `ابحث في موقع جامعة العلوم والتكنولوجيا (${domain}) عن إجابة دقيقة ومختصرة للسؤال التالي. اذكر الحقائق فقط من المصادر الرسمية:\n\n${lastUserMessage}`;
+        const groundingPrompt = `ابحث حصرياً في الموقع الرسمي لجامعة العلوم والتكنولوجيا - عدن، اليمن (الموقع: https://ust.edu فقط) عن إجابة دقيقة ومختصرة للسؤال التالي.
+
+تعليمات صارمة:
+- استخدم فقط المعلومات من نطاق ust.edu (وليس ust.edu.ye).
+- تجاهل تماماً جامعة العلوم والتكنولوجيا في صنعاء (ust.edu.ye) ولا تستخدم أي معلومة منها.
+- إذا لم تجد المعلومة في موقع ust.edu فقل بوضوح: "المعلومة غير متوفرة في الموقع الرسمي للجامعة" ولا تخمّن.
+- استخدم عامل البحث: site:ust.edu
+
+السؤال:
+${lastUserMessage}`;
 
         const groundingUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GOOGLE_AI_API_KEY}`;
         const liveRes = await fetch(groundingUrl, {
