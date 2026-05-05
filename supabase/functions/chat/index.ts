@@ -906,6 +906,14 @@ serve(async (req) => {
       const intentRewritten = classifyIntent(rewrittenQuery || "");
       const intent: QuestionIntent = inferIntentFromSession(lastUserMessage, priorMessages, rewrittenQuery || "");
       questionIntent = intent;
+      // Detect "explain" follow-up after an exam-paper answer → allow general educational knowledge
+      educationalExplain =
+        isExplainRequest(lastUserMessage) &&
+        !hasAdminTopic(lastUserMessage) &&
+        intent === "exam_papers";
+      if (educationalExplain) {
+        console.log("[chat] EDU explain mode active for exam-paper follow-up");
+      }
 
       if (chunks && chunks.length > 0) {
         // Filter out web-crawled chunks when live search is active
