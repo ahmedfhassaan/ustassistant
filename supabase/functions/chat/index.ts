@@ -52,6 +52,25 @@ const FOLLOW_UP_PHRASES = [
   "وماذا بعد", "ليش", "لماذا", "كيف", "وين", "أين", "هذا", "هذا السؤال",
 ];
 
+const EXPLAIN_PHRASES = [
+  "لم أفهم","لم افهم","ما فهمت","مو فاهم","غير واضح","ما وضحت",
+  "اشرح أكثر","اشرح اكثر","اشرح","وضح","وضّح","وضح أكثر",
+  "أعطني مثال","اعطني مثال","مثال","مثل ماذا",
+  "حلها خطوة","خطوة بخطوة","الخطوات","كيف الحل","كيف نحل",
+  "لماذا هذه","ليش هذي","لماذا الإجابة","ليش الجواب","علل","فسر","فسّر",
+];
+const ADMIN_BLOCK_KEYWORDS = [
+  "قبول","تسجيل","رسوم","تأجيل","جدول","الجداول","لائحة","لوائح","قرار","فرع","فروع",
+];
+function isExplainRequest(text: string): boolean {
+  const t = (text || "").toLowerCase();
+  return EXPLAIN_PHRASES.some(p => t.includes(p.toLowerCase()));
+}
+function hasAdminTopic(text: string): boolean {
+  const t = (text || "").toLowerCase();
+  return ADMIN_BLOCK_KEYWORDS.some(k => t.includes(k));
+}
+
 function sanitizeSessionText(text: string, maxLength = 180): string {
   return (text || "")
     .replace(/<!--[\s\S]*?-->/g, " ")
