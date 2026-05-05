@@ -272,6 +272,7 @@ function shouldForceOfficialWebLookup(query: string, docsContext: string): boole
 async function fetchDirectUstSiteContext(query: string, timeoutMs: number, maxResults = 4): Promise<{ context: string; sourceNames: string[] } | null> {
   const variants = [query, ...generateQueryVariants(query)].map((v) => v.trim()).filter(Boolean);
   const searchQueries = [...new Set(variants)].slice(0, 3);
+  const normalizedQuery = normalizeArabicForMatch(query);
   const siteHeaders = {
     "User-Agent": "Mozilla/5.0 (compatible; USTAssistant/1.0)",
     "Accept-Language": "ar,en;q=0.8",
@@ -279,6 +280,21 @@ async function fetchDirectUstSiteContext(query: string, timeoutMs: number, maxRe
 
   type SearchHit = { title: string; url: string; snippet: string; score: number };
   const hits = new Map<string, SearchHit>();
+
+  if (["مجله", "مجلات", "بحث", "ابحاث", "نشر", "journal"].some((k) => normalizedQuery.includes(k))) {
+    hits.set("https://ust.edu/research-and-publication/", {
+      title: "الأبحاث والنشر",
+      url: "https://ust.edu/research-and-publication/",
+      snippet: "حصلت المجلات العلمية الصادرة عن جامعة العلوم والتكنولوجيا على مراتب متقدمة، وتذكر الصفحة أسماء المجلات العلمية الصادرة عن الجامعة.",
+      score: 12,
+    });
+    hits.set("https://ust.edu/journal/", {
+      title: "Journal",
+      url: "https://ust.edu/journal/",
+      snippet: "صفحة المجلات ضمن الموقع الرسمي للجامعة.",
+      score: 8,
+    });
+  }
 
   for (const searchQuery of searchQueries) {
     const searchUrl = `https://ust.edu/?s=${encodeURIComponent(searchQuery)}`;
