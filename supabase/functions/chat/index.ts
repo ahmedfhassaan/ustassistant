@@ -662,7 +662,7 @@ serve(async (req) => {
         console.log(`[chat] GOOGLE GROUNDING start site:${domain} timeoutMs=${timeoutMs} q="${lastUserMessage.slice(0,80)}"`);
         const groundingStart = Date.now();
 
-        const groundingPrompt = `ابحث في موقع جامعة العلوم والتكنولوجيا (${domain}) واستخرج إجابة تفصيلية وشاملة للسؤال التالي. أدرج كل المعلومات ذات الصلة (الأسماء، الأرقام، التواريخ، الروابط، الأقسام). إذا وجدت قوائم أو جداول، انسخها كاملةً. لا ترفض الإجابة طالما توجد معلومات ذات صلة في الموقع.\n\nالسؤال: ${lastUserMessage}`;
+        const groundingPrompt = `ابحث في موقع جامعة العلوم والتكنولوجيا (${domain}) عن إجابة موجزة ومباشرة للسؤال التالي. اذكر الحقائق الأساسية فقط (الأسماء، الأرقام، التواريخ، الروابط) بدون تفاصيل زائدة.\n\nالسؤال: ${lastUserMessage}`;
 
         const groundingUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GOOGLE_AI_API_KEY}`;
         const liveRes = await fetch(groundingUrl, {
@@ -671,7 +671,7 @@ serve(async (req) => {
           body: JSON.stringify({
             contents: [{ role: "user", parts: [{ text: groundingPrompt }] }],
             tools: [{ google_search: {} }],
-            generationConfig: { temperature: 0.2, maxOutputTokens: 2048 },
+            generationConfig: { temperature: 0.2, maxOutputTokens: 800 },
           }),
           signal: AbortSignal.timeout(timeoutMs),
         });
