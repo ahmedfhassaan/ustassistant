@@ -1,40 +1,32 @@
-## الهدف
-حذف تكامل Firecrawl بالكامل، والاعتماد فقط على **Google Grounding Search** (المُفعَّل أصلًا داخل `chat/index.ts` كوضع `live_search_enabled`).
+## المشكلة
 
-## التغييرات
+عند استخدام Google Grounding للإجابة من موقع الجامعة، يحدث أحد سيناريوهين:
+1. يُرجع Google نصاً لكن بدون قائمة URLs في `groundingChunks` → المصدر الظاهر يبقى ملف الـ RAG فقط.
+2. يُرجع URLs لكنها بعناوين طويلة غير واضحة، دون إشارة واضحة إلى أن المصدر هو "موقع الجامعة الرسمي".
 
-### 1. حذف ملفات/مكونات
-- **حذف** Edge Function: `supabase/functions/crawl-website/` بالكامل.
-- **حذف** المكوّن: `src/components/admin/WebSourceCard.tsx` (أو إعادة بنائه؟ — انظر أدناه).
-- **حذف** سر `FIRECRAWL_API_KEY` من إعدادات المشروع.
+## الحل
 
-### 2. تعديل `src/pages/AdminKnowledge.tsx`
-- إزالة `import WebSourceCard` والاستخدام في السطر 501.
-- استبداله بـ **بطاقة جديدة** (`LiveSearchCard`) مبسّطة فيها فقط:
-  - مفتاح تشغيل/إيقاف **«البحث المباشر في موقع الجامعة (Google)»** → يحفظ `live_search_enabled`.
-  - حقل **«النطاق المستهدف»** (افتراضيًا `www.ust.edu`) → يحفظ `web_crawl_root_url` (نُعيد استخدام نفس المفتاح كـ "domain" لتقييد البحث).
-  - مهلة الاستجابة (ms) → `live_search_timeout_ms`.
-  - عدد المصادر الأقصى → `live_search_max_results`.
-- إزالة كل أزرار «تشغيل الزحف الآن» وعرض حالة الزحف.
+تعديل بسيط في `supabase/functions/chat/index.ts` (داخل كتلة Google Grounding، حوالي السطر 697):
 
-### 3. تعديل `supabase/functions/chat/index.ts`
-- **تغيير الافتراضي** للسطر 169: `live_search_enabled: "true"` (بدلاً من `"false"`).
-- لا تغيير على منطق Grounding نفسه — يعمل بالفعل بشكل صحيح (الأسطر 655-705).
+عندما يُستخدم البحث المباشر بنجاح (`groundedText` غير فارغ):
+- إضافة المصدر `موقع الجامعة الرسمي (ust.edu)` دائماً في مقدمة `sourceNames`، بصرف النظر عن وجود `groundingChunks`.
+- إذا توفرت URLs محددة، تُضاف بعدها كمصادر فرعية.
+- بهذا الشكل سيرى الطالب دائماً عبارة "موقع الجامعة الرسمي (ust.edu)" أسفل الإجابة عند استخدام Grounding.
 
-### 4. تعديل `src/pages/Documentation.tsx`
-- حذف الأسطر التي تذكر `crawl-website` ومصادر الويب المُزحوفة (350، 370، 540).
-- إضافة فقرة قصيرة تشرح **Google Grounding** كمصدر مباشر للمعلومات اللحظية.
+## التفاصيل التقنية
 
-### 5. قاعدة البيانات
-- لا تغيير على المخطط. مفاتيح `assistant_settings` التالية تبقى كما هي وتُستخدم:
-  - `live_search_enabled`, `live_search_max_results`, `live_search_timeout_ms`, `web_crawl_root_url` (يُعاد استخدامه كـ domain filter).
-- **اختياري:** حذف صفوف `assistant_settings` ذات المفاتيح: `web_crawl_enabled`, `web_crawl_last_run_at`, `web_crawl_last_status` (لم تعد مستخدمة).
-- **اختياري:** الإبقاء على `knowledge_documents` ذات `source_type = 'web'` السابقة (لن تُحدَّث بعد الآن، لكنها تظل في الـ RAG حتى يحذفها المشرف يدويًا من واجهة المعرفة).
+```ts
+if (groundedText) {
+  liveSearchUsed = true;
+  maxRank = Math.max(maxRank, 1);
+  const officialLabel = `موقع الجامعة الرسمي (${domain})`;
+  sourceNames = [...new Set([officialLabel, ...sourceNames, ...liveSourceNames])];
+  // ...rest unchanged
+}
+```
 
-## ما لن يتغيّر
-- منطق Google Grounding في `chat/index.ts` (موجود وجاهز).
-- باقي تدفّق RAG (FTS + pgvector + caching).
-- صفحة `/contact` وبقية الواجهات.
+لا حاجة لتعديلات أخرى — واجهة المصادر في الـ Chat تعرض `sourceNames` كما هي.
 
-## ملاحظة سياسية (Google ToS)
-Google تشترط عرض **Search Suggestions** (`searchEntryPoint.renderedContent`) عند استخدام Grounding في إنتاج. الكود الحالي لا يعرضها — إن أردت الالتزام الكامل، أضف عرضها أسفل الإجابة. أخبرني إن أردت إضافة ذلك ضمن نفس التغيير.
+## النشر
+
+نشر edge function `chat` فقط بعد التعديل.

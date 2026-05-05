@@ -697,7 +697,8 @@ serve(async (req) => {
           if (groundedText) {
             liveSearchUsed = true;
             maxRank = Math.max(maxRank, 1);
-            sourceNames = [...new Set([...sourceNames, ...liveSourceNames])];
+            const officialLabel = `موقع الجامعة الرسمي (${domain})`;
+            sourceNames = [...new Set([officialLabel, ...sourceNames, ...liveSourceNames])];
             liveContext = "\n\n--- معلومات مباشرة من البحث على الويب (Google Grounding) ---\n" +
               groundedText +
               (sourceLines.length ? "\n\nالمصادر:\n" + sourceLines.join("\n") : "") +
