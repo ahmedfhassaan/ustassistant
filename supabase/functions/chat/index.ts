@@ -351,7 +351,7 @@ async function fetchDirectUstSiteContext(query: string, timeoutMs: number, maxRe
       console.warn("[chat] Direct ust.edu fetch failed:", hit.url, e instanceof Error ? e.message : e);
     }
 
-    sourceNames.push(hit.title);
+    sourceNames.push(`🌐 ${hit.title} — ${hit.url}`);
     detailParts.push(
       `[مصدر: ${hit.title}]\nالرابط: ${hit.url}\n` +
       `ملخص نتيجة البحث: ${hit.snippet || "لا يوجد مقتطف واضح."}\n` +
