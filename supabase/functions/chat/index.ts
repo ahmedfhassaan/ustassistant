@@ -1251,6 +1251,8 @@ ${toneInstruction}
           (fallbackMsg && cleanForCheck.includes(fallbackMsg.slice(0, 30))) ||
           (lowConfMsg && cleanForCheck.includes(lowConfMsg.slice(0, 30)));
 
+        // Always preserve web sources (🌐 prefix) when live search was used
+        const webSources = sourceNames.filter(s => s.startsWith("🌐") || s.includes("ust.edu"));
         if (markerMatch) {
           const raw = markerMatch[1].trim();
           if (raw && raw !== "-") {
@@ -1258,14 +1260,15 @@ ${toneInstruction}
             const intersect = declared.filter(d =>
               sourceNames.some(s => s === d || s.includes(d) || d.includes(s))
             );
-            // If model declared sources but none matched, keep top retrieved as fallback
-            finalSources = intersect.length > 0
-              ? [...new Set(intersect)]
+            const merged = [...new Set([...webSources, ...intersect])];
+            finalSources = merged.length > 0
+              ? merged
               : (isFallbackAnswer ? [] : sourceNames.slice(0, 1));
           } else {
-            // Empty marker: only suppress if it's truly a fallback answer
-            finalSources = isFallbackAnswer ? [] : sourceNames.slice(0, 1);
+            finalSources = isFallbackAnswer ? [] : (webSources.length > 0 ? webSources : sourceNames.slice(0, 1));
           }
+        } else if (webSources.length > 0) {
+          finalSources = [...new Set([...webSources, ...finalSources])];
         }
         // Suppress sources only if it's a fallback answer or confidence is far below threshold
         if (isFallbackAnswer || confidencePercent < confidenceThreshold * 0.5) {
