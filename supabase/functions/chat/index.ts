@@ -41,10 +41,22 @@ type QuestionIntent =
   | "registration"
   | "curriculum"
   | "graduation_projects"
+  | "exam_papers"
   | "other";
+
+const EXAM_CATEGORY = "نماذج الامتحانات السابقة";
 
 function classifyIntent(text: string): QuestionIntent {
   const t = (text || "").toLowerCase();
+
+  // 0) Exam papers — checked first (highest priority)
+  const examKeywords = [
+    "نماذج امتحانات", "نماذج الامتحانات", "نموذج امتحان", "نموذج الامتحان",
+    "امتحان سابق", "امتحانات سابقة", "الامتحانات السابقة", "اسئلة امتحان",
+    "أسئلة امتحان", "اسئلة سابقة", "أسئلة سابقة", "حل امتحان", "اجابة امتحان",
+    "إجابة امتحان", "اختبار سابق", "اختبارات سابقة", "نماذج اختبار",
+  ];
+  if (examKeywords.some(k => t.includes(k))) return "exam_papers";
 
   // 1) Explicit graduation projects — checked first to avoid being filtered out.
   const projectKeywords = [
