@@ -252,7 +252,17 @@ const AdminSettings = () => {
                   max={10080}
                 />
                 <p className="text-xs text-muted-foreground">
-                  {Math.floor(Number(form.cache_ttl_minutes) / 60)} ساعة و {Number(form.cache_ttl_minutes) % 60} دقيقة
+                  {(() => {
+                    const m = Math.max(0, Number(form.cache_ttl_minutes) || 0);
+                    const d = Math.floor(m / 1440);
+                    const h = Math.floor((m % 1440) / 60);
+                    const mm = m % 60;
+                    const parts: string[] = [];
+                    if (d) parts.push(`${d} يوم`);
+                    if (h) parts.push(`${h} ساعة`);
+                    if (mm || parts.length === 0) parts.push(`${mm} دقيقة`);
+                    return `يساوي: ${parts.join(" و ")}`;
+                  })()}
                 </p>
               </div>
               <div className="flex items-center justify-between">
