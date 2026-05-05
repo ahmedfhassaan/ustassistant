@@ -214,6 +214,7 @@ const Chat = () => {
             content: cleanContent,
             source,
             question: text,
+            educationalExplain: meta?.educationalExplain,
           };
 
           const finalMessages: Message[] = [...newMessages, assistantMsg];
