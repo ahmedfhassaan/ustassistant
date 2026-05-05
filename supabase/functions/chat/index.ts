@@ -384,7 +384,9 @@ serve(async (req) => {
     // We need settings before deciding whether to rewrite — but rewriting is optional.
     const settings = await settingsPromise;
 
-    const enableRewrite = settings.enable_query_rewriting === "true";
+    // Skip rewrite for short/clear questions to save quota
+    const wordCount = lastUserMessage.trim().split(/\s+/).length;
+    const enableRewrite = settings.enable_query_rewriting === "true" && wordCount >= 5;
     const rewritePromise: Promise<{ rewritten: string; variants: string[] }> = enableRewrite
       ? tryRewriteQuery(supabaseUrl, supabaseKey, lastUserMessage)
       : Promise.resolve({ rewritten: lastUserMessage, variants: [] });
