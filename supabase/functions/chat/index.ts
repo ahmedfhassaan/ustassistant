@@ -1367,7 +1367,10 @@ ${toneInstruction}
       const flushSafe = async (force = false) => {
         const KEEP_TAIL = 60;
         if (force) {
-          const cleaned = pendingText.replace(/<!--\s*USED_SOURCES:[\s\S]*?-->/gi, "").trimEnd();
+          const cleaned = pendingText
+            .replace(/<!--\s*USED_SOURCES:[\s\S]*?-->/gi, "")
+            .replace(/<!--\s*EDU_EXPLAIN:[\s\S]*?-->/gi, "")
+            .trimEnd();
           if (cleaned.length > 0) {
             const openaiChunk = { choices: [{ delta: { content: cleaned } }] };
             await writer.write(encoder.encode(`data: ${JSON.stringify(openaiChunk)}\n\n`));
