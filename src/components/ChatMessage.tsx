@@ -68,6 +68,15 @@ const ChatMessage = ({ message }: ChatMessageProps) => {
               <ReactMarkdown remarkPlugins={[remarkGfm]}>{message.content}</ReactMarkdown>
             </div>
           )}
+          {!isUser && message.educationalExplain && (
+            <div
+              className="mt-2.5 px-3 py-2 rounded-lg text-xs flex items-start gap-1.5 bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-amber-500/20"
+              dir="rtl"
+            >
+              <Info className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+              <span>ملاحظة: الشرح التالي توضيح تعليمي عام، وليس معلومة رسمية من الجامعة.</span>
+            </div>
+          )}
           {message.source && (
             <div className="mt-2.5 pt-2 border-t border-foreground/10 flex items-center gap-1.5 text-xs opacity-60 flex-row-reverse justify-end">
               <BookOpen className="w-3 h-3" />
