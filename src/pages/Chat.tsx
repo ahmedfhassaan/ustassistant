@@ -20,6 +20,7 @@ export interface Message {
   content: string;
   source?: string;
   question?: string;
+  educationalExplain?: boolean;
 }
 
 export interface Conversation {
