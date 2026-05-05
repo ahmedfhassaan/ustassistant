@@ -30,18 +30,14 @@ export async function streamChat({ messages, userId, onDelta, onDone, signal }: 
 
   const contentType = resp.headers.get("content-type") || "";
 
-  // Handle cached or error (non-streaming) JSON response
+  // Handle cached (non-streaming) response
   if (contentType.includes("application/json")) {
     const data = await resp.json();
-    if (data?.error) {
-      throw new Error(data.error);
-    }
-    if (data?.cached && data?.content) {
+    if (data.cached && data.content) {
       onDelta(data.content);
       onDone({ sources: data.sources || undefined, cached: true });
       return;
     }
-    throw new Error("استجابة غير متوقعة من المساعد");
   }
 
   // Handle streaming response

@@ -384,9 +384,7 @@ serve(async (req) => {
     // We need settings before deciding whether to rewrite — but rewriting is optional.
     const settings = await settingsPromise;
 
-    // Skip rewrite for short/clear questions to save quota
-    const wordCount = lastUserMessage.trim().split(/\s+/).length;
-    const enableRewrite = settings.enable_query_rewriting === "true" && wordCount >= 5;
+    const enableRewrite = settings.enable_query_rewriting === "true";
     const rewritePromise: Promise<{ rewritten: string; variants: string[] }> = enableRewrite
       ? tryRewriteQuery(supabaseUrl, supabaseKey, lastUserMessage)
       : Promise.resolve({ rewritten: lastUserMessage, variants: [] });
@@ -662,7 +660,7 @@ serve(async (req) => {
         console.log(`[chat] GOOGLE GROUNDING start site:${domain} timeoutMs=${timeoutMs} q="${lastUserMessage.slice(0,80)}"`);
         const groundingStart = Date.now();
 
-        const groundingPrompt = `ابحث في موقع جامعة العلوم والتكنولوجيا (${domain}) عن إجابة موجزة ومباشرة للسؤال التالي. اذكر الحقائق الأساسية فقط (الأسماء، الأرقام، التواريخ، الروابط) بدون تفاصيل زائدة.\n\nالسؤال: ${lastUserMessage}`;
+        const groundingPrompt = `ابحث في موقع جامعة العلوم والتكنولوجيا (${domain}) عن إجابة دقيقة ومختصرة للسؤال التالي. اذكر الحقائق فقط من المصادر الرسمية:\n\n${lastUserMessage}`;
 
         const groundingUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GOOGLE_AI_API_KEY}`;
         const liveRes = await fetch(groundingUrl, {
@@ -671,7 +669,7 @@ serve(async (req) => {
           body: JSON.stringify({
             contents: [{ role: "user", parts: [{ text: groundingPrompt }] }],
             tools: [{ google_search: {} }],
-            generationConfig: { temperature: 0.2, maxOutputTokens: 800 },
+            generationConfig: { temperature: 0.2, maxOutputTokens: 1024 },
           }),
           signal: AbortSignal.timeout(timeoutMs),
         });
@@ -735,7 +733,7 @@ serve(async (req) => {
     const confidenceThreshold = parseInt(settings.confidence_threshold) || 30;
     const confidencePercent = maxRank * 100;
 
-    if (settings.strict_sources === "true" && sourceNames.length === 0 && !liveSearchUsed) {
+    if (settings.strict_sources === "true" && sourceNames.length === 0) {
       const fallback = settings.fallback_message;
       try {
         await supabase.from("chat_logs").insert({
@@ -758,7 +756,7 @@ serve(async (req) => {
     const toneInstruction = buildToneInstruction(settings.tone);
     const maxLen = parseInt(settings.max_response_length) || 1000;
 
-    const strictBlock = settings.strict_sources === "true" && !(explicitWeb && liveSearchUsed)
+    const strictBlock = settings.strict_sources === "true"
       ? `⛔ **قواعد إجبارية لمنع الهلوسة (لا تخالفها أبداً):**
 1. أجب **حصرياً** من محتوى "معلومات قاعدة المعرفة الجامعية" المرفقة أدناه.
 2. **ممنوع منعاً باتاً** الاستنتاج، التخمين، أو إضافة أي معلومة من معرفتك العامة.
@@ -766,13 +764,12 @@ serve(async (req) => {
    "${settings.fallback_message || "لا تتوفر لدي هذه المعلومة في قاعدة المعرفة الحالية."}"
 4. لا تذكر أنك ذكاء اصطناعي ولا تعتذر عن قيودك ولا تشرح سبب عدم المعرفة.`
       : `📌 قواعد الموثوقية:
-- اعتمد بشكل أساسي على "معلومات قاعدة المعرفة الجامعية" أدناه (تشمل نتائج البحث المباشر على موقع الجامعة عند توفرها).
-- نتائج "Google Grounding" الواردة من موقع الجامعة تُعتبر مصدراً معتمداً — استخدمها مباشرة في إجابتك.
+- اعتمد بشكل أساسي على "معلومات قاعدة المعرفة الجامعية" أدناه.
 - إذا لم تكن متأكداً، اذكر ذلك بوضوح وانصح الطالب بالتواصل مع الجهة المختصة.
 - لا تخترع أرقاماً أو تواريخ أو رموز مقررات غير موجودة في السياق.`;
 
     const webPriorityBlock = explicitWeb && liveContext
-      ? `\n\n🌐 **أولوية المصدر:** الطالب طلب صراحةً معلومات من موقع الجامعة. اعتمد **أولاً وبشكل رئيسي** على "معلومات مباشرة من البحث على الويب (Google Grounding)" أدناه — هذه نتائج موثوقة من موقع الجامعة الرسمي ويجب استخدامها كمصدر أساسي. اذكر روابط المصادر إن أمكن. استخدم المستندات المحلية فقط كمكمّل عند الحاجة.`
+      ? `\n\n🌐 **أولوية المصدر:** الطالب طلب صراحةً معلومات من موقع الجامعة. اعتمد **أولاً وبشكل رئيسي** على "معلومات مباشرة من موقع الجامعة (بحث لحظي)" أدناه، واذكر روابط المصادر إن أمكن. استخدم المستندات المحلية فقط كمكمّل عند الحاجة.`
       : "";
 
     const systemPrompt = `أنت ${settings.assistant_name}، مساعد ذكاء اصطناعي متخصص في مساعدة طلاب الجامعة.
@@ -886,38 +883,8 @@ ${toneInstruction}
     }
 
     if (!response) {
-      // Graceful degradation: if we have retrieved context, build a fallback answer from it
-      // instead of returning an error to the user.
-      const haveContext = (docsContext && docsContext.length > 100) || (liveContext && liveContext.length > 100);
-      if (haveContext) {
-        const baseText = (liveContext || docsContext)
-          .replace(/\[مصدر:[^\]]+\]/g, "")
-          .replace(/--- [^-\n]+ ---/g, "")
-          .trim();
-        const trimmed = baseText.length > 1500 ? baseText.slice(0, 1500) + "…" : baseText;
-        const note = lastStatus === 429
-          ? "> ⚠️ المساعد الذكي مشغول حالياً، فيما يلي معلومات مأخوذة مباشرة من المصادر:\n\n"
-          : "> ℹ️ تعذّر توليد إجابة منسّقة الآن، فيما يلي معلومات مأخوذة من المصادر:\n\n";
-        const content = `## 📋 معلومات من المصادر\n\n${note}${trimmed}`;
-        try {
-          await supabase.from("chat_logs").insert({
-            question: lastUserMessage, question_hash: questionHash,
-            sources: sourceNames.join("، ") || null, cached: false, user_id: userId,
-            category: classifyQuestion(lastUserMessage),
-          });
-        } catch {}
-        return new Response(
-          JSON.stringify({
-            cached: true,
-            content,
-            sources: settings.show_sources === "true" && sourceNames.length > 0 ? sourceNames.join("، ") : null,
-          }),
-          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-
       const friendly = lastStatus === 429
-        ? "⚠️ المساعد الذكي مشغول حالياً بسبب تجاوز عدد الطلبات. يرجى المحاولة بعد دقيقة."
+        ? "⚠️ تم تجاوز حد الطلبات. يرجى المحاولة بعد دقيقة."
         : (lastStatus === 503 || lastStatus >= 500)
           ? "⚠️ النموذج الذكي مشغول حالياً بسبب الضغط. يرجى المحاولة بعد قليل."
           : "حدث خطأ في المساعد الذكي. حاول مرة أخرى.";
