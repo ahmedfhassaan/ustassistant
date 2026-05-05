@@ -570,8 +570,13 @@ serve(async (req) => {
     const settings = await settingsPromise;
 
     const enableRewrite = settings.enable_query_rewriting === "true";
+    // Build conversation context (last 4 messages BEFORE the current question) for rewrite
+    const priorMessages = messages.slice(0, -1)
+      .filter((m: any) => m && (m.role === "user" || m.role === "assistant") && typeof m.content === "string")
+      .slice(-4)
+      .map((m: any) => ({ role: m.role, content: String(m.content).slice(0, 600) }));
     const rewritePromise: Promise<{ rewritten: string; variants: string[] }> = enableRewrite
-      ? tryRewriteQuery(supabaseUrl, supabaseKey, lastUserMessage)
+      ? tryRewriteQuery(supabaseUrl, supabaseKey, lastUserMessage, priorMessages)
       : Promise.resolve({ rewritten: lastUserMessage, variants: [] });
 
     const [rateResult, exactCached, queryEmbedding, rewriteResult] = await Promise.all([
