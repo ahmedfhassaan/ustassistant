@@ -744,7 +744,8 @@ serve(async (req) => {
     }
 
     // Build final context: documents first, then live web results
-    knowledgeContext = explicitWeb && liveContext
+    const preferWeb = explicitWeb || !docsAnswerable;
+    knowledgeContext = preferWeb && liveContext
       ? (liveContext + (docsContext || ""))
       : ((docsContext || "") + (liveContext || ""));
 
