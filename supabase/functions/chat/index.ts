@@ -919,8 +919,10 @@ serve(async (req) => {
     }
     if (!docsAnswerable) docsInsufficient = true;
 
-    console.log(`[chat] LIVE SEARCH gate: enabled=${liveSearchEnabled} docsInsufficient=${docsInsufficient} explicitWeb=${explicitWeb} answerable=${docsAnswerable} maxRank=${maxRank.toFixed(3)} sourcesCount=${sourceNames.length} threshold=${confThresholdFraction}`);
-    if (liveSearchEnabled && (docsInsufficient || explicitWeb)) {
+    // Block live search entirely for exam-paper questions — they must come ONLY from exam-paper docs
+    const blockLiveSearchForIntent = questionIntent === "exam_papers";
+    console.log(`[chat] LIVE SEARCH gate: enabled=${liveSearchEnabled} docsInsufficient=${docsInsufficient} explicitWeb=${explicitWeb} answerable=${docsAnswerable} maxRank=${maxRank.toFixed(3)} sourcesCount=${sourceNames.length} threshold=${confThresholdFraction} intent=${questionIntent} blockLive=${blockLiveSearchForIntent}`);
+    if (liveSearchEnabled && !blockLiveSearchForIntent && (docsInsufficient || explicitWeb)) {
       try {
         // Hard-locked to ust.edu (University of Science and Technology - Aden, Yemen)
         // DO NOT change to ust.edu.ye (that is a different university in Sanaa)
