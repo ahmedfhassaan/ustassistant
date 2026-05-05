@@ -1457,13 +1457,23 @@ ${toneInstruction}
           finalSources = [];
         }
 
+        const eduMatch = fullContent.match(/<!--\s*EDU_EXPLAIN:\s*1\s*-->/i);
+        const isEdu = !!eduMatch || educationalExplain;
+
+        const metaPayload: any = {};
         if (settings.show_sources === "true" && finalSources.length > 0) {
-          const meta = { meta: { sources: finalSources.join("، ") } };
-          await writer.write(encoder.encode(`data: ${JSON.stringify(meta)}\n\n`));
+          metaPayload.sources = finalSources.join("، ");
+        }
+        if (isEdu) metaPayload.educational_explain = true;
+        if (Object.keys(metaPayload).length) {
+          await writer.write(encoder.encode(`data: ${JSON.stringify({ meta: metaPayload })}\n\n`));
         }
         await writer.write(encoder.encode("data: [DONE]\n\n"));
 
-        const cleanContent = fullContent.replace(/<!--\s*USED_SOURCES:[\s\S]*?-->/gi, "").trimEnd();
+        const cleanContent = fullContent
+          .replace(/<!--\s*USED_SOURCES:[\s\S]*?-->/gi, "")
+          .replace(/<!--\s*EDU_EXPLAIN:[\s\S]*?-->/gi, "")
+          .trimEnd();
 
         if (cleanContent) {
           try {
