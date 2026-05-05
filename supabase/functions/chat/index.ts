@@ -733,7 +733,7 @@ serve(async (req) => {
     const confidenceThreshold = parseInt(settings.confidence_threshold) || 30;
     const confidencePercent = maxRank * 100;
 
-    if (settings.strict_sources === "true" && sourceNames.length === 0) {
+    if (settings.strict_sources === "true" && sourceNames.length === 0 && !liveSearchUsed) {
       const fallback = settings.fallback_message;
       try {
         await supabase.from("chat_logs").insert({
