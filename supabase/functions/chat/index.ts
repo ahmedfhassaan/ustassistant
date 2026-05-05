@@ -716,8 +716,8 @@ serve(async (req) => {
         weight_text: weightText,
         weight_semantic: weightSemantic,
       };
-      if (queryEmbedding) {
-        rpcParamsBase.query_embedding = JSON.stringify(queryEmbedding);
+      if (effectiveEmbedding) {
+        rpcParamsBase.query_embedding = JSON.stringify(effectiveEmbedding);
       }
 
       // Build query variants: original + arabic-normalized + fuzzy-corrected + (rewritten variants from LLM)
