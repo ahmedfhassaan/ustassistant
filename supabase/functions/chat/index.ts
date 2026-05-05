@@ -796,17 +796,18 @@ serve(async (req) => {
 
       if (rpcError) console.error("[chat] hybrid search error:", rpcError);
 
+      // Pre-compute intent (used for filtering AND for blocking live search)
+      const intentRaw = classifyIntent(lastUserMessage);
+      const intentRewritten = classifyIntent(rewrittenQuery || "");
+      const intent: QuestionIntent = intentRaw !== "other" ? intentRaw : intentRewritten;
+      questionIntent = intent;
+
       if (chunks && chunks.length > 0) {
         // Filter out web-crawled chunks when live search is active
         if (excludedWebDocNames && excludedWebDocNames.size > 0) {
           chunks = (chunks as any[]).filter((c: any) => !excludedWebDocNames!.has(c.document_name));
         }
 
-        // Intent-based filter: route based on question intent
-        // Also classify the rewritten query (in case of follow-up where original is too short)
-        const intentRaw = classifyIntent(lastUserMessage);
-        const intentRewritten = classifyIntent(rewrittenQuery || "");
-        const intent: QuestionIntent = intentRaw !== "other" ? intentRaw : intentRewritten;
         const shouldExcludeProjects =
           intent === "admission" || intent === "registration" || intent === "curriculum" || intent === "exam_papers";
         console.log(`[chat] question intent=${intent} (raw=${intentRaw}, rewritten=${intentRewritten}) excludeProjects=${shouldExcludeProjects}`);
@@ -820,7 +821,6 @@ serve(async (req) => {
         } else if (shouldExcludeProjects) {
           const before = chunks.length;
           let filtered = (chunks as any[]).filter((c: any) => !isGraduationProjectDoc(c.document_name));
-          // Also exclude exam-papers leakage from non-exam questions
           filtered = filtered.filter((c: any) => c.category !== EXAM_CATEGORY);
           if (filtered.length > 0) {
             chunks = filtered;
@@ -830,12 +830,10 @@ serve(async (req) => {
             chunks = null;
           }
         } else if (intent === "graduation_projects") {
-          // Exclude exam papers from project questions
           chunks = (chunks as any[]).filter((c: any) => c.category !== EXAM_CATEGORY);
           if (chunks.length === 0) chunks = null;
           console.log(`[chat] intent=graduation_projects: keeping project chunks, excluded exam-paper chunks`);
         } else {
-          // "other" intent: still exclude exam papers leakage
           chunks = (chunks as any[]).filter((c: any) => c.category !== EXAM_CATEGORY);
           if (chunks.length === 0) chunks = null;
         }
