@@ -46,6 +46,83 @@ type QuestionIntent =
 
 const EXAM_CATEGORY = "نماذج الامتحانات السابقة";
 
+const FOLLOW_UP_PHRASES = [
+  "ما الاجابة", "ما الإجابة", "الاجابة", "الإجابة", "ايش الاجابة", "ايش الإجابة",
+  "ما الحل", "الحل", "اشرح", "اشرح أكثر", "وضح", "وضح أكثر", "كمل", "كمّل",
+  "وماذا بعد", "ليش", "لماذا", "كيف", "وين", "أين", "هذا", "هذا السؤال",
+];
+
+function sanitizeSessionText(text: string, maxLength = 180): string {
+  return (text || "")
+    .replace(/<!--[\s\S]*?-->/g, " ")
+    .replace(/[#*_`>\-|]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, maxLength);
+}
+
+function isShortFollowUpQuestion(text: string): boolean {
+  const normalized = sanitizeSessionText(text, 120).toLowerCase();
+  if (!normalized) return false;
+  const words = normalized.split(/\s+/).filter(Boolean);
+  return words.length <= 4 || FOLLOW_UP_PHRASES.some((phrase) => normalized.includes(phrase.toLowerCase()));
+}
+
+function inferIntentFromSession(
+  question: string,
+  previousMessages: Array<{ role: string; content: string }>,
+  rewrittenQuestion = "",
+): QuestionIntent {
+  const directIntent = classifyIntent(question);
+  if (directIntent !== "other") return directIntent;
+
+  const rewrittenIntent = classifyIntent(rewrittenQuestion);
+  if (rewrittenIntent !== "other") return rewrittenIntent;
+
+  if (!isShortFollowUpQuestion(question)) return "other";
+
+  for (const msg of [...previousMessages].reverse()) {
+    if (!msg?.content || msg.role !== "user") continue;
+    const sessionIntent = classifyIntent(msg.content);
+    if (sessionIntent !== "other") return sessionIntent;
+  }
+
+  return "other";
+}
+
+function buildSessionAwareRewrite(
+  question: string,
+  previousMessages: Array<{ role: string; content: string }>,
+): string {
+  if (!isShortFollowUpQuestion(question) || previousMessages.length === 0) return question;
+
+  const recentUserTopic = [...previousMessages]
+    .reverse()
+    .find((msg) => msg?.role === "user" && msg.content && !isShortFollowUpQuestion(msg.content));
+  const recentAssistant = [...previousMessages]
+    .reverse()
+    .find((msg) => msg?.role === "assistant" && msg.content);
+
+  const topicText = sanitizeSessionText(recentUserTopic?.content || "", 140);
+  const assistantText = sanitizeSessionText(recentAssistant?.content || "", 180);
+  const sessionIntent = inferIntentFromSession(question, previousMessages, topicText);
+
+  if (sessionIntent === "exam_papers") {
+    const assistantHint = assistantText ? `السؤال المذكور ${assistantText}` : "السؤال المذكور";
+    return sanitizeSessionText(`إجابة ${assistantHint} من ${EXAM_CATEGORY} ${topicText}`.trim(), 220) || question;
+  }
+
+  if (assistantText) {
+    return sanitizeSessionText(`${question} عن ${assistantText}`, 220) || question;
+  }
+
+  if (topicText) {
+    return sanitizeSessionText(`${question} عن ${topicText}`, 220) || question;
+  }
+
+  return question;
+}
+
 function classifyIntent(text: string): QuestionIntent {
   const t = (text || "").toLowerCase();
 
@@ -594,7 +671,10 @@ serve(async (req) => {
     const [rateResult, exactCached, queryEmbedding, rewriteResult] = await Promise.all([
       rateLimitPromise, cachePromise, embeddingPromise, rewritePromise,
     ]);
-    const rewrittenQuery = rewriteResult.rewritten;
+    const fallbackRewrittenQuery = buildSessionAwareRewrite(lastUserMessage, priorMessages);
+    const rewrittenQuery = rewriteResult.rewritten !== lastUserMessage
+      ? rewriteResult.rewritten
+      : fallbackRewrittenQuery;
     const rewriteVariants = rewriteResult.variants;
 
     // For short follow-up questions, regenerate embedding using the context-enriched rewritten query
@@ -734,7 +814,11 @@ serve(async (req) => {
       }
 
       // Build query variants: original + arabic-normalized + fuzzy-corrected + (rewritten variants from LLM)
-      const variants = generateQueryVariants(lastUserMessage);
+      const variantSeed = rewrittenQuery && rewrittenQuery !== lastUserMessage ? rewrittenQuery : lastUserMessage;
+      const variants = generateQueryVariants(variantSeed);
+      if (!variants.some((x) => x.toLowerCase() === lastUserMessage.toLowerCase())) {
+        variants.unshift(lastUserMessage);
+      }
       if (enableRewrite) {
         for (const v of [rewrittenQuery, ...rewriteVariants]) {
           if (v && v.length >= 3 && !variants.some(x => x.toLowerCase() === v.toLowerCase())) {
@@ -800,7 +884,7 @@ serve(async (req) => {
       // Pre-compute intent (used for filtering AND for blocking live search)
       const intentRaw = classifyIntent(lastUserMessage);
       const intentRewritten = classifyIntent(rewrittenQuery || "");
-      const intent: QuestionIntent = intentRaw !== "other" ? intentRaw : intentRewritten;
+      const intent: QuestionIntent = inferIntentFromSession(lastUserMessage, priorMessages, rewrittenQuery || "");
       questionIntent = intent;
 
       if (chunks && chunks.length > 0) {
