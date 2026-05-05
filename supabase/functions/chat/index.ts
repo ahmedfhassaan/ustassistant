@@ -585,6 +585,25 @@ serve(async (req) => {
     const rewrittenQuery = rewriteResult.rewritten;
     const rewriteVariants = rewriteResult.variants;
 
+    // For short follow-up questions, regenerate embedding using the context-enriched rewritten query
+    let effectiveEmbedding = queryEmbedding;
+    const wordCount = lastUserMessage.trim().split(/\s+/).length;
+    if (priorMessages.length > 0 && wordCount <= 4 && rewrittenQuery && rewrittenQuery !== lastUserMessage) {
+      try {
+        const embResp = await fetch(`${supabaseUrl}/functions/v1/generate-embedding`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${supabaseKey}` },
+          body: JSON.stringify({ texts: [rewrittenQuery] }),
+        });
+        if (embResp.ok) {
+          const ed = await embResp.json();
+          if (ed.embeddings?.[0]) effectiveEmbedding = ed.embeddings[0];
+        }
+      } catch (e) {
+        console.warn("[chat] follow-up embedding regen failed:", e instanceof Error ? e.message : e);
+      }
+    }
+
     // --- Semantic cache lookup (only if no exact hit and we have an embedding) ---
     let cached: { answer: string; sources: string | null } | null = exactCached as any;
     let semanticCacheHit = false;
