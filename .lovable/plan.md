@@ -1,29 +1,25 @@
-## الهدف
-معالجة فشل Google Grounding الصامت وحل مشكلة تجاوز حصة `gemini-3-flash-preview`.
+## المشكلة
+الخطأ الظاهر في الواجهة:
+> Failed to execute 'getReader' on 'ReadableStream': ReadableStreamDefaultReader constructor can only accept readable streams that are not yet locked to a reader
 
-## التعديلات على `supabase/functions/chat/index.ts`
+السبب الحقيقي:
+1. الـ Edge Function يعيد حالياً JSON بشكل `{ "error": "⚠️ تم تجاوز حد الطلبات...", "fallback": true, "status": 429 }` مع HTTP 200 (بسبب 429 من Gemini quota).
+2. في `src/lib/chatApi.ts` (السطور 33-41) عند رؤية `content-type: application/json`، الكود يستدعي `resp.json()` ثم يفحص فقط `data.cached`. عندما لا يكون `cached`، يسقط الكود إلى أسفل ويحاول `resp.body.getReader()` — لكن body استُهلك سابقاً → stream مقفول → استثناء في الواجهة.
+3. النتيجة: المستخدم يرى خطأ تقني غير مفهوم بدل رسالة "تم تجاوز حد الطلبات".
 
-### 1. رفع المهلة الافتراضية لـ Grounding
-- السطر 171: تغيير `live_search_timeout_ms` الافتراضي من `"12000"` إلى `"20000"`.
-- السطر 658: تغيير الحد الأدنى المسموح من 12000 إلى 20000 ms.
+## التعديل
+ملف واحد فقط: `src/lib/chatApi.ts` — معالجة حالة الـ JSON بشكل كامل والخروج (return أو throw) قبل الوصول إلى `getReader()`.
 
-### 2. سجلات تشخيصية واضحة لـ Grounding (السطور 660–715)
-- إضافة `console.log` يطبع: `timeoutMs` المستخدم، حجم الـ chunks المُرجعة، طول النص.
-- في `catch`: التمييز بين `TimeoutError`/`AbortError` وأنواع الأخطاء الأخرى وطباعة `e.name` و `e.message` و `e.stack`.
-- إضافة `console.log` بعد `await fetch` مباشرة لتأكيد عودة الاستجابة.
+التعديل في الكتلة بين السطور 33-41:
+- بعد `await resp.json()`:
+  - إذا كان `data.error` موجوداً → `throw new Error(data.error)` (الواجهة تعرض الرسالة العربية الحقيقية).
+  - إذا كان `data.cached && data.content` → استدعاء `onDelta` و`onDone` كما هو الآن، ثم `return`.
+  - أي شكل JSON آخر غير متوقع → `throw new Error("استجابة غير متوقعة من المساعد")`.
 
-### 3. تغيير النموذج الافتراضي
-- السطر 821: تغيير القيمة الافتراضية من `"gemini-3-flash-preview"` إلى `"gemini-2.5-flash"` (لأن الحصة المجانية للأول استُنفدت).
-- تحديث القيمة الافتراضية في `assistant_settings.ai_model` عبر migration بسيط لتكون `gemini-2.5-flash`.
+بهذا لن يصل التنفيذ أبداً إلى `resp.body.getReader()` بعد أن يكون الـ body قد استُهلك.
 
-### 4. تحديث UI البطاقة
-في `src/components/admin/WebSourceCard.tsx`:
-- تغيير الحد الأدنى لحقل `live-timeout` من `3000` إلى `15000` لتجنّب اختيار قيم منخفضة.
-- تحديث القيمة الافتراضية في `useState` من 12000 إلى 20000.
+## ملاحظة جانبية
+رسالة 429 ذاتها سببها تجاوز الحصة المجانية في Gemini API (مشكلة من جانب Google). هذا الإصلاح فقط يضمن **عرض الرسالة بشكل صحيح** للمستخدم بدل الخطأ التقني. يمكن لاحقاً تخفيف الضغط على الـ API (تفعيل cache، تأخير بين الطلبات، إلخ) عند الحاجة.
 
-### 5. تحديث قاعدة البيانات
-- migration: `UPDATE assistant_settings SET value = '20000' WHERE key = 'live_search_timeout_ms'`.
-- migration: `UPDATE assistant_settings SET value = 'gemini-2.5-flash' WHERE key = 'ai_model'`.
-
-## النشر
-نشر دالة `chat` فوراً بعد التعديل، ثم اختبار السؤال نفسه ومراجعة السجلات للتأكد من ظهور `[chat] GOOGLE GROUNDING got N sources` أو رسالة خطأ واضحة.
+## الاختبار
+بعد التعديل، إعادة إرسال السؤال: ستظهر رسالة "⚠️ تم تجاوز حد الطلبات. يرجى المحاولة بعد دقيقة." بشكل واضح بدل الخطأ الإنجليزي.
