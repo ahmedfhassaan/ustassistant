@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { BookOpen, Bot, User, ThumbsUp, ThumbsDown } from "lucide-react";
+import { BookOpen, Bot, User, ThumbsUp, ThumbsDown, Info } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { supabase } from "@/integrations/supabase/client";
