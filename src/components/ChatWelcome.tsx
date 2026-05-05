@@ -59,7 +59,7 @@ const ChatWelcome = ({ studentName, onSuggestionClick }: ChatWelcomeProps) => {
   };
 
   return (
-    <div className="flex-1 flex items-center justify-center px-4 sm:px-6 py-8">
+    <div className="flex-1 overflow-y-auto flex items-center justify-center px-4 sm:px-6 py-8">
       <div className="max-w-2xl w-full space-y-8 text-center">
         {/* Logo & Greeting */}
         <div className="space-y-4 animate-fade-in-up" style={{ animationDelay: "0.05s", opacity: 0 }}>
