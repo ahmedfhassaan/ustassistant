@@ -1,32 +1,45 @@
 ## المشكلة
 
-عند استخدام Google Grounding للإجابة من موقع الجامعة، يحدث أحد سيناريوهين:
-1. يُرجع Google نصاً لكن بدون قائمة URLs في `groundingChunks` → المصدر الظاهر يبقى ملف الـ RAG فقط.
-2. يُرجع URLs لكنها بعناوين طويلة غير واضحة، دون إشارة واضحة إلى أن المصدر هو "موقع الجامعة الرسمي".
-
-## الحل
-
-تعديل بسيط في `supabase/functions/chat/index.ts` (داخل كتلة Google Grounding، حوالي السطر 697):
-
-عندما يُستخدم البحث المباشر بنجاح (`groundedText` غير فارغ):
-- إضافة المصدر `موقع الجامعة الرسمي (ust.edu)` دائماً في مقدمة `sourceNames`، بصرف النظر عن وجود `groundingChunks`.
-- إذا توفرت URLs محددة، تُضاف بعدها كمصادر فرعية.
-- بهذا الشكل سيرى الطالب دائماً عبارة "موقع الجامعة الرسمي (ust.edu)" أسفل الإجابة عند استخدام Grounding.
-
-## التفاصيل التقنية
-
-```ts
-if (groundedText) {
-  liveSearchUsed = true;
-  maxRank = Math.max(maxRank, 1);
-  const officialLabel = `موقع الجامعة الرسمي (${domain})`;
-  sourceNames = [...new Set([officialLabel, ...sourceNames, ...liveSourceNames])];
-  // ...rest unchanged
-}
+البوابة الحالية لتفعيل Google Grounding:
+```
+docsInsufficient = maxRank < threshold || sourceNames.length === 0
+trigger if (liveSearchEnabled && (docsInsufficient || explicitWeb))
 ```
 
-لا حاجة لتعديلات أخرى — واجهة المصادر في الـ Chat تعرض `sourceNames` كما هي.
+في سؤال "اذكر المجلات العلمية": rank=0.916 و5 مصادر، فاعتُبرت كافية — لكنها لم تكن تحتوي إجابة فعلية. النتيجة: fallback بدون استدعاء Grounding.
+
+## الحل: فحص كفاية سريع قبل الرد (LLM Sufficiency Gate)
+
+قبل توليد الرد النهائي، نُجري **استدعاء سريع جداً** لـ `gemini-2.5-flash-lite` نسأله:
+
+> "بناءً على المقاطع التالية، هل تكفي للإجابة الكاملة على سؤال المستخدم؟ أجب بكلمة واحدة فقط: YES أو NO."
+
+- إذا `NO` → نُفعّل Google Grounding تلقائياً (نفس مسار `explicitWeb`)، حتى لو كان rank مرتفعاً.
+- إذا `YES` → نُكمل عادياً بدون Grounding.
+- إذا فشل الاستدعاء أو تجاوز 3 ثوانٍ → نعتبره `YES` (لا نُعطّل التدفق).
+
+### نقاط التطبيق في `supabase/functions/chat/index.ts`
+
+1. بعد بناء `docsContext` وقبل بوابة Live Search (~السطر 647)، نضيف:
+   ```ts
+   let docsAnswerable = true;
+   if (liveSearchEnabled && docsContext && !docsInsufficient && !explicitWeb) {
+     docsAnswerable = await checkSufficiency(lastUserMessage, docsContext);
+   }
+   ```
+2. تعديل الشرط:
+   ```ts
+   if (liveSearchEnabled && (docsInsufficient || explicitWeb || !docsAnswerable)) { ... }
+   ```
+3. عند `!docsAnswerable` نُعامله كـ `explicitWeb` لأولوية المصدر الويب في الـ system prompt.
+4. إضافة دالة `checkSufficiency()` تستخدم `gemini-2.5-flash-lite` مع `maxOutputTokens: 5` و `AbortSignal.timeout(3000)`.
+
+### مزايا
+
+- لا تأخير محسوس (طلب قصير ~300-700ms، فقط عند توفر مستندات وعدم وجود تفعيل صريح).
+- يمنع fallback الكاذب عندما تكون مقاطع الـ RAG ذات rank عالٍ لكنها لا تجيب.
+- لا يؤثر على الكاش (الكاش يعمل قبل هذه المرحلة).
 
 ## النشر
 
-نشر edge function `chat` فقط بعد التعديل.
+نشر edge function `chat`.

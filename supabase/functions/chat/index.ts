@@ -646,10 +646,37 @@ serve(async (req) => {
 
     // ---- LIVE SEARCH (Google Search Grounding via Gemini): only if docs are insufficient ----
     const confThresholdFraction = (parseInt(settings.confidence_threshold) || 30) / 100;
-    // Trigger live search if rank is low OR no relevant sources passed the filter (RAG matched noise)
-    const docsInsufficient = maxRank < confThresholdFraction || sourceNames.length === 0;
+    let docsInsufficient = maxRank < confThresholdFraction || sourceNames.length === 0;
     let liveContext = "";
-    console.log(`[chat] LIVE SEARCH gate: enabled=${liveSearchEnabled} docsInsufficient=${docsInsufficient} explicitWeb=${explicitWeb} maxRank=${maxRank.toFixed(3)} sourcesCount=${sourceNames.length} threshold=${confThresholdFraction}`);
+
+    // Sufficiency gate: even with high rank, ask a fast LLM if docs actually answer the question
+    let docsAnswerable = true;
+    if (liveSearchEnabled && docsContext && !docsInsufficient && !explicitWeb) {
+      try {
+        const sufUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${GOOGLE_AI_API_KEY}`;
+        const sufPrompt = `سؤال المستخدم:\n${lastUserMessage}\n\nالمقاطع المتاحة:\n${docsContext.slice(0, 6000)}\n\nهل تحتوي المقاطع أعلاه على إجابة فعلية ومحددة لسؤال المستخدم؟ أجب بكلمة واحدة فقط: YES أو NO.`;
+        const sufRes = await fetch(sufUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: [{ role: "user", parts: [{ text: sufPrompt }] }],
+            generationConfig: { temperature: 0, maxOutputTokens: 5 },
+          }),
+          signal: AbortSignal.timeout(3000),
+        });
+        if (sufRes.ok) {
+          const sufData = await sufRes.json();
+          const verdict = (sufData?.candidates?.[0]?.content?.parts?.[0]?.text || "").trim().toUpperCase();
+          docsAnswerable = !verdict.startsWith("NO");
+          console.log(`[chat] SUFFICIENCY check: verdict="${verdict}" answerable=${docsAnswerable}`);
+        }
+      } catch (e) {
+        console.warn("[chat] sufficiency check failed:", e instanceof Error ? e.message : e);
+      }
+    }
+    if (!docsAnswerable) docsInsufficient = true;
+
+    console.log(`[chat] LIVE SEARCH gate: enabled=${liveSearchEnabled} docsInsufficient=${docsInsufficient} explicitWeb=${explicitWeb} answerable=${docsAnswerable} maxRank=${maxRank.toFixed(3)} sourcesCount=${sourceNames.length} threshold=${confThresholdFraction}`);
     if (liveSearchEnabled && (docsInsufficient || explicitWeb)) {
       try {
         const rootUrl = settings.web_crawl_root_url || "https://www.ust.edu";
@@ -717,7 +744,8 @@ serve(async (req) => {
     }
 
     // Build final context: documents first, then live web results
-    knowledgeContext = explicitWeb && liveContext
+    const preferWeb = explicitWeb || !docsAnswerable;
+    knowledgeContext = preferWeb && liveContext
       ? (liveContext + (docsContext || ""))
       : ((docsContext || "") + (liveContext || ""));
 
@@ -760,8 +788,8 @@ serve(async (req) => {
 - إذا لم تكن متأكداً، اذكر ذلك بوضوح وانصح الطالب بالتواصل مع الجهة المختصة.
 - لا تخترع أرقاماً أو تواريخ أو رموز مقررات غير موجودة في السياق.`;
 
-    const webPriorityBlock = explicitWeb && liveContext
-      ? `\n\n🌐 **أولوية المصدر:** الطالب طلب صراحةً معلومات من موقع الجامعة. اعتمد **أولاً وبشكل رئيسي** على "معلومات مباشرة من موقع الجامعة (بحث لحظي)" أدناه، واذكر روابط المصادر إن أمكن. استخدم المستندات المحلية فقط كمكمّل عند الحاجة.`
+    const webPriorityBlock = preferWeb && liveContext
+      ? `\n\n🌐 **أولوية المصدر:** اعتمد **أولاً وبشكل رئيسي** على "معلومات مباشرة من موقع الجامعة (بحث لحظي)" أدناه، واذكر روابط المصادر إن أمكن. استخدم المستندات المحلية فقط كمكمّل عند الحاجة.`
       : "";
 
     const systemPrompt = `أنت ${settings.assistant_name}، مساعد ذكاء اصطناعي متخصص في مساعدة طلاب الجامعة.
