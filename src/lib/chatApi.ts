@@ -109,5 +109,5 @@ export async function streamChat({ messages, userId, onDelta, onDone, signal }: 
     }
   }
 
-  onDone({ sources: metaSources });
+  onDone({ sources: metaSources, educationalExplain: metaEdu });
 }
