@@ -929,7 +929,7 @@ ${lastUserMessage}`;
               }
               acceptedCount++;
               const display = (title || uri).slice(0, 120);
-              liveSourceNames.push(display);
+              liveSourceNames.push(`🌐 ${display} — ${uri}`);
               sourceLines.push(`- ${display} (${uri})`);
             }
           }
