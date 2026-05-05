@@ -370,14 +370,19 @@ async function fetchDirectUstSiteContext(query: string, timeoutMs: number, maxRe
 }
 
 // ----------------- Query rewriting (optional) -----------------
-async function tryRewriteQuery(supabaseUrl: string, supabaseKey: string, question: string): Promise<{ rewritten: string; variants: string[] }> {
+async function tryRewriteQuery(
+  supabaseUrl: string,
+  supabaseKey: string,
+  question: string,
+  previousMessages: Array<{ role: string; content: string }> = []
+): Promise<{ rewritten: string; variants: string[] }> {
   try {
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 1800);
+    const timer = setTimeout(() => controller.abort(), 2200);
     const r = await fetch(`${supabaseUrl}/functions/v1/rewrite-query`, {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${supabaseKey}` },
-      body: JSON.stringify({ question }),
+      body: JSON.stringify({ question, previousMessages }),
       signal: controller.signal,
     });
     clearTimeout(timer);
