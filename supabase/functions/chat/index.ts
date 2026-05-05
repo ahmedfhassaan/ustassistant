@@ -660,7 +660,7 @@ serve(async (req) => {
         console.log(`[chat] GOOGLE GROUNDING start site:${domain} timeoutMs=${timeoutMs} q="${lastUserMessage.slice(0,80)}"`);
         const groundingStart = Date.now();
 
-        const groundingPrompt = `ابحث في موقع جامعة العلوم والتكنولوجيا (${domain}) عن إجابة دقيقة ومختصرة للسؤال التالي. اذكر الحقائق فقط من المصادر الرسمية:\n\n${lastUserMessage}`;
+        const groundingPrompt = `ابحث في موقع جامعة العلوم والتكنولوجيا (${domain}) واستخرج إجابة تفصيلية وشاملة للسؤال التالي. أدرج كل المعلومات ذات الصلة (الأسماء، الأرقام، التواريخ، الروابط، الأقسام). إذا وجدت قوائم أو جداول، انسخها كاملةً. لا ترفض الإجابة طالما توجد معلومات ذات صلة في الموقع.\n\nالسؤال: ${lastUserMessage}`;
 
         const groundingUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GOOGLE_AI_API_KEY}`;
         const liveRes = await fetch(groundingUrl, {
@@ -669,7 +669,7 @@ serve(async (req) => {
           body: JSON.stringify({
             contents: [{ role: "user", parts: [{ text: groundingPrompt }] }],
             tools: [{ google_search: {} }],
-            generationConfig: { temperature: 0.2, maxOutputTokens: 1024 },
+            generationConfig: { temperature: 0.2, maxOutputTokens: 2048 },
           }),
           signal: AbortSignal.timeout(timeoutMs),
         });
@@ -733,7 +733,7 @@ serve(async (req) => {
     const confidenceThreshold = parseInt(settings.confidence_threshold) || 30;
     const confidencePercent = maxRank * 100;
 
-    if (settings.strict_sources === "true" && sourceNames.length === 0) {
+    if (settings.strict_sources === "true" && sourceNames.length === 0 && !liveSearchUsed) {
       const fallback = settings.fallback_message;
       try {
         await supabase.from("chat_logs").insert({
@@ -756,7 +756,7 @@ serve(async (req) => {
     const toneInstruction = buildToneInstruction(settings.tone);
     const maxLen = parseInt(settings.max_response_length) || 1000;
 
-    const strictBlock = settings.strict_sources === "true"
+    const strictBlock = settings.strict_sources === "true" && !(explicitWeb && liveSearchUsed)
       ? `⛔ **قواعد إجبارية لمنع الهلوسة (لا تخالفها أبداً):**
 1. أجب **حصرياً** من محتوى "معلومات قاعدة المعرفة الجامعية" المرفقة أدناه.
 2. **ممنوع منعاً باتاً** الاستنتاج، التخمين، أو إضافة أي معلومة من معرفتك العامة.
@@ -764,12 +764,13 @@ serve(async (req) => {
    "${settings.fallback_message || "لا تتوفر لدي هذه المعلومة في قاعدة المعرفة الحالية."}"
 4. لا تذكر أنك ذكاء اصطناعي ولا تعتذر عن قيودك ولا تشرح سبب عدم المعرفة.`
       : `📌 قواعد الموثوقية:
-- اعتمد بشكل أساسي على "معلومات قاعدة المعرفة الجامعية" أدناه.
+- اعتمد بشكل أساسي على "معلومات قاعدة المعرفة الجامعية" أدناه (تشمل نتائج البحث المباشر على موقع الجامعة عند توفرها).
+- نتائج "Google Grounding" الواردة من موقع الجامعة تُعتبر مصدراً معتمداً — استخدمها مباشرة في إجابتك.
 - إذا لم تكن متأكداً، اذكر ذلك بوضوح وانصح الطالب بالتواصل مع الجهة المختصة.
 - لا تخترع أرقاماً أو تواريخ أو رموز مقررات غير موجودة في السياق.`;
 
     const webPriorityBlock = explicitWeb && liveContext
-      ? `\n\n🌐 **أولوية المصدر:** الطالب طلب صراحةً معلومات من موقع الجامعة. اعتمد **أولاً وبشكل رئيسي** على "معلومات مباشرة من موقع الجامعة (بحث لحظي)" أدناه، واذكر روابط المصادر إن أمكن. استخدم المستندات المحلية فقط كمكمّل عند الحاجة.`
+      ? `\n\n🌐 **أولوية المصدر:** الطالب طلب صراحةً معلومات من موقع الجامعة. اعتمد **أولاً وبشكل رئيسي** على "معلومات مباشرة من البحث على الويب (Google Grounding)" أدناه — هذه نتائج موثوقة من موقع الجامعة الرسمي ويجب استخدامها كمصدر أساسي. اذكر روابط المصادر إن أمكن. استخدم المستندات المحلية فقط كمكمّل عند الحاجة.`
       : "";
 
     const systemPrompt = `أنت ${settings.assistant_name}، مساعد ذكاء اصطناعي متخصص في مساعدة طلاب الجامعة.
