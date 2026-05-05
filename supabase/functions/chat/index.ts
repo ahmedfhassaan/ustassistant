@@ -726,18 +726,26 @@ ${lastUserMessage}`;
           for (const ch of groundingChunks) {
             const web = ch?.web;
             if (web?.uri) {
+              const title = (web.title || "").toString();
+              const uri = web.uri.toString();
               let host = "";
-              try { host = new URL(web.uri).hostname.toLowerCase().replace(/^www\./, ""); } catch { host = ""; }
-              // Accept ust.edu and its subdomains ONLY. Reject ust.edu.ye and anything else.
-              const isUstEdu = host === "ust.edu" || host.endsWith(".ust.edu");
-              if (!isUstEdu) {
+              try { host = new URL(uri).hostname.toLowerCase().replace(/^www\./, ""); } catch { host = ""; }
+              // Google Grounding often returns redirect URLs (vertexaisearch.cloud.google.com).
+              // In that case, the real source domain is in `title`. Check both.
+              const titleLower = title.toLowerCase();
+              const isUstEdu =
+                host === "ust.edu" || host.endsWith(".ust.edu") ||
+                titleLower === "ust.edu" || titleLower.endsWith(".ust.edu");
+              // Explicit reject for Sanaa university domain even if it sneaks in via title.
+              const isSanaa = host.endsWith("ust.edu.ye") || titleLower.includes("ust.edu.ye");
+              if (!isUstEdu || isSanaa) {
                 rejectedCount++;
                 continue;
               }
               acceptedCount++;
-              const title = (web.title || web.uri).toString().slice(0, 120);
-              liveSourceNames.push(title);
-              sourceLines.push(`- ${title} (${web.uri})`);
+              const display = (title || uri).slice(0, 120);
+              liveSourceNames.push(display);
+              sourceLines.push(`- ${display} (${uri})`);
             }
           }
           console.log(`[chat] GOOGLE GROUNDING accepted=${acceptedCount} rejected=${rejectedCount} (only ust.edu allowed)`);
