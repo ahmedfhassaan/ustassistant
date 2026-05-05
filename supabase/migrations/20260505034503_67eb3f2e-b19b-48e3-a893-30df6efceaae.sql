@@ -1,0 +1,2 @@
+UPDATE public.assistant_settings SET value = '20000', updated_at = now() WHERE key = 'live_search_timeout_ms';
+UPDATE public.assistant_settings SET value = 'gemini-2.5-flash', updated_at = now() WHERE key = 'ai_model';
