@@ -707,6 +707,7 @@ serve(async (req) => {
     const liveSearchEnabled = settings.live_search_enabled === "true";
     let liveSearchUsed = false;
     let docsContext = "";
+    let questionIntent: QuestionIntent = "other";
 
     // When live search is enabled, exclude pre-crawled web documents from RPC results to avoid duplication with live results
     let excludedWebDocNames: Set<string> | null = null;
