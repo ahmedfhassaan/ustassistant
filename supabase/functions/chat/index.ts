@@ -717,20 +717,32 @@ ${lastUserMessage}`;
             .join("")
             .trim() || "";
 
-          // Extract grounding sources (URLs from groundingChunks)
+          // Extract grounding sources (URLs from groundingChunks) - filter to ust.edu only
           const groundingChunks = candidate?.groundingMetadata?.groundingChunks || [];
           const liveSourceNames: string[] = [];
           const sourceLines: string[] = [];
+          let acceptedCount = 0;
+          let rejectedCount = 0;
           for (const ch of groundingChunks) {
             const web = ch?.web;
             if (web?.uri) {
+              let host = "";
+              try { host = new URL(web.uri).hostname.toLowerCase().replace(/^www\./, ""); } catch { host = ""; }
+              // Accept ust.edu and its subdomains ONLY. Reject ust.edu.ye and anything else.
+              const isUstEdu = host === "ust.edu" || host.endsWith(".ust.edu");
+              if (!isUstEdu) {
+                rejectedCount++;
+                continue;
+              }
+              acceptedCount++;
               const title = (web.title || web.uri).toString().slice(0, 120);
               liveSourceNames.push(title);
               sourceLines.push(`- ${title} (${web.uri})`);
             }
           }
+          console.log(`[chat] GOOGLE GROUNDING accepted=${acceptedCount} rejected=${rejectedCount} (only ust.edu allowed)`);
 
-          if (groundedText) {
+          if (groundedText && acceptedCount > 0) {
             liveSearchUsed = true;
             maxRank = Math.max(maxRank, 1);
             const officialLabel = `موقع الجامعة الرسمي (${domain})`;
@@ -740,6 +752,8 @@ ${lastUserMessage}`;
               (sourceLines.length ? "\n\nالمصادر:\n" + sourceLines.join("\n") : "") +
               "\n--- نهاية المعلومات المباشرة ---";
             if (debugRag) console.log(`[chat] GOOGLE GROUNDING got ${groundingChunks.length} sources, ${groundedText.length} chars`);
+          } else if (groundedText && acceptedCount === 0) {
+            console.warn("[chat] GOOGLE GROUNDING all sources rejected (not from ust.edu) — discarding answer");
           } else {
             console.warn("[chat] GOOGLE GROUNDING returned empty text");
           }
