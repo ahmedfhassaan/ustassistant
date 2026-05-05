@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Moon, Sun, GraduationCap, BookOpen, Users, Shield, FileText, AlertCircle, Eye, EyeOff } from "lucide-react";
+import { Moon, Sun, GraduationCap, BookOpen, Users, Shield, FileText, ClipboardList, AlertCircle, Eye, EyeOff } from "lucide-react";
 import { useTheme } from "@/hooks/use-theme";
 import { supabase } from "@/integrations/supabase/client";
 import universityLogo from "@/assets/university-logo.png";
@@ -15,6 +15,7 @@ const features = [
   { icon: Users, text: "الإجراءات الإدارية" },
   { icon: Shield, text: "دعم فوري على مدار الساعة" },
   { icon: FileText, text: "مشاريع التخرج السابقة" },
+  { icon: ClipboardList, text: "نماذج الامتحانات السابقة" },
 ];
 
 const Login = () => {
@@ -147,19 +148,17 @@ const Login = () => {
             {features.map((feature, i) => (
               <div
                 key={i}
-                className={`flex items-center gap-3 p-3.5 rounded-xl transition-all duration-300 animate-fade-in-up ${
-                  i === features.length - 1 ? "col-span-2 max-w-[60%] mx-auto" : ""
-                } ${
+                className={`group flex items-center gap-3 p-3.5 rounded-xl transition-all duration-300 animate-fade-in-up hover:-translate-y-0.5 ${
                   isDark
-                    ? "bg-white/5 border border-white/8 hover:bg-white/8"
-                    : "bg-primary/5 border border-primary/10 hover:bg-primary/10"
+                    ? "bg-white/5 border border-white/8 hover:bg-white/8 hover:border-primary/30 hover:shadow-[0_0_18px_rgba(112,200,255,0.15)]"
+                    : "bg-primary/5 border border-primary/10 hover:bg-primary/10 hover:border-primary/30 hover:shadow-[0_8px_24px_rgba(112,200,255,0.18)]"
                 }`}
                 style={{ animationDelay: `${0.3 + i * 0.1}s`, opacity: 0 }}
               >
-                <div className={`p-2 rounded-lg shrink-0 ${
+                <div className={`p-2 rounded-lg shrink-0 transition-transform duration-300 group-hover:scale-110 ${
                   isDark ? "bg-primary/15 text-primary" : "bg-primary/10 text-primary"
                 }`}>
-                  <feature.icon className={`w-4 h-4 ${isDark ? "glow-icon" : ""}`} />
+                  <feature.icon className={`w-4 h-4 transition-all duration-300 group-hover:drop-shadow-[0_0_6px_rgba(112,200,255,0.5)] ${isDark ? "glow-icon" : ""}`} />
                 </div>
                 <span className="text-sm font-medium text-foreground">{feature.text}</span>
               </div>
