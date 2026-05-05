@@ -370,14 +370,19 @@ async function fetchDirectUstSiteContext(query: string, timeoutMs: number, maxRe
 }
 
 // ----------------- Query rewriting (optional) -----------------
-async function tryRewriteQuery(supabaseUrl: string, supabaseKey: string, question: string): Promise<{ rewritten: string; variants: string[] }> {
+async function tryRewriteQuery(
+  supabaseUrl: string,
+  supabaseKey: string,
+  question: string,
+  previousMessages: Array<{ role: string; content: string }> = []
+): Promise<{ rewritten: string; variants: string[] }> {
   try {
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 1800);
+    const timer = setTimeout(() => controller.abort(), 2200);
     const r = await fetch(`${supabaseUrl}/functions/v1/rewrite-query`, {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${supabaseKey}` },
-      body: JSON.stringify({ question }),
+      body: JSON.stringify({ question, previousMessages }),
       signal: controller.signal,
     });
     clearTimeout(timer);
@@ -565,8 +570,13 @@ serve(async (req) => {
     const settings = await settingsPromise;
 
     const enableRewrite = settings.enable_query_rewriting === "true";
+    // Build conversation context (last 4 messages BEFORE the current question) for rewrite
+    const priorMessages = messages.slice(0, -1)
+      .filter((m: any) => m && (m.role === "user" || m.role === "assistant") && typeof m.content === "string")
+      .slice(-4)
+      .map((m: any) => ({ role: m.role, content: String(m.content).slice(0, 600) }));
     const rewritePromise: Promise<{ rewritten: string; variants: string[] }> = enableRewrite
-      ? tryRewriteQuery(supabaseUrl, supabaseKey, lastUserMessage)
+      ? tryRewriteQuery(supabaseUrl, supabaseKey, lastUserMessage, priorMessages)
       : Promise.resolve({ rewritten: lastUserMessage, variants: [] });
 
     const [rateResult, exactCached, queryEmbedding, rewriteResult] = await Promise.all([
@@ -574,6 +584,25 @@ serve(async (req) => {
     ]);
     const rewrittenQuery = rewriteResult.rewritten;
     const rewriteVariants = rewriteResult.variants;
+
+    // For short follow-up questions, regenerate embedding using the context-enriched rewritten query
+    let effectiveEmbedding = queryEmbedding;
+    const wordCount = lastUserMessage.trim().split(/\s+/).length;
+    if (priorMessages.length > 0 && wordCount <= 4 && rewrittenQuery && rewrittenQuery !== lastUserMessage) {
+      try {
+        const embResp = await fetch(`${supabaseUrl}/functions/v1/generate-embedding`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${supabaseKey}` },
+          body: JSON.stringify({ texts: [rewrittenQuery] }),
+        });
+        if (embResp.ok) {
+          const ed = await embResp.json();
+          if (ed.embeddings?.[0]) effectiveEmbedding = ed.embeddings[0];
+        }
+      } catch (e) {
+        console.warn("[chat] follow-up embedding regen failed:", e instanceof Error ? e.message : e);
+      }
+    }
 
     // --- Semantic cache lookup (only if no exact hit and we have an embedding) ---
     let cached: { answer: string; sources: string | null } | null = exactCached as any;
@@ -687,8 +716,8 @@ serve(async (req) => {
         weight_text: weightText,
         weight_semantic: weightSemantic,
       };
-      if (queryEmbedding) {
-        rpcParamsBase.query_embedding = JSON.stringify(queryEmbedding);
+      if (effectiveEmbedding) {
+        rpcParamsBase.query_embedding = JSON.stringify(effectiveEmbedding);
       }
 
       // Build query variants: original + arabic-normalized + fuzzy-corrected + (rewritten variants from LLM)
