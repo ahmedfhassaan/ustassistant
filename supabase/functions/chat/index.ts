@@ -815,10 +815,11 @@ serve(async (req) => {
 
     // Sufficiency gate: even with high rank, ask a fast LLM if docs actually answer the question
     let docsAnswerable = true;
+    const forceOfficialWebLookup = shouldForceOfficialWebLookup(lastUserMessage, docsContext);
     if (liveSearchEnabled && docsContext && !docsInsufficient && !explicitWeb) {
       try {
         const sufUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${GOOGLE_AI_API_KEY}`;
-        const sufPrompt = `سؤال المستخدم:\n${lastUserMessage}\n\nالمقاطع المتاحة:\n${docsContext.slice(0, 6000)}\n\nهل تحتوي المقاطع أعلاه على إجابة فعلية ومحددة لسؤال المستخدم؟ أجب بكلمة واحدة فقط: YES أو NO.`;
+        const sufPrompt = `سؤال المستخدم:\n${lastUserMessage}\n\nالمقاطع المتاحة:\n${docsContext.slice(0, 6000)}\n\nهل تحتوي المقاطع أعلاه على إجابة فعلية ومحددة ومباشرة لنفس الكيان/المصطلح المطلوب في السؤال دون تعميم أو تخمين؟ إذا كان السؤال عن اسم جهة أو كلية أو برنامج أو صفحة محددة، فاعتبر الإجابة غير كافية ما لم يظهر هذا الاسم أو مرادفه بوضوح في المقاطع. أجب بكلمة واحدة فقط: YES أو NO.`;
         const sufRes = await fetch(sufUrl, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -837,6 +838,10 @@ serve(async (req) => {
       } catch (e) {
         console.warn("[chat] sufficiency check failed:", e instanceof Error ? e.message : e);
       }
+    }
+    if (forceOfficialWebLookup) {
+      docsAnswerable = false;
+      console.log(`[chat] FORCE WEB lookup for specific term: q="${lastUserMessage.slice(0,80)}"`);
     }
     if (!docsAnswerable) docsInsufficient = true;
 
@@ -929,12 +934,53 @@ ${lastUserMessage}`;
           } else {
             console.warn("[chat] GOOGLE GROUNDING returned empty text");
           }
+
+          if (!liveContext) {
+            const directSite = await fetchDirectUstSiteContext(lastUserMessage, timeoutMs, parseInt(settings.live_search_max_results) || 4);
+            if (directSite?.context) {
+              liveSearchUsed = true;
+              maxRank = Math.max(maxRank, 1);
+              const officialLabel = `موقع الجامعة الرسمي (${domain})`;
+              sourceNames = [...new Set([officialLabel, ...sourceNames, ...directSite.sourceNames])];
+              liveContext = directSite.context;
+              console.log(`[chat] DIRECT UST SEARCH fallback accepted=${directSite.sourceNames.length}`);
+            }
+          }
         } else {
           const errTxt = await liveRes.text().catch(() => "");
           console.error(`[chat] GOOGLE GROUNDING HTTP ${liveRes.status}: ${errTxt.slice(0, 300)}`);
+
+          if (!liveContext) {
+            const directSite = await fetchDirectUstSiteContext(lastUserMessage, timeoutMs, parseInt(settings.live_search_max_results) || 4);
+            if (directSite?.context) {
+              liveSearchUsed = true;
+              maxRank = Math.max(maxRank, 1);
+              const officialLabel = `موقع الجامعة الرسمي (${domain})`;
+              sourceNames = [...new Set([officialLabel, ...sourceNames, ...directSite.sourceNames])];
+              liveContext = directSite.context;
+              console.log(`[chat] DIRECT UST SEARCH fallback accepted=${directSite.sourceNames.length}`);
+            }
+          }
         }
       } catch (e) {
         console.error("[chat] GOOGLE GROUNDING error:", e instanceof Error ? e.message : e);
+
+        if (!liveContext) {
+          try {
+            const timeoutMs = Math.min(Math.max(parseInt(settings.live_search_timeout_ms) || 12000, 3000), 30000);
+            const directSite = await fetchDirectUstSiteContext(lastUserMessage, timeoutMs, parseInt(settings.live_search_max_results) || 4);
+            if (directSite?.context) {
+              liveSearchUsed = true;
+              maxRank = Math.max(maxRank, 1);
+              const officialLabel = "موقع الجامعة الرسمي (ust.edu)";
+              sourceNames = [...new Set([officialLabel, ...sourceNames, ...directSite.sourceNames])];
+              liveContext = directSite.context;
+              console.log(`[chat] DIRECT UST SEARCH fallback accepted=${directSite.sourceNames.length}`);
+            }
+          } catch (fallbackError) {
+            console.error("[chat] DIRECT UST SEARCH fallback error:", fallbackError instanceof Error ? fallbackError.message : fallbackError);
+          }
+        }
       }
     }
 
