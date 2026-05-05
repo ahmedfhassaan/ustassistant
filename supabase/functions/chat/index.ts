@@ -189,6 +189,170 @@ function buildToneInstruction(tone: string): string {
   }
 }
 
+function normalizeArabicForMatch(text: string): string {
+  return (text || "")
+    .toLowerCase()
+    .replace(/[أإآ]/g, "ا")
+    .replace(/ى/g, "ي")
+    .replace(/ة/g, "ه")
+    .replace(/[ؤئ]/g, "ء")
+    .replace(/[\u064B-\u065F\u0670]/g, "")
+    .replace(/[^ -\p{L}\p{N}\s]/gu, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function decodeHtmlEntities(text: string): string {
+  return (text || "")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;|&apos;/gi, "'")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">");
+}
+
+function stripHtmlContent(html: string): string {
+  return decodeHtmlEntities(
+    (html || "")
+      .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, " ")
+      .replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, " ")
+      .replace(/<noscript\b[^>]*>[\s\S]*?<\/noscript>/gi, " ")
+      .replace(/<svg\b[^>]*>[\s\S]*?<\/svg>/gi, " ")
+      .replace(/<br\s*\/?\s*>/gi, "\n")
+      .replace(/<\/p>/gi, "\n")
+      .replace(/<[^>]+>/g, " ")
+  )
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function isAllowedUstUrl(rawUrl: string): boolean {
+  try {
+    const host = new URL(rawUrl).hostname.toLowerCase().replace(/^www\./, "");
+    return (host === "ust.edu" || host.endsWith(".ust.edu")) && !host.endsWith("ust.edu.ye");
+  } catch {
+    return false;
+  }
+}
+
+function scoreUstSearchResult(query: string, title: string, snippet: string): number {
+  const q = normalizeArabicForMatch(query);
+  const titleNorm = normalizeArabicForMatch(title);
+  const snippetNorm = normalizeArabicForMatch(snippet);
+  const hay = `${titleNorm} ${snippetNorm}`.trim();
+  if (!q || !hay) return 0;
+
+  let score = 0;
+  if (titleNorm.includes(q)) score += 8;
+  if (hay.includes(q)) score += 5;
+
+  const tokens = q.split(" ").filter((w) => w.length >= 3);
+  for (const token of tokens) {
+    if (titleNorm.includes(token)) score += 2;
+    else if (hay.includes(token)) score += 1;
+  }
+
+  return score;
+}
+
+function shouldForceOfficialWebLookup(query: string, docsContext: string): boolean {
+  const normalizedQuery = normalizeArabicForMatch(query);
+  const tokens = normalizedQuery.split(" ").filter((w) => w.length >= 3);
+  if (!normalizedQuery || normalizedQuery.length < 5 || tokens.length === 0 || tokens.length > 4) {
+    return false;
+  }
+  const normalizedDocs = normalizeArabicForMatch(docsContext || "");
+  if (!normalizedDocs) return true;
+  if (normalizedDocs.includes(normalizedQuery)) return false;
+  const matched = tokens.filter((t) => normalizedDocs.includes(t)).length;
+  return matched < Math.max(1, Math.ceil(tokens.length * 0.7));
+}
+
+async function fetchDirectUstSiteContext(query: string, timeoutMs: number, maxResults = 4): Promise<{ context: string; sourceNames: string[] } | null> {
+  const variants = [query, ...generateQueryVariants(query)].map((v) => v.trim()).filter(Boolean);
+  const searchQueries = [...new Set(variants)].slice(0, 3);
+  const siteHeaders = {
+    "User-Agent": "Mozilla/5.0 (compatible; USTAssistant/1.0)",
+    "Accept-Language": "ar,en;q=0.8",
+  };
+
+  type SearchHit = { title: string; url: string; snippet: string; score: number };
+  const hits = new Map<string, SearchHit>();
+
+  for (const searchQuery of searchQueries) {
+    const searchUrl = `https://ust.edu/?s=${encodeURIComponent(searchQuery)}`;
+    const searchRes = await fetch(searchUrl, {
+      headers: siteHeaders,
+      signal: AbortSignal.timeout(Math.min(timeoutMs, 12000)),
+    });
+    if (!searchRes.ok) continue;
+    const html = await searchRes.text();
+    const articleBlocks = html.match(/<article\b[\s\S]*?<\/article>/gi) || [];
+
+    for (const block of articleBlocks) {
+      const anchors = [...block.matchAll(/<a\b[^>]*href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi)];
+      const best = anchors
+        .map((m) => ({ url: (m[1] || "").trim(), title: stripHtmlContent(m[2] || "") }))
+        .filter((a) => a.title.length >= 4 && isAllowedUstUrl(a.url))
+        .sort((a, b) => b.title.length - a.title.length)[0];
+
+      if (!best) continue;
+
+      const snippet = stripHtmlContent(block).replace(best.title, "").slice(0, 320);
+      const score = scoreUstSearchResult(query, best.title, snippet);
+      const prev = hits.get(best.url);
+      if (!prev || score > prev.score) {
+        hits.set(best.url, { title: best.title, url: best.url, snippet, score });
+      }
+    }
+  }
+
+  const ranked = [...hits.values()]
+    .sort((a, b) => b.score - a.score)
+    .slice(0, Math.max(1, Math.min(maxResults, 3)));
+
+  if (ranked.length === 0) return null;
+
+  const detailParts: string[] = [];
+  const sourceNames: string[] = [];
+  for (const hit of ranked.slice(0, 2)) {
+    let pageText = "";
+    try {
+      const pageRes = await fetch(hit.url, {
+        headers: siteHeaders,
+        signal: AbortSignal.timeout(Math.min(timeoutMs, 12000)),
+      });
+      if (pageRes.ok) {
+        const pageHtml = await pageRes.text();
+        const focus = pageHtml.match(/<article\b[\s\S]*?<\/article>/i)?.[0]
+          || pageHtml.match(/<main\b[\s\S]*?<\/main>/i)?.[0]
+          || pageHtml.match(/<body\b[\s\S]*?<\/body>/i)?.[0]
+          || pageHtml;
+        pageText = stripHtmlContent(focus).slice(0, 1800);
+      }
+    } catch (e) {
+      console.warn("[chat] Direct ust.edu fetch failed:", hit.url, e instanceof Error ? e.message : e);
+    }
+
+    sourceNames.push(hit.title);
+    detailParts.push(
+      `[مصدر: ${hit.title}]\nالرابط: ${hit.url}\n` +
+      `ملخص نتيجة البحث: ${hit.snippet || "لا يوجد مقتطف واضح."}\n` +
+      `نص من الصفحة: ${(pageText || hit.snippet || "").slice(0, 1800)}`
+    );
+  }
+
+  if (detailParts.length === 0) return null;
+
+  return {
+    context: "\n\n--- معلومات مباشرة من موقع الجامعة الرسمي (بحث داخلي ust.edu) ---\n" +
+      detailParts.join("\n\n") +
+      "\n--- نهاية المعلومات المباشرة ---",
+    sourceNames,
+  };
+}
+
 // ----------------- Query rewriting (optional) -----------------
 async function tryRewriteQuery(supabaseUrl: string, supabaseKey: string, question: string): Promise<{ rewritten: string; variants: string[] }> {
   try {
