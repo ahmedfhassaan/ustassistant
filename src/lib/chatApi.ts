@@ -6,7 +6,7 @@ interface StreamChatOptions {
   messages: Msg[];
   userId?: string;
   onDelta: (deltaText: string) => void;
-  onDone: (meta?: { sources?: string; cached?: boolean }) => void;
+  onDone: (meta?: { sources?: string; cached?: boolean; educationalExplain?: boolean }) => void;
   signal?: AbortSignal;
 }
 
