@@ -41,10 +41,22 @@ type QuestionIntent =
   | "registration"
   | "curriculum"
   | "graduation_projects"
+  | "exam_papers"
   | "other";
+
+const EXAM_CATEGORY = "نماذج الامتحانات السابقة";
 
 function classifyIntent(text: string): QuestionIntent {
   const t = (text || "").toLowerCase();
+
+  // 0) Exam papers — checked first (highest priority)
+  const examKeywords = [
+    "نماذج امتحانات", "نماذج الامتحانات", "نموذج امتحان", "نموذج الامتحان",
+    "امتحان سابق", "امتحانات سابقة", "الامتحانات السابقة", "اسئلة امتحان",
+    "أسئلة امتحان", "اسئلة سابقة", "أسئلة سابقة", "حل امتحان", "اجابة امتحان",
+    "إجابة امتحان", "اختبار سابق", "اختبارات سابقة", "نماذج اختبار",
+  ];
+  if (examKeywords.some(k => t.includes(k))) return "exam_papers";
 
   // 1) Explicit graduation projects — checked first to avoid being filtered out.
   const projectKeywords = [
@@ -695,6 +707,7 @@ serve(async (req) => {
     const liveSearchEnabled = settings.live_search_enabled === "true";
     let liveSearchUsed = false;
     let docsContext = "";
+    let questionIntent: QuestionIntent = "other";
 
     // When live search is enabled, exclude pre-crawled web documents from RPC results to avoid duplication with live results
     let excludedWebDocNames: Set<string> | null = null;
@@ -784,30 +797,46 @@ serve(async (req) => {
 
       if (rpcError) console.error("[chat] hybrid search error:", rpcError);
 
+      // Pre-compute intent (used for filtering AND for blocking live search)
+      const intentRaw = classifyIntent(lastUserMessage);
+      const intentRewritten = classifyIntent(rewrittenQuery || "");
+      const intent: QuestionIntent = intentRaw !== "other" ? intentRaw : intentRewritten;
+      questionIntent = intent;
+
       if (chunks && chunks.length > 0) {
         // Filter out web-crawled chunks when live search is active
         if (excludedWebDocNames && excludedWebDocNames.size > 0) {
           chunks = (chunks as any[]).filter((c: any) => !excludedWebDocNames!.has(c.document_name));
         }
 
-        // Intent-based filter: route based on question intent
-        const intent = classifyIntent(lastUserMessage);
         const shouldExcludeProjects =
-          intent === "admission" || intent === "registration" || intent === "curriculum";
-        console.log(`[chat] question intent=${intent} excludeProjects=${shouldExcludeProjects}`);
+          intent === "admission" || intent === "registration" || intent === "curriculum" || intent === "exam_papers";
+        console.log(`[chat] question intent=${intent} (raw=${intentRaw}, rewritten=${intentRewritten}) excludeProjects=${shouldExcludeProjects}`);
 
-        if (shouldExcludeProjects) {
+        if (intent === "exam_papers") {
+          // STRICT: only keep chunks from "نماذج الامتحانات السابقة" category
           const before = chunks.length;
-          const filtered = (chunks as any[]).filter((c: any) => !isGraduationProjectDoc(c.document_name));
+          const filtered = (chunks as any[]).filter((c: any) => c.category === EXAM_CATEGORY);
+          console.log(`[chat] intent=exam_papers: filtered ${before - filtered.length} non-exam chunks, kept ${filtered.length}`);
+          chunks = filtered.length > 0 ? filtered : null;
+        } else if (shouldExcludeProjects) {
+          const before = chunks.length;
+          let filtered = (chunks as any[]).filter((c: any) => !isGraduationProjectDoc(c.document_name));
+          filtered = filtered.filter((c: any) => c.category !== EXAM_CATEGORY);
           if (filtered.length > 0) {
             chunks = filtered;
-            console.log(`[chat] intent=${intent}: filtered ${before - filtered.length} project chunks, kept ${filtered.length}`);
+            console.log(`[chat] intent=${intent}: filtered ${before - filtered.length} project/exam chunks, kept ${filtered.length}`);
           } else {
-            console.log(`[chat] intent=${intent}: all ${before} chunks were projects → keeping none, will trigger live search`);
+            console.log(`[chat] intent=${intent}: all ${before} chunks were projects/exams → keeping none, will trigger live search`);
             chunks = null;
           }
         } else if (intent === "graduation_projects") {
-          console.log(`[chat] intent=graduation_projects: keeping project chunks as-is`);
+          chunks = (chunks as any[]).filter((c: any) => c.category !== EXAM_CATEGORY);
+          if (chunks.length === 0) chunks = null;
+          console.log(`[chat] intent=graduation_projects: keeping project chunks, excluded exam-paper chunks`);
+        } else {
+          chunks = (chunks as any[]).filter((c: any) => c.category !== EXAM_CATEGORY);
+          if (chunks.length === 0) chunks = null;
         }
       }
 
@@ -890,8 +919,10 @@ serve(async (req) => {
     }
     if (!docsAnswerable) docsInsufficient = true;
 
-    console.log(`[chat] LIVE SEARCH gate: enabled=${liveSearchEnabled} docsInsufficient=${docsInsufficient} explicitWeb=${explicitWeb} answerable=${docsAnswerable} maxRank=${maxRank.toFixed(3)} sourcesCount=${sourceNames.length} threshold=${confThresholdFraction}`);
-    if (liveSearchEnabled && (docsInsufficient || explicitWeb)) {
+    // Block live search entirely for exam-paper questions — they must come ONLY from exam-paper docs
+    const blockLiveSearchForIntent = questionIntent === "exam_papers";
+    console.log(`[chat] LIVE SEARCH gate: enabled=${liveSearchEnabled} docsInsufficient=${docsInsufficient} explicitWeb=${explicitWeb} answerable=${docsAnswerable} maxRank=${maxRank.toFixed(3)} sourcesCount=${sourceNames.length} threshold=${confThresholdFraction} intent=${questionIntent} blockLive=${blockLiveSearchForIntent}`);
+    if (liveSearchEnabled && !blockLiveSearchForIntent && (docsInsufficient || explicitWeb)) {
       try {
         // Hard-locked to ust.edu (University of Science and Technology - Aden, Yemen)
         // DO NOT change to ust.edu.ye (that is a different university in Sanaa)
