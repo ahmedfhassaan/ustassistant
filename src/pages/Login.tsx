@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Moon, Sun, GraduationCap, BookOpen, Users, Shield, FileText, AlertCircle, Eye, EyeOff } from "lucide-react";
+import { Moon, Sun, GraduationCap, BookOpen, Users, Shield, FileText, ClipboardList, AlertCircle, Eye, EyeOff } from "lucide-react";
 import { useTheme } from "@/hooks/use-theme";
 import { supabase } from "@/integrations/supabase/client";
 import universityLogo from "@/assets/university-logo.png";
