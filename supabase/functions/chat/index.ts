@@ -886,8 +886,38 @@ ${toneInstruction}
     }
 
     if (!response) {
+      // Graceful degradation: if we have retrieved context, build a fallback answer from it
+      // instead of returning an error to the user.
+      const haveContext = (docsContext && docsContext.length > 100) || (liveContext && liveContext.length > 100);
+      if (haveContext) {
+        const baseText = (liveContext || docsContext)
+          .replace(/\[مصدر:[^\]]+\]/g, "")
+          .replace(/--- [^-\n]+ ---/g, "")
+          .trim();
+        const trimmed = baseText.length > 1500 ? baseText.slice(0, 1500) + "…" : baseText;
+        const note = lastStatus === 429
+          ? "> ⚠️ المساعد الذكي مشغول حالياً، فيما يلي معلومات مأخوذة مباشرة من المصادر:\n\n"
+          : "> ℹ️ تعذّر توليد إجابة منسّقة الآن، فيما يلي معلومات مأخوذة من المصادر:\n\n";
+        const content = `## 📋 معلومات من المصادر\n\n${note}${trimmed}`;
+        try {
+          await supabase.from("chat_logs").insert({
+            question: lastUserMessage, question_hash: questionHash,
+            sources: sourceNames.join("، ") || null, cached: false, user_id: userId,
+            category: classifyQuestion(lastUserMessage),
+          });
+        } catch {}
+        return new Response(
+          JSON.stringify({
+            cached: true,
+            content,
+            sources: settings.show_sources === "true" && sourceNames.length > 0 ? sourceNames.join("، ") : null,
+          }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
       const friendly = lastStatus === 429
-        ? "⚠️ تم تجاوز حد الطلبات. يرجى المحاولة بعد دقيقة."
+        ? "⚠️ المساعد الذكي مشغول حالياً بسبب تجاوز عدد الطلبات. يرجى المحاولة بعد دقيقة."
         : (lastStatus === 503 || lastStatus >= 500)
           ? "⚠️ النموذج الذكي مشغول حالياً بسبب الضغط. يرجى المحاولة بعد قليل."
           : "حدث خطأ في المساعد الذكي. حاول مرة أخرى.";
