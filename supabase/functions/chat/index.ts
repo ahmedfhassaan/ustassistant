@@ -168,7 +168,7 @@ async function loadSettings(supabase: any): Promise<Record<string, string>> {
     // ---- Live Search ----
     live_search_enabled: "true",
     live_search_max_results: "4",
-    live_search_timeout_ms: "20000",
+    live_search_timeout_ms: "12000",
     web_crawl_root_url: "https://www.ust.edu",
   };
   try {
@@ -655,10 +655,9 @@ serve(async (req) => {
         const rootUrl = settings.web_crawl_root_url || "https://www.ust.edu";
         let domain = "";
         try { domain = new URL(rootUrl).hostname.replace(/^www\./, ""); } catch { domain = "ust.edu"; }
-        const timeoutMs = Math.min(Math.max(parseInt(settings.live_search_timeout_ms) || 20000, 15000), 30000);
+        const timeoutMs = Math.min(Math.max(parseInt(settings.live_search_timeout_ms) || 12000, 3000), 30000);
 
-        console.log(`[chat] GOOGLE GROUNDING start site:${domain} timeoutMs=${timeoutMs} q="${lastUserMessage.slice(0,80)}"`);
-        const groundingStart = Date.now();
+        console.log(`[chat] GOOGLE GROUNDING start site:${domain} q="${lastUserMessage.slice(0,80)}"`);
 
         const groundingPrompt = `ابحث في موقع جامعة العلوم والتكنولوجيا (${domain}) عن إجابة دقيقة ومختصرة للسؤال التالي. اذكر الحقائق فقط من المصادر الرسمية:\n\n${lastUserMessage}`;
 
@@ -673,7 +672,6 @@ serve(async (req) => {
           }),
           signal: AbortSignal.timeout(timeoutMs),
         });
-        console.log(`[chat] GOOGLE GROUNDING fetch returned status=${liveRes.status} in ${Date.now() - groundingStart}ms`);
 
         if (liveRes.ok) {
           const liveData = await liveRes.json();
@@ -704,23 +702,16 @@ serve(async (req) => {
               groundedText +
               (sourceLines.length ? "\n\nالمصادر:\n" + sourceLines.join("\n") : "") +
               "\n--- نهاية المعلومات المباشرة ---";
-            console.log(`[chat] GOOGLE GROUNDING got ${groundingChunks.length} sources, ${groundedText.length} chars in ${Date.now() - groundingStart}ms`);
+            if (debugRag) console.log(`[chat] GOOGLE GROUNDING got ${groundingChunks.length} sources, ${groundedText.length} chars`);
           } else {
-            console.warn(`[chat] GOOGLE GROUNDING returned empty text. candidate=${JSON.stringify(candidate).slice(0,300)}`);
+            console.warn("[chat] GOOGLE GROUNDING returned empty text");
           }
         } else {
           const errTxt = await liveRes.text().catch(() => "");
-          console.error(`[chat] GOOGLE GROUNDING HTTP ${liveRes.status}: ${errTxt.slice(0, 500)}`);
+          console.error(`[chat] GOOGLE GROUNDING HTTP ${liveRes.status}: ${errTxt.slice(0, 300)}`);
         }
-      } catch (e: any) {
-        const elapsed = Date.now() - groundingStart;
-        const name = e?.name || "Error";
-        const msg = e?.message || String(e);
-        if (name === "TimeoutError" || name === "AbortError") {
-          console.error(`[chat] GOOGLE GROUNDING TIMEOUT after ${elapsed}ms (limit=${timeoutMs}ms): ${msg}`);
-        } else {
-          console.error(`[chat] GOOGLE GROUNDING error after ${elapsed}ms: name=${name} msg=${msg}`);
-        }
+      } catch (e) {
+        console.error("[chat] GOOGLE GROUNDING error:", e instanceof Error ? e.message : e);
       }
     }
 
@@ -827,7 +818,7 @@ ${toneInstruction}
 لا تخترع هذه المعلومات؛ اذكرها فقط إن وردت فعلياً في السياق المرفق، وبنفس الحدود والقيود التي وردت بها.${knowledgeContext}${settings.custom_instruction?.trim() ? `\n\nتعليمات إضافية:\n${settings.custom_instruction}` : ""}`;
 
     // Convert model name
-    let modelName = settings.ai_model || "gemini-2.5-flash";
+    let modelName = settings.ai_model || "gemini-3-flash-preview";
     if (modelName.startsWith("google/")) modelName = modelName.slice(7);
     if (modelName.startsWith("openai/")) modelName = "gemini-3-flash-preview";
 

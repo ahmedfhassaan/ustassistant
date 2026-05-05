@@ -25,7 +25,7 @@ const WebSourceCard = ({ onChanged: _onChanged }: { onChanged?: () => void }) =>
   // Live search state
   const [liveEnabled, setLiveEnabled] = useState(false);
   const [liveMax, setLiveMax] = useState(4);
-  const [liveTimeout, setLiveTimeout] = useState(20000);
+  const [liveTimeout, setLiveTimeout] = useState(12000);
 
   useEffect(() => {
     (async () => {
@@ -38,7 +38,7 @@ const WebSourceCard = ({ onChanged: _onChanged }: { onChanged?: () => void }) =>
           if (r.key === "web_crawl_root_url" && r.value) setRootUrl(r.value);
           if (r.key === "live_search_enabled") setLiveEnabled(r.value === "true");
           if (r.key === "live_search_max_results") setLiveMax(parseInt(r.value) || 4);
-          if (r.key === "live_search_timeout_ms") setLiveTimeout(parseInt(r.value) || 20000);
+          if (r.key === "live_search_timeout_ms") setLiveTimeout(parseInt(r.value) || 12000);
         }
       }
       setLoading(false);
@@ -67,7 +67,7 @@ const WebSourceCard = ({ onChanged: _onChanged }: { onChanged?: () => void }) =>
       await upsert("web_crawl_root_url", rootUrl.trim());
       await upsert("live_search_enabled", liveEnabled ? "true" : "false");
       await upsert("live_search_max_results", String(Math.max(1, Math.min(8, liveMax))));
-      await upsert("live_search_timeout_ms", String(Math.max(15000, Math.min(30000, liveTimeout))));
+      await upsert("live_search_timeout_ms", String(Math.max(3000, Math.min(30000, liveTimeout))));
       toast({ title: "تم حفظ الإعدادات" });
     } catch (e: any) {
       toast({ title: "خطأ", description: e.message, variant: "destructive" });
@@ -145,11 +145,11 @@ const WebSourceCard = ({ onChanged: _onChanged }: { onChanged?: () => void }) =>
                     <Input
                       id="live-timeout"
                       type="number"
-                      min={15000}
+                      min={3000}
                       max={30000}
                       step={1000}
                       value={liveTimeout}
-                      onChange={(e) => setLiveTimeout(parseInt(e.target.value) || 20000)}
+                      onChange={(e) => setLiveTimeout(parseInt(e.target.value) || 12000)}
                       className={isDark ? "glass-input" : ""}
                     />
                   </div>

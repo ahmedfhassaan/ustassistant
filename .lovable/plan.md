@@ -1,29 +1,40 @@
 ## الهدف
-معالجة فشل Google Grounding الصامت وحل مشكلة تجاوز حصة `gemini-3-flash-preview`.
+حذف تكامل Firecrawl بالكامل، والاعتماد فقط على **Google Grounding Search** (المُفعَّل أصلًا داخل `chat/index.ts` كوضع `live_search_enabled`).
 
-## التعديلات على `supabase/functions/chat/index.ts`
+## التغييرات
 
-### 1. رفع المهلة الافتراضية لـ Grounding
-- السطر 171: تغيير `live_search_timeout_ms` الافتراضي من `"12000"` إلى `"20000"`.
-- السطر 658: تغيير الحد الأدنى المسموح من 12000 إلى 20000 ms.
+### 1. حذف ملفات/مكونات
+- **حذف** Edge Function: `supabase/functions/crawl-website/` بالكامل.
+- **حذف** المكوّن: `src/components/admin/WebSourceCard.tsx` (أو إعادة بنائه؟ — انظر أدناه).
+- **حذف** سر `FIRECRAWL_API_KEY` من إعدادات المشروع.
 
-### 2. سجلات تشخيصية واضحة لـ Grounding (السطور 660–715)
-- إضافة `console.log` يطبع: `timeoutMs` المستخدم، حجم الـ chunks المُرجعة، طول النص.
-- في `catch`: التمييز بين `TimeoutError`/`AbortError` وأنواع الأخطاء الأخرى وطباعة `e.name` و `e.message` و `e.stack`.
-- إضافة `console.log` بعد `await fetch` مباشرة لتأكيد عودة الاستجابة.
+### 2. تعديل `src/pages/AdminKnowledge.tsx`
+- إزالة `import WebSourceCard` والاستخدام في السطر 501.
+- استبداله بـ **بطاقة جديدة** (`LiveSearchCard`) مبسّطة فيها فقط:
+  - مفتاح تشغيل/إيقاف **«البحث المباشر في موقع الجامعة (Google)»** → يحفظ `live_search_enabled`.
+  - حقل **«النطاق المستهدف»** (افتراضيًا `www.ust.edu`) → يحفظ `web_crawl_root_url` (نُعيد استخدام نفس المفتاح كـ "domain" لتقييد البحث).
+  - مهلة الاستجابة (ms) → `live_search_timeout_ms`.
+  - عدد المصادر الأقصى → `live_search_max_results`.
+- إزالة كل أزرار «تشغيل الزحف الآن» وعرض حالة الزحف.
 
-### 3. تغيير النموذج الافتراضي
-- السطر 821: تغيير القيمة الافتراضية من `"gemini-3-flash-preview"` إلى `"gemini-2.5-flash"` (لأن الحصة المجانية للأول استُنفدت).
-- تحديث القيمة الافتراضية في `assistant_settings.ai_model` عبر migration بسيط لتكون `gemini-2.5-flash`.
+### 3. تعديل `supabase/functions/chat/index.ts`
+- **تغيير الافتراضي** للسطر 169: `live_search_enabled: "true"` (بدلاً من `"false"`).
+- لا تغيير على منطق Grounding نفسه — يعمل بالفعل بشكل صحيح (الأسطر 655-705).
 
-### 4. تحديث UI البطاقة
-في `src/components/admin/WebSourceCard.tsx`:
-- تغيير الحد الأدنى لحقل `live-timeout` من `3000` إلى `15000` لتجنّب اختيار قيم منخفضة.
-- تحديث القيمة الافتراضية في `useState` من 12000 إلى 20000.
+### 4. تعديل `src/pages/Documentation.tsx`
+- حذف الأسطر التي تذكر `crawl-website` ومصادر الويب المُزحوفة (350، 370، 540).
+- إضافة فقرة قصيرة تشرح **Google Grounding** كمصدر مباشر للمعلومات اللحظية.
 
-### 5. تحديث قاعدة البيانات
-- migration: `UPDATE assistant_settings SET value = '20000' WHERE key = 'live_search_timeout_ms'`.
-- migration: `UPDATE assistant_settings SET value = 'gemini-2.5-flash' WHERE key = 'ai_model'`.
+### 5. قاعدة البيانات
+- لا تغيير على المخطط. مفاتيح `assistant_settings` التالية تبقى كما هي وتُستخدم:
+  - `live_search_enabled`, `live_search_max_results`, `live_search_timeout_ms`, `web_crawl_root_url` (يُعاد استخدامه كـ domain filter).
+- **اختياري:** حذف صفوف `assistant_settings` ذات المفاتيح: `web_crawl_enabled`, `web_crawl_last_run_at`, `web_crawl_last_status` (لم تعد مستخدمة).
+- **اختياري:** الإبقاء على `knowledge_documents` ذات `source_type = 'web'` السابقة (لن تُحدَّث بعد الآن، لكنها تظل في الـ RAG حتى يحذفها المشرف يدويًا من واجهة المعرفة).
 
-## النشر
-نشر دالة `chat` فوراً بعد التعديل، ثم اختبار السؤال نفسه ومراجعة السجلات للتأكد من ظهور `[chat] GOOGLE GROUNDING got N sources` أو رسالة خطأ واضحة.
+## ما لن يتغيّر
+- منطق Google Grounding في `chat/index.ts` (موجود وجاهز).
+- باقي تدفّق RAG (FTS + pgvector + caching).
+- صفحة `/contact` وبقية الواجهات.
+
+## ملاحظة سياسية (Google ToS)
+Google تشترط عرض **Search Suggestions** (`searchEntryPoint.renderedContent`) عند استخدام Grounding في إنتاج. الكود الحالي لا يعرضها — إن أردت الالتزام الكامل، أضف عرضها أسفل الإجابة. أخبرني إن أردت إضافة ذلك ضمن نفس التغيير.
