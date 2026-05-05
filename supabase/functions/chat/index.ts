@@ -669,7 +669,7 @@ serve(async (req) => {
           body: JSON.stringify({
             contents: [{ role: "user", parts: [{ text: groundingPrompt }] }],
             tools: [{ google_search: {} }],
-            generationConfig: { temperature: 0.2, maxOutputTokens: 1024 },
+            generationConfig: { temperature: 0.2, maxOutputTokens: 2048 },
           }),
           signal: AbortSignal.timeout(timeoutMs),
         });
