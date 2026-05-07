@@ -205,24 +205,8 @@ function buildHtml(opts: PdfOptions): string {
   <div class="footer">
     تقرير صادر من <strong>المساعد الذكي</strong>
   </div>
-  <script>
-    (function () {
-      function ready() {
-        var fonts = (document).fonts;
-        if (fonts && fonts.ready && typeof fonts.ready.then === 'function') {
-          return fonts.ready;
-        }
-        return new Promise(function (r) { setTimeout(r, 400); });
-      }
-      window.addEventListener('load', function () {
-        ready().then(function () {
-          setTimeout(function () {
-            try { window.focus(); window.print(); } catch (e) {}
-          }, 200);
-        });
-      });
-    })();
-  </script>
+  <!-- printing is triggered from the parent window after fonts are ready -->
+
 </body>
 </html>`;
 }
