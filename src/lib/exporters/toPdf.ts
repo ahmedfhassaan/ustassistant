@@ -98,6 +98,8 @@ function buildHtml(opts: PdfOptions): string {
     border-radius: 12px;
     margin-bottom: 22px;
     box-shadow: 0 4px 12px rgba(112, 200, 255, 0.25);
+    break-inside: avoid;
+    page-break-inside: avoid;
   }
   .header h1 {
     margin: 0;
