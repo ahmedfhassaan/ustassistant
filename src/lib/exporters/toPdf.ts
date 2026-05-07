@@ -205,75 +205,81 @@ function buildHtml(opts: PdfOptions): string {
   <div class="footer">
     تقرير صادر من <strong>المساعد الذكي</strong>
   </div>
-  <script>
-    (function () {
-      function ready() {
-        var fonts = (document).fonts;
-        if (fonts && fonts.ready && typeof fonts.ready.then === 'function') {
-          return fonts.ready;
-        }
-        return new Promise(function (r) { setTimeout(r, 400); });
-      }
-      window.addEventListener('load', function () {
-        ready().then(function () {
-          setTimeout(function () {
-            try { window.focus(); window.print(); } catch (e) {}
-          }, 200);
-        });
-      });
-    })();
-  </script>
+  <!-- printing is triggered from the parent window after fonts are ready -->
+
 </body>
 </html>`;
 }
 
 export async function downloadPdf(opts: PdfOptions) {
   const html = buildHtml(opts);
+  const title = opts.filename.replace(/\.pdf$/i, "");
 
-  const win = window.open("", "_blank", "noopener,noreferrer,width=900,height=1000");
-
-  if (win) {
-    win.document.open();
-    win.document.write(html);
-    win.document.close();
-    try {
-      win.document.title = opts.filename.replace(/\.pdf$/i, "");
-    } catch {
-      /* ignore */
-    }
-    return;
-  }
-
-  // Fallback: hidden iframe + print
+  // Use a hidden iframe ONLY — never window.open (which causes a visible
+  // about:blank window/tab to appear behind or over the print dialog).
   const iframe = document.createElement("iframe");
+  iframe.setAttribute("aria-hidden", "true");
+  iframe.setAttribute("title", title);
   iframe.style.position = "fixed";
   iframe.style.right = "0";
   iframe.style.bottom = "0";
   iframe.style.width = "0";
   iframe.style.height = "0";
   iframe.style.border = "0";
-  document.body.appendChild(iframe);
+  iframe.style.opacity = "0";
+  iframe.style.pointerEvents = "none";
+  // srcdoc avoids the initial about:blank document being part of session history
+  iframe.srcdoc = html;
 
-  const doc = iframe.contentDocument;
-  if (!doc) {
-    document.body.removeChild(iframe);
-    throw new Error("تعذّر تجهيز نافذة الطباعة");
-  }
-  doc.open();
-  doc.write(html);
-  doc.close();
-
-  try {
-    doc.title = opts.filename.replace(/\.pdf$/i, "");
-  } catch {
-    /* ignore */
-  }
-
-  setTimeout(() => {
+  let cleaned = false;
+  const cleanup = () => {
+    if (cleaned) return;
+    cleaned = true;
+    try {
+      window.removeEventListener("focus", onFocus);
+    } catch { /* ignore */ }
     try {
       document.body.removeChild(iframe);
-    } catch {
-      /* ignore */
+    } catch { /* ignore */ }
+  };
+
+  const onFocus = () => {
+    // User dismissed the print dialog → window regains focus
+    setTimeout(cleanup, 500);
+  };
+
+  iframe.addEventListener("load", () => {
+    const win = iframe.contentWindow;
+    const doc = iframe.contentDocument;
+    if (!win || !doc) {
+      cleanup();
+      return;
     }
-  }, 60_000);
+    try { doc.title = title; } catch { /* ignore */ }
+
+    const triggerPrint = () => {
+      try {
+        win.addEventListener("afterprint", () => setTimeout(cleanup, 300));
+      } catch { /* ignore */ }
+      window.addEventListener("focus", onFocus);
+      try {
+        win.focus();
+        win.print();
+      } catch (e) {
+        console.error(e);
+        cleanup();
+      }
+      // Safety net cleanup if afterprint/focus never fire
+      setTimeout(cleanup, 60_000);
+    };
+
+    const fonts = (doc as any).fonts;
+    const fontsReady = fonts && fonts.ready && typeof fonts.ready.then === "function"
+      ? fonts.ready
+      : Promise.resolve();
+
+    fontsReady.then(() => setTimeout(triggerPrint, 250));
+  });
+
+  document.body.appendChild(iframe);
 }
