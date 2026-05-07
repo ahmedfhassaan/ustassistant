@@ -129,6 +129,8 @@ function buildHtml(opts: PdfOptions): string {
     display: flex;
     align-items: center;
     gap: 8px;
+    break-after: avoid;
+    page-break-after: avoid;
   }
   h2 .bar {
     display: inline-block;
@@ -139,17 +141,14 @@ function buildHtml(opts: PdfOptions): string {
   }
   table {
     width: 100%;
-    border-collapse: separate;
-    border-spacing: 0;
+    border-collapse: collapse;
     margin-bottom: 16px;
     font-size: 10.5pt;
+    break-inside: auto;
     page-break-inside: auto;
-    border-radius: 8px;
-    overflow: hidden;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
   }
   thead { display: table-header-group; }
-  tr { page-break-inside: avoid; }
+  tr { page-break-inside: avoid; break-inside: avoid; }
   th {
     background: #70C8FF;
     color: #ffffff;
@@ -181,6 +180,9 @@ function buildHtml(opts: PdfOptions): string {
     font-size: 8.5pt;
     color: #94a3b8;
     text-align: center;
+    break-before: avoid;
+    page-break-before: avoid;
+    break-inside: avoid;
   }
   .footer strong {
     color: #5BB5EC;
@@ -188,6 +190,8 @@ function buildHtml(opts: PdfOptions): string {
   }
   @media print {
     .no-print { display: none; }
+    .header, table { box-shadow: none !important; }
+    body > *:last-child { margin-bottom: 0 !important; }
   }
 </style>
 </head>
