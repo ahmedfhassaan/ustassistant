@@ -20,11 +20,9 @@ const suggestions = [
     bgDark: "bg-blue-500/10 border-blue-500/20",
   },
   {
-    type: "qa" as const,
     icon: FileText,
-    title: "هل تتوفر نماذج للامتحانات السابقة؟",
-    question: "هل تتوفر نماذج للامتحانات السابقة؟",
-    answer: "نعم، تتوفر نماذج لامتحانات الفصول السابقة لمعظم المواد لدى رابطة الطلاب وفي مكتبة الكلية. كما يمكنك طلبها من زملائك في المستوى الأعلى أو عبر مجموعات الواتساب الخاصة بكل تخصص.",
+    title: "نماذج الامتحانات السابقة",
+    question: "ما هو السؤال الأكثر تكراراً من نماذج الامتحانات السابقة؟ اعرضه مع إجابته.",
     color: "text-emerald-400",
     bgLight: "bg-emerald-50 border-emerald-100",
     bgDark: "bg-emerald-500/10 border-emerald-500/20",
@@ -82,14 +80,17 @@ const ChatWelcome = ({ studentName, onSuggestionClick }: ChatWelcomeProps) => {
 
         {/* Suggestion Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          {suggestions.map((suggestion, i) => {
-            const isQA = "type" in suggestion && suggestion.type === "qa";
-            const baseClasses = `text-right p-4 rounded-2xl border transition-all duration-300 animate-fade-in-up ${
-              isDark
-                ? `${suggestion.bgDark} ${isQA ? "" : "hover:translate-y-[-2px] hover:bg-white/8 hover:shadow-[0_8px_30px_rgba(112,200,255,0.06)]"}`
-                : `${suggestion.bgLight} ${isQA ? "" : "hover:translate-y-[-2px] hover:shadow-md hover:shadow-primary/5"}`
-            }`;
-            const inner = (
+          {suggestions.map((suggestion, i) => (
+            <button
+              key={i}
+              onClick={() => onSuggestionClick(suggestion.question)}
+              className={`group text-right p-4 rounded-2xl border transition-all duration-300 animate-fade-in-up hover:translate-y-[-2px] ${
+                isDark
+                  ? `${suggestion.bgDark} hover:bg-white/8 hover:shadow-[0_8px_30px_rgba(112,200,255,0.06)]`
+                  : `${suggestion.bgLight} hover:shadow-md hover:shadow-primary/5`
+              }`}
+              style={{ animationDelay: `${0.15 + i * 0.08}s`, opacity: 0 }}
+            >
               <div className="flex items-start gap-3">
                 <div className={`p-2.5 rounded-xl shrink-0 transition-all duration-200 ${
                   isDark ? "bg-white/5 group-hover:bg-white/10" : "bg-white/80 group-hover:bg-white"
@@ -101,30 +102,12 @@ const ChatWelcome = ({ studentName, onSuggestionClick }: ChatWelcomeProps) => {
                     {suggestion.title}
                   </p>
                   <p className="text-xs text-muted-foreground leading-relaxed">
-                    {isQA ? (suggestion as { answer: string }).answer : suggestion.question}
+                    {suggestion.question}
                   </p>
                 </div>
               </div>
-            );
-            const style = { animationDelay: `${0.15 + i * 0.08}s`, opacity: 0 } as const;
-            if (isQA) {
-              return (
-                <div key={i} className={baseClasses} style={style}>
-                  {inner}
-                </div>
-              );
-            }
-            return (
-              <button
-                key={i}
-                onClick={() => onSuggestionClick(suggestion.question)}
-                className={`group ${baseClasses}`}
-                style={style}
-              >
-                {inner}
-              </button>
-            );
-          })}
+            </button>
+          ))}
         </div>
 
         {/* Help hint */}
