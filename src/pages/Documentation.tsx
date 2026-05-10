@@ -257,7 +257,43 @@ const Documentation = () => {
           </CardContent>
         </Card>
 
-        {/* 2. واجهة الدردشة */}
+        {/* 2. كيف تستخدم المساعد */}
+        <Card id="how-to-use" className={cardElevated}>
+          <CardHeader>
+            <SectionHeader index={1} title="كيف تستخدم المساعد؟" subtitle="خطوات عملية للطالب من الدخول حتى التقييم" Icon={Lightbulb} />
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <ol className="space-y-2 list-decimal pr-5 text-sm leading-relaxed">
+              <li>سجّل الدخول من صفحة <code>/login</code> برقمك الجامعي وكلمة السر التي زوّدك بها المشرف.</li>
+              <li>من الشريط الجانبي، اختر <strong>محادثة جديدة</strong> أو تابع محادثة سابقة (محفوظة في السحابة وتظهر على جميع أجهزتك).</li>
+              <li>انقر على إحدى البطاقات الاقتراحية في شاشة الترحيب — مثل <strong>التخصصات</strong> أو <strong>نماذج الامتحانات السابقة</strong> أو <strong>الرسوم</strong> أو <strong>مشاريع التخرج</strong> — أو اكتب سؤالك مباشرة بالعربية.</li>
+              <li>تظهر الإجابة فوراً على شكل بثّ مباشر، وأسفلها قسم <strong>المصادر</strong> الذي يمكنك مراجعته للتحقق.</li>
+              <li>قيّم الإجابة بـ 👍 أو 👎. عند اختيار 👎 ستظهر نافذة موجزة لتحديد سبب عدم الفائدة، تساعد المشرف على تحسين المحتوى.</li>
+              <li>بدّل بين الوضع الفاتح والداكن من زر القمر/الشمس أعلى يمين الشاشة.</li>
+              <li>إذا لم يتمكن المساعد من الإجابة، اضغط <strong>تواصل معنا</strong> للوصول إلى الجهة المختصة.</li>
+            </ol>
+            <Notice tone="success">
+              المساعد يعتمد فقط على قاعدة المعرفة الرسمية. إذا لم يجد إجابة موثّقة، سيعتذر بدلاً من التخمين.
+            </Notice>
+          </CardContent>
+        </Card>
+
+        {/* 3. أفضل الممارسات */}
+        <Card id="best-practices" className={cardElevated}>
+          <CardHeader>
+            <SectionHeader index={2} title="أفضل الممارسات في طرح السؤال" subtitle="كيف تحصل على أدق إجابة بأقصر وقت" Icon={ListChecks} />
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <MiniCard title="كن محدّداً" body="‘ما خطة قسم علوم الحاسوب للفصل الأول؟’ أوضح من ‘أعطني خطة’. التحديد يرفع دقة الاسترجاع." />
+              <MiniCard title="اذكر التخصص أو المستوى" body="عند سؤالك عن مقررات أو رسوم، أضف اسم القسم والمستوى الدراسي ليصل المساعد للمصدر الصحيح." />
+              <MiniCard title="سؤال واحد لكل رسالة" body="تجنّب دمج عدة أسئلة. اقسمها لرسائل متتابعة لتحصل على إجابة دقيقة لكل سؤال." />
+              <MiniCard title="أعد الصياغة عند الحاجة" body="إن لم تكن الإجابة واضحة، أعد صياغة السؤال بكلمات مختلفة. النظام يعيد صياغته داخلياً أيضاً لتحسين البحث." />
+              <MiniCard title="راجع المصادر دائماً" body="المصادر أسفل الإجابة هي ضمانتك. افتحها للتحقق قبل اعتماد المعلومة في قرار رسمي." />
+              <MiniCard title="استخدم التقييم 👎" body="عند وجود خطأ أو نقص، اشرح السبب باختصار. كل تقييم يصل للمشرف ويُستخدم لتحسين النظام." />
+            </div>
+          </CardContent>
+        </Card>
         <Card id="chat" className={cardElevated}>
           <CardHeader>
             <SectionHeader index={1} title="واجهة الدردشة" subtitle="تجربة محادثة عربية RTL مع Markdown" Icon={MessageSquare} />
