@@ -296,7 +296,7 @@ const Documentation = () => {
         </Card>
         <Card id="chat" className={cardElevated}>
           <CardHeader>
-            <SectionHeader index={1} title="واجهة الدردشة" subtitle="تجربة محادثة عربية RTL مع Markdown" Icon={MessageSquare} />
+            <SectionHeader index={3} title="واجهة الدردشة" subtitle="تجربة محادثة عربية RTL مع Markdown" Icon={MessageSquare} />
           </CardHeader>
           <CardContent className="space-y-4">
             <ul className="space-y-2">
@@ -316,7 +316,7 @@ const Documentation = () => {
         {/* 3. RAG */}
         <Card id="rag" className={cardElevated}>
           <CardHeader>
-            <SectionHeader index={2} title="نظام RAG" subtitle="استرجاع المعلومات قبل توليد الإجابة" Icon={Database} />
+            <SectionHeader index={4} title="نظام RAG" subtitle="استرجاع المعلومات قبل توليد الإجابة" Icon={Database} />
           </CardHeader>
           <CardContent className="space-y-4">
             <p className="text-sm md:text-base leading-relaxed">
@@ -377,7 +377,7 @@ const Documentation = () => {
         {/* 4. قاعدة المعرفة */}
         <Card id="knowledge" className={cardElevated}>
           <CardHeader>
-            <SectionHeader index={3} title="قاعدة المعرفة" subtitle="مصدر الحقيقة الوحيد للمساعد" Icon={FileText} />
+            <SectionHeader index={5} title="قاعدة المعرفة" subtitle="مصدر الحقيقة الوحيد للمساعد" Icon={FileText} />
           </CardHeader>
           <CardContent className="space-y-4">
             <p className="text-sm md:text-base leading-relaxed">
@@ -402,7 +402,7 @@ const Documentation = () => {
         {/* 5. رفع الملفات */}
         <Card id="uploads" className={cardElevated}>
           <CardHeader>
-            <SectionHeader index={4} title="رفع الملفات" subtitle="إدخال آمن ومنضبط للمحتوى" Icon={Upload} />
+            <SectionHeader index={6} title="رفع الملفات والتصدير" subtitle="إدخال المحتوى وتصدير سجلات الدردشة" Icon={Upload} />
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -422,7 +422,7 @@ const Documentation = () => {
         {/* 6. عرض المصادر */}
         <Card id="sources" className={cardElevated}>
           <CardHeader>
-            <SectionHeader index={5} title="عرض المصادر" subtitle="شفافية كاملة في كل إجابة" Icon={Link2} />
+            <SectionHeader index={7} title="عرض المصادر والتقييم" subtitle="شفافية كاملة وتقييم تفاعلي لكل إجابة" Icon={Link2} />
           </CardHeader>
           <CardContent className="space-y-4">
             <p className="text-sm md:text-base leading-relaxed">
@@ -452,7 +452,7 @@ const Documentation = () => {
         {/* 7. لوحة المشرف */}
         <Card id="admin" className={cardElevated}>
           <CardHeader>
-            <SectionHeader index={6} title="لوحة المشرف" subtitle="تحكم كامل بالمحتوى والإعدادات" Icon={LayoutDashboard} />
+            <SectionHeader index={8} title="لوحة المشرف" subtitle="تحكم كامل بالمحتوى والإعدادات" Icon={LayoutDashboard} />
           </CardHeader>
           <CardContent className="space-y-4">
             <Table>
@@ -481,7 +481,7 @@ const Documentation = () => {
         {/* 8. تسجيل الدخول والصلاحيات */}
         <Card id="auth" className={cardElevated}>
           <CardHeader>
-            <SectionHeader index={7} title="تسجيل الدخول والصلاحيات" subtitle="مساران واضحان: طالب ومشرف" Icon={KeyRound} />
+            <SectionHeader index={9} title="تسجيل الدخول والصلاحيات" subtitle="مساران واضحان: طالب ومشرف" Icon={KeyRound} />
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -515,7 +515,7 @@ const Documentation = () => {
         {/* 9. الأمان والخصوصية */}
         <Card id="security" className={cardElevated}>
           <CardHeader>
-            <SectionHeader index={8} title="الأمان والخصوصية" subtitle="حماية البيانات والمفاتيح والاستعلامات" Icon={ShieldCheck} />
+            <SectionHeader index={10} title="الأمان والخصوصية" subtitle="حماية البيانات والمفاتيح والاستعلامات" Icon={ShieldCheck} />
           </CardHeader>
           <CardContent className="space-y-4">
             <ul className="space-y-2">
@@ -537,7 +537,7 @@ const Documentation = () => {
         {/* 10. الأداء والتوسّع */}
         <Card id="performance" className={cardElevated}>
           <CardHeader>
-            <SectionHeader index={9} title="الأداء والتوسّع" subtitle="استجابة سريعة وكلفة منخفضة" Icon={Gauge} />
+            <SectionHeader index={11} title="الأداء والتوسّع" subtitle="استجابة سريعة وكلفة منخفضة" Icon={Gauge} />
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -587,7 +587,7 @@ const Documentation = () => {
         {/* 11. حدود النظام */}
         <Card id="limits" className={cardElevated}>
           <CardHeader>
-            <SectionHeader index={10} title="حدود النظام" subtitle="ما لا يفعله المساعد عن قصد" Icon={AlertTriangle} />
+            <SectionHeader index={12} title="حدود النظام" subtitle="ما لا يفعله المساعد عن قصد" Icon={AlertTriangle} />
           </CardHeader>
           <CardContent className="space-y-4">
             <ul className="space-y-2">
@@ -609,7 +609,7 @@ const Documentation = () => {
         {/* 12. ملاحظات المطورين */}
         <Card id="developers" className={cardElevated}>
           <CardHeader>
-            <SectionHeader index={11} title="ملاحظات المطورين" subtitle="بنية وأدوات وقواعد عمل" Icon={Wrench} />
+            <SectionHeader index={13} title="ملاحظات المطورين" subtitle="بنية وأدوات وقواعد عمل" Icon={Wrench} />
           </CardHeader>
           <CardContent className="space-y-4">
             <Table>
