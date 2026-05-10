@@ -507,6 +507,9 @@ const Documentation = () => {
               </TableBody>
             </Table>
             <Notice tone="warn">
+              لا يوجد تسجيل ذاتي للطلاب — الحسابات يديرها المشرف فقط من <code>/admin/students</code>. إنشاء وتعديل كلمات السر يتم عبر RPC في الخادم مع تشفير bcrypt، ولا تصل التجزئة إلى الواجهة أبداً.
+            </Notice>
+            <Notice tone="warn">
               لا يوجد وصول للأكاديميين أو الموظفين. ترقية أي مستخدم لاحقاً تتم عبر <code>migration</code> على جدول <code>user_roles</code> فقط، وليس من واجهة الإدارة.
             </Notice>
           </CardContent>
