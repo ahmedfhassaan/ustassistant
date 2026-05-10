@@ -37,15 +37,17 @@ import universityLogo from "@/assets/university-logo.png";
 import universityLogoDark from "@/assets/university-logo-dark.jpeg";
 
 // أرقام عربية-هندية لاستعمالها داخل الصفحة
-const AR_NUMS = ["١", "٢", "٣", "٤", "٥", "٦", "٧", "٨", "٩", "١٠", "١١", "١٢"];
+const AR_NUMS = ["١", "٢", "٣", "٤", "٥", "٦", "٧", "٨", "٩", "١٠", "١١", "١٢", "١٣", "١٤"];
 
 const SECTIONS = [
   { id: "overview", title: "نظرة عامة على النظام", icon: Sparkles },
+  { id: "how-to-use", title: "كيف تستخدم المساعد؟", icon: Lightbulb },
+  { id: "best-practices", title: "أفضل الممارسات في طرح السؤال", icon: ListChecks },
   { id: "chat", title: "واجهة الدردشة", icon: MessageSquare },
   { id: "rag", title: "نظام RAG", icon: Database },
   { id: "knowledge", title: "قاعدة المعرفة", icon: FileText },
-  { id: "uploads", title: "رفع الملفات", icon: Upload },
-  { id: "sources", title: "عرض المصادر", icon: Link2 },
+  { id: "uploads", title: "رفع الملفات والتصدير", icon: Upload },
+  { id: "sources", title: "عرض المصادر والتقييم", icon: Link2 },
   { id: "admin", title: "لوحة المشرف", icon: LayoutDashboard },
   { id: "auth", title: "تسجيل الدخول والصلاحيات", icon: KeyRound },
   { id: "security", title: "الأمان والخصوصية", icon: ShieldCheck },
