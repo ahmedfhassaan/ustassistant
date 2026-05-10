@@ -17,6 +17,8 @@ import {
   Wrench,
   Sparkles,
   CheckCircle2,
+  Lightbulb,
+  ListChecks,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -35,15 +37,17 @@ import universityLogo from "@/assets/university-logo.png";
 import universityLogoDark from "@/assets/university-logo-dark.jpeg";
 
 // أرقام عربية-هندية لاستعمالها داخل الصفحة
-const AR_NUMS = ["١", "٢", "٣", "٤", "٥", "٦", "٧", "٨", "٩", "١٠", "١١", "١٢"];
+const AR_NUMS = ["١", "٢", "٣", "٤", "٥", "٦", "٧", "٨", "٩", "١٠", "١١", "١٢", "١٣", "١٤"];
 
 const SECTIONS = [
   { id: "overview", title: "نظرة عامة على النظام", icon: Sparkles },
+  { id: "how-to-use", title: "كيف تستخدم المساعد؟", icon: Lightbulb },
+  { id: "best-practices", title: "أفضل الممارسات في طرح السؤال", icon: ListChecks },
   { id: "chat", title: "واجهة الدردشة", icon: MessageSquare },
   { id: "rag", title: "نظام RAG", icon: Database },
   { id: "knowledge", title: "قاعدة المعرفة", icon: FileText },
-  { id: "uploads", title: "رفع الملفات", icon: Upload },
-  { id: "sources", title: "عرض المصادر", icon: Link2 },
+  { id: "uploads", title: "رفع الملفات والتصدير", icon: Upload },
+  { id: "sources", title: "عرض المصادر والتقييم", icon: Link2 },
   { id: "admin", title: "لوحة المشرف", icon: LayoutDashboard },
   { id: "auth", title: "تسجيل الدخول والصلاحيات", icon: KeyRound },
   { id: "security", title: "الأمان والخصوصية", icon: ShieldCheck },
@@ -253,10 +257,46 @@ const Documentation = () => {
           </CardContent>
         </Card>
 
-        {/* 2. واجهة الدردشة */}
+        {/* 2. كيف تستخدم المساعد */}
+        <Card id="how-to-use" className={cardElevated}>
+          <CardHeader>
+            <SectionHeader index={1} title="كيف تستخدم المساعد؟" subtitle="خطوات عملية للطالب من الدخول حتى التقييم" Icon={Lightbulb} />
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <ol className="space-y-2 list-decimal pr-5 text-sm leading-relaxed">
+              <li>سجّل الدخول من صفحة <code>/login</code> برقمك الجامعي وكلمة السر التي زوّدك بها المشرف.</li>
+              <li>من الشريط الجانبي، اختر <strong>محادثة جديدة</strong> أو تابع محادثة سابقة (محفوظة في السحابة وتظهر على جميع أجهزتك).</li>
+              <li>انقر على إحدى البطاقات الاقتراحية في شاشة الترحيب — مثل <strong>التخصصات</strong> أو <strong>نماذج الامتحانات السابقة</strong> أو <strong>الرسوم</strong> أو <strong>مشاريع التخرج</strong> — أو اكتب سؤالك مباشرة بالعربية.</li>
+              <li>تظهر الإجابة فوراً على شكل بثّ مباشر، وأسفلها قسم <strong>المصادر</strong> الذي يمكنك مراجعته للتحقق.</li>
+              <li>قيّم الإجابة بـ 👍 أو 👎. عند اختيار 👎 ستظهر نافذة موجزة لتحديد سبب عدم الفائدة، تساعد المشرف على تحسين المحتوى.</li>
+              <li>بدّل بين الوضع الفاتح والداكن من زر القمر/الشمس أعلى يمين الشاشة.</li>
+              <li>إذا لم يتمكن المساعد من الإجابة، اضغط <strong>تواصل معنا</strong> للوصول إلى الجهة المختصة.</li>
+            </ol>
+            <Notice tone="success">
+              المساعد يعتمد فقط على قاعدة المعرفة الرسمية. إذا لم يجد إجابة موثّقة، سيعتذر بدلاً من التخمين.
+            </Notice>
+          </CardContent>
+        </Card>
+
+        {/* 3. أفضل الممارسات */}
+        <Card id="best-practices" className={cardElevated}>
+          <CardHeader>
+            <SectionHeader index={2} title="أفضل الممارسات في طرح السؤال" subtitle="كيف تحصل على أدق إجابة بأقصر وقت" Icon={ListChecks} />
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <MiniCard title="كن محدّداً" body="‘ما خطة قسم علوم الحاسوب للفصل الأول؟’ أوضح من ‘أعطني خطة’. التحديد يرفع دقة الاسترجاع." />
+              <MiniCard title="اذكر التخصص أو المستوى" body="عند سؤالك عن مقررات أو رسوم، أضف اسم القسم والمستوى الدراسي ليصل المساعد للمصدر الصحيح." />
+              <MiniCard title="سؤال واحد لكل رسالة" body="تجنّب دمج عدة أسئلة. اقسمها لرسائل متتابعة لتحصل على إجابة دقيقة لكل سؤال." />
+              <MiniCard title="أعد الصياغة عند الحاجة" body="إن لم تكن الإجابة واضحة، أعد صياغة السؤال بكلمات مختلفة. النظام يعيد صياغته داخلياً أيضاً لتحسين البحث." />
+              <MiniCard title="راجع المصادر دائماً" body="المصادر أسفل الإجابة هي ضمانتك. افتحها للتحقق قبل اعتماد المعلومة في قرار رسمي." />
+              <MiniCard title="استخدم التقييم 👎" body="عند وجود خطأ أو نقص، اشرح السبب باختصار. كل تقييم يصل للمشرف ويُستخدم لتحسين النظام." />
+            </div>
+          </CardContent>
+        </Card>
         <Card id="chat" className={cardElevated}>
           <CardHeader>
-            <SectionHeader index={1} title="واجهة الدردشة" subtitle="تجربة محادثة عربية RTL مع Markdown" Icon={MessageSquare} />
+            <SectionHeader index={3} title="واجهة الدردشة" subtitle="تجربة محادثة عربية RTL مع Markdown" Icon={MessageSquare} />
           </CardHeader>
           <CardContent className="space-y-4">
             <ul className="space-y-2">
@@ -276,7 +316,7 @@ const Documentation = () => {
         {/* 3. RAG */}
         <Card id="rag" className={cardElevated}>
           <CardHeader>
-            <SectionHeader index={2} title="نظام RAG" subtitle="استرجاع المعلومات قبل توليد الإجابة" Icon={Database} />
+            <SectionHeader index={4} title="نظام RAG" subtitle="استرجاع المعلومات قبل توليد الإجابة" Icon={Database} />
           </CardHeader>
           <CardContent className="space-y-4">
             <p className="text-sm md:text-base leading-relaxed">
@@ -337,7 +377,7 @@ const Documentation = () => {
         {/* 4. قاعدة المعرفة */}
         <Card id="knowledge" className={cardElevated}>
           <CardHeader>
-            <SectionHeader index={3} title="قاعدة المعرفة" subtitle="مصدر الحقيقة الوحيد للمساعد" Icon={FileText} />
+            <SectionHeader index={5} title="قاعدة المعرفة" subtitle="مصدر الحقيقة الوحيد للمساعد" Icon={FileText} />
           </CardHeader>
           <CardContent className="space-y-4">
             <p className="text-sm md:text-base leading-relaxed">
@@ -362,7 +402,7 @@ const Documentation = () => {
         {/* 5. رفع الملفات */}
         <Card id="uploads" className={cardElevated}>
           <CardHeader>
-            <SectionHeader index={4} title="رفع الملفات" subtitle="إدخال آمن ومنضبط للمحتوى" Icon={Upload} />
+            <SectionHeader index={6} title="رفع الملفات والتصدير" subtitle="إدخال المحتوى وتصدير سجلات الدردشة" Icon={Upload} />
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -370,7 +410,7 @@ const Documentation = () => {
               <MiniCard title="بحث ويب لحظي" body="بدلاً من زحف مسبق، يستخدم المساعد Google Grounding للوصول للمعلومات الحديثة من موقع الجامعة عند الحاجة." />
               <MiniCard title="مسار المعالجة" body="قراءة → تطبيع عربي → تقسيم (~٦٠٠ كلمة) → توليد متجهات → تخزين → جاهز للبحث." />
               <MiniCard title="إعادة المعالجة" body="استبدال أو حذف أي وثيقة، أو تشغيل backfill-embeddings لإكمال المتجهات الناقصة." />
-              <MiniCard title="تصدير سجلات الدردشة" body="تصدير المحادثات والتقييمات بصيغ CSV / XLSX / PDF لأغراض المراجعة." />
+              <MiniCard title="تصدير سجلات الدردشة" body="تصدير المحادثات والتقييمات بصيغ CSV / XLSX / PDF. تصدير PDF يفتح حوار الطباعة مباشرة عبر iframe مخفي بدون فتح نافذة جديدة." />
               <MiniCard title="الأمان" body="رفع داخلي حصري عبر حساب المشرف — لا رفع سحابي مفتوح ولا روابط عامة." />
             </div>
             <Notice tone="info">
@@ -382,7 +422,7 @@ const Documentation = () => {
         {/* 6. عرض المصادر */}
         <Card id="sources" className={cardElevated}>
           <CardHeader>
-            <SectionHeader index={5} title="عرض المصادر" subtitle="شفافية كاملة في كل إجابة" Icon={Link2} />
+            <SectionHeader index={7} title="عرض المصادر والتقييم" subtitle="شفافية كاملة وتقييم تفاعلي لكل إجابة" Icon={Link2} />
           </CardHeader>
           <CardContent className="space-y-4">
             <p className="text-sm md:text-base leading-relaxed">
@@ -412,7 +452,7 @@ const Documentation = () => {
         {/* 7. لوحة المشرف */}
         <Card id="admin" className={cardElevated}>
           <CardHeader>
-            <SectionHeader index={6} title="لوحة المشرف" subtitle="تحكم كامل بالمحتوى والإعدادات" Icon={LayoutDashboard} />
+            <SectionHeader index={8} title="لوحة المشرف" subtitle="تحكم كامل بالمحتوى والإعدادات" Icon={LayoutDashboard} />
           </CardHeader>
           <CardContent className="space-y-4">
             <Table>
@@ -441,7 +481,7 @@ const Documentation = () => {
         {/* 8. تسجيل الدخول والصلاحيات */}
         <Card id="auth" className={cardElevated}>
           <CardHeader>
-            <SectionHeader index={7} title="تسجيل الدخول والصلاحيات" subtitle="مساران واضحان: طالب ومشرف" Icon={KeyRound} />
+            <SectionHeader index={9} title="تسجيل الدخول والصلاحيات" subtitle="مساران واضحان: طالب ومشرف" Icon={KeyRound} />
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -467,6 +507,9 @@ const Documentation = () => {
               </TableBody>
             </Table>
             <Notice tone="warn">
+              لا يوجد تسجيل ذاتي للطلاب — الحسابات يديرها المشرف فقط من <code>/admin/students</code>. إنشاء وتعديل كلمات السر يتم عبر RPC في الخادم مع تشفير bcrypt، ولا تصل التجزئة إلى الواجهة أبداً.
+            </Notice>
+            <Notice tone="warn">
               لا يوجد وصول للأكاديميين أو الموظفين. ترقية أي مستخدم لاحقاً تتم عبر <code>migration</code> على جدول <code>user_roles</code> فقط، وليس من واجهة الإدارة.
             </Notice>
           </CardContent>
@@ -475,7 +518,7 @@ const Documentation = () => {
         {/* 9. الأمان والخصوصية */}
         <Card id="security" className={cardElevated}>
           <CardHeader>
-            <SectionHeader index={8} title="الأمان والخصوصية" subtitle="حماية البيانات والمفاتيح والاستعلامات" Icon={ShieldCheck} />
+            <SectionHeader index={10} title="الأمان والخصوصية" subtitle="حماية البيانات والمفاتيح والاستعلامات" Icon={ShieldCheck} />
           </CardHeader>
           <CardContent className="space-y-4">
             <ul className="space-y-2">
@@ -497,7 +540,7 @@ const Documentation = () => {
         {/* 10. الأداء والتوسّع */}
         <Card id="performance" className={cardElevated}>
           <CardHeader>
-            <SectionHeader index={9} title="الأداء والتوسّع" subtitle="استجابة سريعة وكلفة منخفضة" Icon={Gauge} />
+            <SectionHeader index={11} title="الأداء والتوسّع" subtitle="استجابة سريعة وكلفة منخفضة" Icon={Gauge} />
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -547,7 +590,7 @@ const Documentation = () => {
         {/* 11. حدود النظام */}
         <Card id="limits" className={cardElevated}>
           <CardHeader>
-            <SectionHeader index={10} title="حدود النظام" subtitle="ما لا يفعله المساعد عن قصد" Icon={AlertTriangle} />
+            <SectionHeader index={12} title="حدود النظام" subtitle="ما لا يفعله المساعد عن قصد" Icon={AlertTriangle} />
           </CardHeader>
           <CardContent className="space-y-4">
             <ul className="space-y-2">
@@ -569,7 +612,7 @@ const Documentation = () => {
         {/* 12. ملاحظات المطورين */}
         <Card id="developers" className={cardElevated}>
           <CardHeader>
-            <SectionHeader index={11} title="ملاحظات المطورين" subtitle="بنية وأدوات وقواعد عمل" Icon={Wrench} />
+            <SectionHeader index={13} title="ملاحظات المطورين" subtitle="بنية وأدوات وقواعد عمل" Icon={Wrench} />
           </CardHeader>
           <CardContent className="space-y-4">
             <Table>
