@@ -1,4 +1,4 @@
-import { GraduationCap, MapPin, Wallet, Lightbulb, Sparkles, HelpCircle, Mail } from "lucide-react";
+import { GraduationCap, FileText, Wallet, Lightbulb, Sparkles, HelpCircle, Mail } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useTheme } from "@/hooks/use-theme";
 import { useSettings } from "@/hooks/use-settings";
@@ -20,9 +20,9 @@ const suggestions = [
     bgDark: "bg-blue-500/10 border-blue-500/20",
   },
   {
-    icon: MapPin,
-    title: "فروع الجامعة",
-    question: "ما هي فروع الجامعة والتخصصات المتاحة في كل فرع؟",
+    icon: FileText,
+    title: "نماذج الامتحانات السابقة",
+    question: "هل تتوفر نماذج للامتحانات السابقة؟ وكيف يمكنني الوصول إليها؟",
     color: "text-emerald-400",
     bgLight: "bg-emerald-50 border-emerald-100",
     bgDark: "bg-emerald-500/10 border-emerald-500/20",
