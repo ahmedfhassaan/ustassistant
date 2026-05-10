@@ -146,7 +146,24 @@ const Documentation = () => {
         }`}
       >
         <div className="flex items-center gap-3">
-          <Button variant="ghost" size="icon" onClick={() => navigate(-1)} title="رجوع">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => {
+              const sameOriginRef =
+                typeof document !== "undefined" &&
+                document.referrer &&
+                document.referrer.startsWith(window.location.origin);
+              if (sameOriginRef && window.history.length > 1) {
+                navigate(-1);
+                return;
+              }
+              const isAdmin =
+                typeof window !== "undefined" && !!localStorage.getItem("admin");
+              navigate(isAdmin ? "/admin" : "/chat");
+            }}
+            title="رجوع"
+          >
             <ArrowRight className="w-5 h-5" />
           </Button>
           <div className="relative h-9 w-[110px] shrink-0">
